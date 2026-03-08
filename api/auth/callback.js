@@ -1,6 +1,3 @@
-import { Redis } from '@upstash/redis';
-const kv = Redis.fromEnv();
-
 export default async function handler(req, res) {
   const { code, shop } = req.query;
 
@@ -31,24 +28,17 @@ export default async function handler(req, res) {
     const accessToken = tokenData.access_token;
 
     if (!accessToken) {
-      return res.status(500).json({ error: 'No access_token in response', data: tokenData });
+      return res.status(500).json({ error: 'No access_token', data: tokenData });
     }
-
-    await kv.set('shopify_token', accessToken);
-    await kv.set('shopify_shop', shop);
-
-    const verifyRes = await fetch('https://' + shop + '/admin/api/2024-10/shop.json', {
-      headers: { 'X-Shopify-Access-Token': accessToken },
-    });
-    const shopData = await verifyRes.json();
 
     return res.status(200).json({
       success: true,
-      message: 'Connected to ' + (shopData.shop ? shopData.shop.name : shop),
+      message: 'SAVE THIS TOKEN as SHOPIFY_ACCESS_TOKEN in your Vercel env vars',
       shop: shop,
+      access_token: accessToken,
       scopes: tokenData.scope,
     });
   } catch (err) {
-    return res.status(500).json({ error: 'OAuth failed', details: err.message, stack: err.stack });
+    return res.status(500).json({ error: 'OAuth failed', details: err.message });
   }
 }
