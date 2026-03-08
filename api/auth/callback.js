@@ -1,5 +1,5 @@
 // /api/auth/callback.js — Handles Shopify OAuth callback, exchanges code for token
-import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis'; const kv = Redis.fromEnv();
 
 export default async function handler(req, res) {
   const { code, shop, state, hmac } = req.query;

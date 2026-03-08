@@ -1,6 +1,6 @@
 // /api/pull-shopify.js — Pulls order data from Shopify and returns daily metrics
 // Usage: GET /api/pull-shopify?shop=noody-skincare.myshopify.com&days=30
-import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis'; const kv = Redis.fromEnv();
 
 const API_VERSION = '2024-10';
 

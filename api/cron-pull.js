@@ -1,6 +1,6 @@
 // /api/cron-pull.js — Runs daily at 7am NZST via Vercel Cron
 // Pulls Shopify orders + Meta ad spend and caches results
-import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis'; const kv = Redis.fromEnv();
 
 const API_VERSION = '2024-10';
 
