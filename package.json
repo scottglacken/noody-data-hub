@@ -1,0 +1,12 @@
+{
+  "name": "noody-data-hub",
+  "version": "1.0.0",
+  "description": "Ecommerce Equation Data Hub — Shopify + Meta Ads data pipeline",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@vercel/kv": "^2.0.0"
+  }
+}
