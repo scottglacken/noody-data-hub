@@ -342,7 +342,7 @@ function MetaCoach(){
   useEffect(()=>{
     (async()=>{
       try{
-        const r=await fetch("/api/pull-meta?days=30",{headers:{"x-api-key":API_KEY}});
+        const r=await fetch("/api/pull-meta?days=30&level=campaign",{headers:{"x-api-key":API_KEY}});
         if(r.ok){const d=await r.json();if(d.daily)setMetaData(d);}
       }catch(e){console.error("Meta fetch:",e);}
       setLoading(false);
