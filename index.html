@@ -387,11 +387,11 @@ function Dashboard(){
     {tab==="meta"&&<>
       <h2 style={{fontSize:20,fontWeight:700,margin:"0 0 14px"}}>Meta Ads Performance</h2>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:7,marginBottom:14}}>
-        <MC l="12mo Spend" v={195991} fmt="$" big/>
-        <MC l="Purchases" v={6243} fmt="n"/>
-        <MC l="Avg CPP" v={31.39} fmt="$"/>
-        <MC l="Meta ROAS" v={2.21} fmt="n" sub="last-click"/>
-        <MC l="% of Ad Budget" v={91} fmt="%" sub="Meta dominates"/>
+        <MC l={range+"d Spend"} v={agg?agg.tms:0} fmt="$" big/>
+        <MC l="Purchases" v={agg?agg.tmp:0} fmt="n"/>
+        <MC l="Avg CPP" v={agg&&agg.tmp>0?agg.tms/agg.tmp:0} fmt="$"/>
+        <MC l="Meta ROAS" v={agg&&agg.tms>0?agg.tmv/agg.tms:0} fmt="n" sub="last-click"/>
+        <MC l="% of Ad Budget" v={agg&&agg.tms>0?100:0} fmt="%" sub="Meta"/>
       </div>
       <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:10}}>
         <div style={{fontSize:11,color:"var(--t3)",marginBottom:8}}>MONTHLY META SPEND & MER</div>
