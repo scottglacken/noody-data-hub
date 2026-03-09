@@ -1,5 +1,7 @@
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'x-api-key, Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   var apiKey = req.headers['x-api-key'];
@@ -20,7 +22,66 @@ export default async function handler(req, res) {
   var untilDate = new Date().toISOString().split('T')[0];
 
   try {
-    // Always fetch daily account data
+    // ── Campaign-level pull ──────────────────────
+    if (level === 'campaign') {
+      var allCampaigns = [];
+      var url = 'https://graph.facebook.com/v19.0/act_' + accountId + '/insights?' +
+        'fields=campaign_name,campaign_id,spend,impressions,clicks,reach,frequency,actions,action_values,cpc,cpm,ctr' +
+        '&time_range={"since":"' + sinceDate + '","until":"' + untilDate + '"}' +
+        '&level=campaign&limit=500&access_token=' + token;
+
+      while (url) {
+        var response = await fetch(url);
+        var data = await response.json();
+        if (data.error) return res.status(400).json({ error: data.error.message, type: data.error.type });
+
+        var page = (data.data || []).map(function(row) {
+          var purchases = (row.actions || []).find(function(a) { return a.action_type === 'purchase'; });
+          var purchaseValue = (row.action_values || []).find(function(a) { return a.action_type === 'purchase'; });
+          var pCount = parseInt(purchases ? purchases.value : 0);
+          var pValue = parseFloat(purchaseValue ? purchaseValue.value : 0);
+          var sp = parseFloat(row.spend) || 0;
+          return {
+            campaign_name: row.campaign_name,
+            campaign_id: row.campaign_id,
+            spend: Math.round(sp * 100) / 100,
+            impressions: parseInt(row.impressions) || 0,
+            clicks: parseInt(row.clicks) || 0,
+            reach: parseInt(row.reach) || 0,
+            frequency: parseFloat(row.frequency) || 0,
+            purchases: pCount,
+            purchase_value: Math.round(pValue * 100) / 100,
+            cpa: pCount > 0 ? Math.round((sp / pCount) * 100) / 100 : null,
+            roas: sp > 0 ? Math.round((pValue / sp) * 100) / 100 : 0,
+            cpc: parseFloat(row.cpc) || 0,
+            cpm: parseFloat(row.cpm) || 0,
+            ctr: parseFloat(row.ctr) || 0,
+          };
+        });
+        allCampaigns = allCampaigns.concat(page);
+        url = (data.paging && data.paging.next) ? data.paging.next : null;
+      }
+
+      var totalSpend = allCampaigns.reduce(function(s, c) { return s + c.spend; }, 0);
+      var totalPurchases = allCampaigns.reduce(function(s, c) { return s + c.purchases; }, 0);
+      var totalPurchaseValue = allCampaigns.reduce(function(s, c) { return s + c.purchase_value; }, 0);
+
+      return res.status(200).json({
+        accountId: accountId,
+        pulledAt: new Date().toISOString(),
+        dateRange: { start: sinceDate, end: untilDate },
+        campaigns: allCampaigns,
+        summary: {
+          totalSpend: Math.round(totalSpend * 100) / 100,
+          totalPurchases: totalPurchases,
+          totalPurchaseValue: Math.round(totalPurchaseValue * 100) / 100,
+          avgCPP: totalPurchases > 0 ? Math.round((totalSpend / totalPurchases) * 100) / 100 : null,
+          roas: totalSpend > 0 ? Math.round((totalPurchaseValue / totalSpend) * 100) / 100 : 0,
+        },
+      });
+    }
+
+    // ── Account-level daily pull (original) ──────
     var allDaily = [];
     var url = 'https://graph.facebook.com/v19.0/act_' + accountId + '/insights?' +
       'fields=spend,impressions,clicks,actions,action_values,cpc,cpm,ctr' +
@@ -53,78 +114,17 @@ export default async function handler(req, res) {
 
     var totalSpend = allDaily.reduce(function(s, d) { return s + d.metaSpend; }, 0);
     var totalPurchases = allDaily.reduce(function(s, d) { return s + d.purchases; }, 0);
-    var totalPurchaseValue = allDaily.reduce(function(s, d) { return s + d.purchaseValue; }, 0);
 
-    var result = {
+    return res.status(200).json({
       accountId: accountId,
       pulledAt: new Date().toISOString(),
-      dateRange: sinceDate + ' to ' + untilDate,
-      summary: {
-        totalSpend: Math.round(totalSpend * 100) / 100,
-        totalPurchases: totalPurchases,
-        totalPurchaseValue: Math.round(totalPurchaseValue * 100) / 100,
-        avgCPP: totalPurchases > 0 ? Math.round((totalSpend / totalPurchases) * 100) / 100 : null,
-        roas: totalSpend > 0 ? Math.round((totalPurchaseValue / totalSpend) * 100) / 100 : null,
-      },
+      dateRange: { start: sinceDate, end: untilDate },
+      totalSpend: Math.round(totalSpend * 100) / 100,
       totalDays: allDaily.length,
+      totalPurchases: totalPurchases,
+      avgCPP: totalPurchases > 0 ? Math.round((totalSpend / totalPurchases) * 100) / 100 : null,
       daily: allDaily,
-    };
-
-    // If campaign level requested, also fetch campaign breakdown
-    if (level === 'campaign' || level === 'all') {
-      var allCampaigns = [];
-      var campUrl = 'https://graph.facebook.com/v19.0/act_' + accountId + '/insights?' +
-        'fields=campaign_name,campaign_id,spend,impressions,reach,clicks,frequency,actions,action_values,cpc,cpm,ctr' +
-        '&time_range={"since":"' + sinceDate + '","until":"' + untilDate + '"}' +
-        '&level=campaign&limit=500&access_token=' + token;
-
-      while (campUrl) {
-        var campRes = await fetch(campUrl);
-        var campData = await campRes.json();
-        if (campData.error) {
-          result.campaignError = campData.error.message;
-          break;
-        }
-
-        var campPage = (campData.data || []).map(function(c) {
-          var purchases = (c.actions || []).find(function(a) { return a.action_type === 'purchase'; });
-          var purchaseValue = (c.action_values || []).find(function(a) { return a.action_type === 'purchase'; });
-          var addToCart = (c.actions || []).find(function(a) { return a.action_type === 'add_to_cart'; });
-          var purch = parseInt(purchases ? purchases.value : 0);
-          var spent = parseFloat(c.spend) || 0;
-          return {
-            campaignName: c.campaign_name,
-            campaignId: c.campaign_id,
-            spend: spent,
-            impressions: parseInt(c.impressions) || 0,
-            reach: parseInt(c.reach) || 0,
-            clicks: parseInt(c.clicks) || 0,
-            frequency: parseFloat(c.frequency) || 0,
-            ctr: parseFloat(c.ctr) || 0,
-            cpc: parseFloat(c.cpc) || 0,
-            cpm: parseFloat(c.cpm) || 0,
-            purchases: purch,
-            purchaseValue: parseFloat(purchaseValue ? purchaseValue.value : 0),
-            addToCart: parseInt(addToCart ? addToCart.value : 0),
-            cpa: purch > 0 ? Math.round((spent / purch) * 100) / 100 : null,
-            roas: spent > 0 ? Math.round((parseFloat(purchaseValue ? purchaseValue.value : 0) / spent) * 100) / 100 : null,
-          };
-        });
-        allCampaigns = allCampaigns.concat(campPage);
-        campUrl = (campData.paging && campData.paging.next) ? campData.paging.next : null;
-      }
-
-      // Sort by spend descending
-      allCampaigns.sort(function(a, b) { return b.spend - a.spend; });
-      result.campaigns = allCampaigns;
-    }
-
-    // Keep backward compat
-    result.totalSpend = result.summary.totalSpend;
-    result.totalPurchases = result.summary.totalPurchases;
-    result.avgCPP = result.summary.avgCPP;
-
-    return res.status(200).json(result);
+    });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

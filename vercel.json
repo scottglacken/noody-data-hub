@@ -1,6 +1,6 @@
 {
   "rewrites": [
     { "source": "/", "destination": "/index.html" },
-    { "source": "/meta-coach", "destination": "/meta-coach.html" }
+    { "source": "/coach", "destination": "/coach.html" }
   ]
 }
