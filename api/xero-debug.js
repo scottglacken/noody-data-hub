@@ -3,7 +3,6 @@ export default async function handler(req, res) {
   const clientSecret = process.env.XERO_CLIENT_SECRET;
   const refreshToken = process.env.XERO_REFRESH_TOKEN;
 
-  // Get fresh access token
   const tokenRes = await fetch('https://identity.xero.com/connect/token', {
     method: 'POST',
     headers: {
@@ -21,7 +20,6 @@ export default async function handler(req, res) {
     return res.json({ error: tokens });
   }
 
-  // Get connections
   const connRes = await fetch('https://api.xero.com/connections', {
     headers: { 'Authorization': 'Bearer ' + tokens.access_token },
   });
@@ -30,6 +28,5 @@ export default async function handler(req, res) {
   return res.json({
     connections,
     newRefreshToken: tokens.refresh_token,
-    note: 'Save the newRefreshToken to Vercel if different from current'
   });
 }
