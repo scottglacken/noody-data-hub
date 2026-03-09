@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meta Ads Coach - Noody</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+  :root{--bg:#0c0c18;--card:#13131f;--card2:#1a1a26;--bdr:#1e1e34;--t1:#f0f0f5;--t2:#a0a0b8;--t3:#6b6b82;--acc:#c94f8a;--acc2:#e06aa0;--accbg:rgba(201,79,138,0.12);--grn:#22c55e;--grnbg:rgba(34,197,94,0.1);--ylw:#eab308;--ylwbg:rgba(234,179,8,0.1);--red:#ef4444;--redbg:rgba(239,68,68,0.1);--blu:#487df0;--blubg:rgba(72,125,240,0.1);--grid:#1e1e34}
+  [data-theme="light"]{--bg:#f4f4f8;--card:#fff;--card2:#f0f0f5;--bdr:#dde0e8;--t1:#1a1a2e;--t2:#555568;--t3:#8888a0;--acc:#b83d78;--acc2:#a03068;--accbg:rgba(201,79,138,0.08);--grn:#16a34a;--grnbg:rgba(22,163,74,0.08);--ylw:#ca8a04;--ylwbg:rgba(202,138,4,0.08);--red:#dc2626;--redbg:rgba(220,38,38,0.08);--blu:#3b6fd9;--blubg:rgba(59,111,217,0.08);--grid:#e4e4ef}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--t1);font-family:'DM Sans',-apple-system,sans-serif;-webkit-font-smoothing:antialiased;transition:background .25s,color .25s}
+  ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
+  button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+  div,span,td,th,input,textarea,select{transition:background .2s,color .2s,border-color .2s}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--acc) !important}
+</style>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useCallback,useRef,useMemo}=React;
+
+const API_KEY="noody-eq-2026-datahub";
+const FUNNEL={TOF:0.45,ASC:0.35,MOF:0.20};
+const BRACKETS=[
+  {label:"< $500",max:500,tof:1,asc:1,mof:1},
+  {label:"$500-$1k",max:1000,tof:2,asc:2,mof:1},
+  {label:"$1k-$3k",max:3000,tof:3,asc:2,mof:1},
+  {label:"> $3k",max:Infinity,tof:4,asc:3,mof:2},
+];
+const FREQ_BM={green:1.0,yellow:2.0,red:3.0};
+const AUDIENCES=[
+  {id:"001",name:"Website - All Visits - 180d",usage:"MOF"},
+  {id:"002",name:"IG Engagement - All - 365d",usage:"MOF"},
+  {id:"003",name:"FB Engagement - All - 365d",usage:"MOF"},
+  {id:"004",name:"Video - 3s Views - 365d",usage:"MOF"},
+  {id:"005",name:"Email List - Klaviyo - All",usage:"MOF"},
+  {id:"006",name:"Website - All Visits - 7d",usage:"Exclusion"},
+  {id:"007",name:"Website - All Visits - 14d",usage:"Exclusion"},
+  {id:"008",name:"Website - All Visits - 30d",usage:"Exclusion"},
+  {id:"009",name:"IG Engagement - 7d",usage:"Exclusion"},
+  {id:"010",name:"IG Engagement - 14d",usage:"Exclusion"},
+  {id:"011",name:"IG Engagement - 30d",usage:"Exclusion"},
+  {id:"012",name:"FB Engagement - 7d",usage:"Exclusion"},
+  {id:"013",name:"FB Engagement - 14d",usage:"Exclusion"},
+  {id:"014",name:"FB Engagement - 30d",usage:"Exclusion"},
+  {id:"015",name:"Website - Purchase - 180d",usage:"Lookalike"},
+  {id:"016",name:"Website - ATC - 180d",usage:"Lookalike"},
+  {id:"017",name:"Video - 95% Views - 365d",usage:"Lookalike"},
+  {id:"018",name:"IG - Visited Page - 365d",usage:"Lookalike"},
+  {id:"019",name:"IG - Saved Post - 365d",usage:"Lookalike"},
+  {id:"020",name:"FB - Like & Follow - 365d",usage:"Lookalike"},
+  {id:"021",name:"FB - Clicked CTA - 365d",usage:"Lookalike"},
+];
+
+const f$=n=>n==null?"--":"$"+Math.round(n).toLocaleString();
+const fn=n=>n==null?"--":Math.round(n).toLocaleString();
+const fp=n=>n==null?"--":n.toFixed(1)+"%";
+
+// ---- Utility Components ----
+function Badge({color,children}){
+  const bg=color==="var(--grn)"?"var(--grnbg)":color==="var(--ylw)"?"var(--ylwbg)":color==="var(--red)"?"var(--redbg)":"var(--blubg)";
+  return <span style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",borderRadius:99,fontSize:11,fontWeight:600,letterSpacing:"0.03em",textTransform:"uppercase",color:color,background:bg,border:"1px solid "+color+"22"}}>{children}</span>;
+}
+
+function Card({children,style,glow}){
+  return <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:24,boxShadow:glow?"0 0 40px var(--accbg)":"none",transition:"all .3s",...style}}>{children}</div>;
+}
+
+function Pill({active,onClick,children}){
+  return <button onClick={onClick} style={{padding:"8px 18px",borderRadius:8,border:"1px solid "+(active?"var(--acc)":"var(--bdr)"),background:active?"var(--accbg)":"transparent",color:active?"var(--acc2)":"var(--t3)",fontSize:13,fontWeight:600,cursor:"pointer",transition:"all .2s"}}>{children}</button>;
+}
+
+function Input({label,value,onChange,prefix,suffix,type,min,max,step,small}){
+  return <div style={{display:"flex",flexDirection:"column",gap:4}}>
+    {label&&<label style={{fontSize:11,color:"var(--t3)",fontWeight:500,letterSpacing:"0.04em",textTransform:"uppercase"}}>{label}</label>}
+    <div style={{position:"relative",display:"flex",alignItems:"center"}}>
+      {prefix&&<span style={{position:"absolute",left:10,color:"var(--t3)",fontSize:13,pointerEvents:"none"}}>{prefix}</span>}
+      <input type={type||"text"} value={value} onChange={e=>onChange(e.target.value)} min={min} max={max} step={step}
+        style={{width:"100%",padding:small?"7px 10px":"10px 14px",paddingLeft:prefix?24:undefined,paddingRight:suffix?30:undefined,background:"var(--card2)",border:"1px solid var(--bdr)",borderRadius:8,color:"var(--t1)",fontSize:14,fontFamily:"'JetBrains Mono',monospace"}}/>
+      {suffix&&<span style={{position:"absolute",right:10,color:"var(--t3)",fontSize:13,pointerEvents:"none"}}>{suffix}</span>}
+    </div>
+  </div>;
+}
+
+// ---- AI Coach ----
+function AICoach({campaigns,metaData}){
+  const [q,setQ]=useState("");
+  const [resp,setResp]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [history,setHistory]=useState([]);
+
+  const buildContext=()=>{
+    let ctx="";
+    if(metaData?.summary){
+      const s=metaData.summary;
+      ctx+="\n\nLive Meta Ads Data (from Noody Hub):";
+      ctx+="\n- Total Spend: $"+(s.totalSpend||0).toFixed(2);
+      ctx+="\n- Total Purchases: "+(s.totalPurchases||0);
+      ctx+="\n- Avg CPP: $"+(s.avgCPP||0).toFixed(2);
+      ctx+="\n- ROAS: "+(s.roas||0).toFixed(2)+"x";
+      ctx+="\n- Period: "+metaData.dateRange;
+    }
+    if(campaigns?.length>0){
+      ctx+="\n\nCampaign breakdown:";
+      campaigns.slice(0,10).forEach(c=>{
+        ctx+="\n- "+c.name+": CPA $"+c.cpa+", Freq "+c.frequency+", Spend $"+c.spend+" ("+c.funnel+")";
+      });
+    }
+    return ctx;
+  };
+
+  const ask=async()=>{
+    if(!q.trim())return;
+    setLoading(true);
+    try{
+      const r=await fetch("/api/ai-coach",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":API_KEY},body:JSON.stringify({prompt:q+buildContext()})});
+      const d=await r.json();
+      if(d.error)throw new Error(d.error);
+      setResp(d.text);
+      setHistory(p=>[...p,{role:"user",content:q},{role:"assistant",content:d.text}]);
+    }catch(e){setResp("Error: "+e.message);}
+    setLoading(false);setQ("");
+  };
+
+  const quickQs=["How should I structure campaigns for my spend level?","My TOF CPA looks high - is that normal?","When should I kill an ad vs refresh it?","How do I identify a hero ad?","What audiences should I use for MOF retargeting?","My CPA spiked this week - diagnose it"];
+
+  return <Card glow>
+    <div style={{marginBottom:20}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
+        <span style={{fontSize:20}}>AI</span>
+        <h2 style={{fontSize:18,fontWeight:700,color:"var(--t1)",margin:0}}>Meta Ads Coach</h2>
+      </div>
+      <p style={{fontSize:13,color:"var(--t3)",margin:"4px 0 0 30px"}}>Ask anything about your Meta ad performance. Uses live data from your Noody Hub.</p>
+    </div>
+
+    {!resp&&<div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}}>
+      {quickQs.map((qq,i)=><button key={i} onClick={()=>setQ(qq)} style={{padding:"6px 14px",background:"var(--card2)",border:"1px solid var(--bdr)",borderRadius:20,color:"var(--t3)",fontSize:12,cursor:"pointer",transition:"all .2s"}}>{qq}</button>)}
+    </div>}
+
+    {resp&&<div style={{marginBottom:16,padding:18,background:"var(--card2)",borderRadius:12,border:"1px solid var(--bdr)",whiteSpace:"pre-wrap",fontSize:14,color:"var(--t1)",lineHeight:1.7,maxHeight:400,overflowY:"auto"}}>{resp}</div>}
+
+    <div style={{display:"flex",gap:8}}>
+      <input value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&ask()} placeholder="Ask the coach..." style={{flex:1,padding:"12px 16px",background:"var(--card2)",border:"1px solid var(--bdr)",borderRadius:10,color:"var(--t1)",fontSize:14}}/>
+      <button onClick={ask} disabled={loading} style={{padding:"12px 24px",background:"var(--acc)",border:"none",borderRadius:10,color:"#fff",fontWeight:700,cursor:loading?"wait":"pointer",fontSize:14,opacity:loading?0.6:1,whiteSpace:"nowrap"}}>{loading?"Thinking...":"Ask Coach"}</button>
+    </div>
+  </Card>;
+}
+
+// ---- Campaign Structure Calculator ----
+function CampaignCalc({metaData}){
+  const defaultSpend=metaData?.summary?.totalSpend?Math.round(metaData.summary.totalSpend/30):"500";
+  const [dailySpend,setDailySpend]=useState(defaultSpend);
+  const [countries,setCountries]=useState("1");
+  const [genderSplit,setGenderSplit]=useState("no");
+
+  const spend=parseFloat(dailySpend)||0;
+  const bracket=BRACKETS.find(b=>spend<b.max)||BRACKETS[3];
+  const numC=parseInt(countries)||1;
+  const extraC=numC>1?numC-1:0;
+  const totals={
+    tof:bracket.tof+(spend>=500?extraC:0)+(genderSplit==="yes"?(spend<500?1:spend<1000?2:4):0),
+    asc:bracket.asc+(spend>=500?extraC:extraC>1?extraC:0)+(genderSplit==="yes"?(spend<500?1:spend<1000?2:spend<3000?2:4):0),
+    mof:bracket.mof+(spend>=3000?extraC:0)+(genderSplit==="yes"?(spend<3000?1:2):0),
+  };
+  const total=totals.tof+totals.asc+totals.mof;
+  const spPer={tof:totals.tof?spend*FUNNEL.TOF/totals.tof:0,asc:totals.asc?spend*FUNNEL.ASC/totals.asc:0,mof:totals.mof?spend*FUNNEL.MOF/totals.mof:0};
+
+  function Row({label,color,ratio,count,sp}){
+    return <div style={{display:"grid",gridTemplateColumns:"80px 1fr 60px 80px 80px",gap:12,alignItems:"center",padding:"12px 16px",borderRadius:10,background:color+"08",borderLeft:"3px solid "+color}}>
+      <span style={{fontWeight:700,fontSize:14,color}}>{label}</span>
+      <div style={{height:8,borderRadius:4,background:color+"18",overflow:"hidden"}}><div style={{height:"100%",width:Math.min(ratio*200,100)+"%",background:color,borderRadius:4}}/></div>
+      <span style={{fontFamily:"monospace",fontSize:14,color:"var(--t1)",textAlign:"center"}}>{(ratio*100).toFixed(0)}%</span>
+      <span style={{fontFamily:"monospace",fontSize:15,fontWeight:700,color:"var(--t1)",textAlign:"center"}}>{count}</span>
+      <span style={{fontFamily:"monospace",fontSize:13,color:"var(--t3)",textAlign:"right"}}>${sp.toFixed(0)}/ea</span>
+    </div>;
+  }
+
+  return <Card>
+    <div style={{marginBottom:20}}><div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}><span style={{fontSize:20}}>CALC</span><h2 style={{fontSize:18,fontWeight:700,color:"var(--t1)",margin:0}}>Campaign Structure Calculator</h2></div>
+    <p style={{fontSize:13,color:"var(--t3)",margin:"4px 0 0 30px"}}>Optimal campaign count by spend, countries & gender targeting</p></div>
+
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:16,marginBottom:24}}>
+      <Input label="Daily Spend" prefix="$" value={dailySpend} onChange={setDailySpend}/>
+      <Input label="Countries" value={countries} onChange={setCountries} type="number" min="1" max="3"/>
+      <div style={{display:"flex",flexDirection:"column",gap:4}}>
+        <label style={{fontSize:11,color:"var(--t3)",fontWeight:500,textTransform:"uppercase",letterSpacing:"0.04em"}}>Gender Split?</label>
+        <div style={{display:"flex",gap:6}}><Pill active={genderSplit==="no"} onClick={()=>setGenderSplit("no")}>No</Pill><Pill active={genderSplit==="yes"} onClick={()=>setGenderSplit("yes")}>Yes</Pill></div>
+      </div>
+    </div>
+
+    <div style={{background:"var(--card2)",borderRadius:12,padding:16,marginBottom:16}}>
+      <div style={{display:"grid",gridTemplateColumns:"80px 1fr 60px 80px 80px",gap:12,marginBottom:8,padding:"0 16px"}}>
+        {["Funnel","Split","Ratio","Count","$/ea"].map(h=><span key={h} style={{fontSize:10,textTransform:"uppercase",letterSpacing:"0.06em",color:"var(--t3)",fontWeight:600,textAlign:h==="$/ea"?"right":h==="Count"?"center":"left"}}>{h}</span>)}
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        <Row label="TOF" color="var(--blu)" ratio={FUNNEL.TOF} count={totals.tof} sp={spPer.tof}/>
+        <Row label="ASC" color="var(--acc)" ratio={FUNNEL.ASC} count={totals.asc} sp={spPer.asc}/>
+        <Row label="MOF" color="var(--grn)" ratio={FUNNEL.MOF} count={totals.mof} sp={spPer.mof}/>
+      </div>
+    </div>
+
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",background:"var(--card2)",borderRadius:10}}>
+      <span style={{fontSize:13,color:"var(--t3)"}}>Total Campaigns</span>
+      <div style={{display:"flex",alignItems:"baseline",gap:6}}>
+        <span style={{fontSize:28,fontWeight:800,color:"var(--t1)",fontFamily:"monospace"}}>{total}</span>
+        <span style={{fontSize:12,color:"var(--t3)"}}>@ {bracket.label}</span>
+      </div>
+    </div>
+
+    <div style={{marginTop:16,padding:14,background:"var(--blubg)",borderRadius:10,border:"1px solid var(--blu)18"}}>
+      <p style={{margin:0,fontSize:12,color:"var(--t2)",lineHeight:1.6}}>
+        <strong style={{color:"var(--blu)"}}>Ads per Campaign:</strong> 3-6 recommended. Start with 3 for lower budgets, scale to 6 as you find winners. Mix formats (image, video, carousel).
+      </p>
+    </div>
+  </Card>;
+}
+
+// ---- Traffic Light Benchmarking ----
+function TrafficLight({metaData}){
+  const initCampaigns=metaData?.daily?.length>0?[{id:1,name:"All Campaigns ("+metaData.dateRange+")",cpa:metaData.summary?.avgCPP?.toFixed(2)||"",frequency:"",spend:metaData.summary?.totalSpend?.toFixed(0)||"",purchases:metaData.summary?.totalPurchases||"",funnel:"TOF"}]:[{id:1,name:"",cpa:"",frequency:"",spend:"",purchases:"",funnel:"TOF"}];
+  const [campaigns,setCampaigns]=useState(initCampaigns);
+  const [greenCPA,setGreenCPA]=useState("30");
+  const [yellowCPA,setYellowCPA]=useState("50");
+
+  const addC=()=>setCampaigns(p=>[...p,{id:Date.now(),name:"",cpa:"",frequency:"",spend:"",purchases:"",funnel:"TOF"}]);
+  const updC=(id,f,v)=>setCampaigns(p=>p.map(c=>c.id===id?{...c,[f]:v}:c));
+  const remC=(id)=>setCampaigns(p=>p.filter(c=>c.id!==id));
+
+  const cpaStatus=(cpa)=>{const v=parseFloat(cpa);if(!v)return null;const g=parseFloat(greenCPA),y=parseFloat(yellowCPA);return v<=g?"green":v<=y?"yellow":"red";};
+  const freqStatus=(f)=>{const v=parseFloat(f);if(!v)return null;return v<=1?"green":v<=2?"yellow":"red";};
+  const getOpt=(c)=>{
+    const cs=cpaStatus(c.cpa),fs=freqStatus(c.frequency);
+    if(cs==="green"&&fs==="green")return{text:"Hero Ad - Scale spend 10-20%, test similar angles"};
+    if(cs==="green"&&fs==="yellow")return{text:"Strong but watch frequency. Expand audience or refresh creative soon"};
+    if(cs==="green"&&fs==="red")return{text:"Creative fatigue. Duplicate & refresh creative immediately"};
+    if(cs==="yellow"&&fs==="green")return{text:"CPA trending up. Test new hooks, review creative angles"};
+    if(cs==="yellow")return{text:"Needs attention. Test new creatives, review targeting"};
+    if(cs==="red"&&fs==="red")return{text:"Kill this ad. Creative fatigued and CPA too high"};
+    if(cs==="red")return{text:"CPA too high. Pause and replace with new creative"};
+    return{text:"Enter metrics to get recommendation"};
+  };
+
+  return <Card>
+    <div style={{marginBottom:20}}><div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}><span style={{fontSize:20}}>TL</span><h2 style={{fontSize:18,fontWeight:700,color:"var(--t1)",margin:0}}>Traffic Light Benchmarking</h2></div>
+    <p style={{fontSize:13,color:"var(--t3)",margin:"4px 0 0 30px"}}>Set CPA thresholds and assess each campaign. Frequency benchmarks: Green 1.0 / Yellow 2.0 / Red 3.0</p></div>
+
+    <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,marginBottom:24}}>
+      <div style={{padding:14,borderRadius:10,background:"var(--grnbg)",border:"1px solid var(--grn)22"}}><Input label="Green CPA (target)" prefix="$" value={greenCPA} onChange={setGreenCPA} small/></div>
+      <div style={{padding:14,borderRadius:10,background:"var(--ylwbg)",border:"1px solid var(--ylw)22"}}><Input label="Yellow CPA (warning)" prefix="$" value={yellowCPA} onChange={setYellowCPA} small/></div>
+    </div>
+
+    <div style={{display:"flex",flexDirection:"column",gap:12}}>
+      {campaigns.map(c=>{
+        const cs=cpaStatus(c.cpa),fs=freqStatus(c.frequency),opt=getOpt(c);
+        return <div key={c.id} style={{padding:16,borderRadius:12,background:"var(--card2)",border:"1px solid var(--bdr)",position:"relative"}}>
+          {campaigns.length>1&&<button onClick={()=>remC(c.id)} style={{position:"absolute",top:8,right:10,background:"none",border:"none",color:"var(--t3)",cursor:"pointer",fontSize:16}}>x</button>}
+          <div style={{display:"grid",gridTemplateColumns:"2fr repeat(3,1fr) 80px",gap:10,alignItems:"end",marginBottom:10}}>
+            <Input label="Campaign" value={c.name} onChange={v=>updC(c.id,"name",v)} small/>
+            <Input label="CPA" prefix="$" value={c.cpa} onChange={v=>updC(c.id,"cpa",v)} small/>
+            <Input label="Frequency" value={c.frequency} onChange={v=>updC(c.id,"frequency",v)} small/>
+            <Input label="Spend" prefix="$" value={c.spend} onChange={v=>updC(c.id,"spend",v)} small/>
+            <div style={{display:"flex",flexDirection:"column",gap:4}}>
+              <label style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.04em"}}>Funnel</label>
+              <select value={c.funnel} onChange={e=>updC(c.id,"funnel",e.target.value)} style={{padding:"7px 8px",background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:6,color:"var(--t1)",fontSize:12}}>
+                <option value="TOF">TOF</option><option value="ASC">ASC</option><option value="MOF">MOF</option>
+              </select>
+            </div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+            {cs&&<Badge color={cs==="green"?"var(--grn)":cs==="yellow"?"var(--ylw)":"var(--red)"}>CPA: {cs}</Badge>}
+            {fs&&<Badge color={fs==="green"?"var(--grn)":fs==="yellow"?"var(--ylw)":"var(--red)"}>Freq: {fs}</Badge>}
+            <span style={{fontSize:12,color:"var(--t2)"}}>{opt.text}</span>
+          </div>
+        </div>;
+      })}
+    </div>
+    <button onClick={addC} style={{marginTop:12,padding:"10px 20px",background:"transparent",border:"1px dashed var(--bdr)",borderRadius:10,color:"var(--t3)",cursor:"pointer",fontSize:13,width:"100%"}}>+ Add Campaign</button>
+  </Card>;
+}
+
+// ---- Audience Setup ----
+function AudienceSetup(){
+  const [filter,setFilter]=useState("all");
+  const filtered=filter==="all"?AUDIENCES:AUDIENCES.filter(a=>a.usage===filter);
+  const uColor=(u)=>u==="MOF"?"var(--grn)":u==="Exclusion"?"var(--red)":"var(--blu)";
+
+  return <Card>
+    <div style={{marginBottom:20}}><div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}><span style={{fontSize:20}}>AUD</span><h2 style={{fontSize:18,fontWeight:700,color:"var(--t1)",margin:0}}>Audience Setup System</h2></div>
+    <p style={{fontSize:13,color:"var(--t3)",margin:"4px 0 0 30px"}}>001-100 ID naming convention for organized audience management</p></div>
+
+    <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+      {["all","MOF","Exclusion","Lookalike"].map(f=><Pill key={f} active={filter===f} onClick={()=>setFilter(f)}>{f==="all"?"All":f}</Pill>)}
+    </div>
+    <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:400,overflowY:"auto"}}>
+      {filtered.map(a=><div key={a.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",background:"var(--card2)",borderRadius:8,border:"1px solid var(--bdr)"}}>
+        <span style={{fontFamily:"monospace",fontSize:14,fontWeight:700,color:"var(--acc)",minWidth:36}}>{a.id}</span>
+        <span style={{flex:1,fontSize:13,color:"var(--t1)"}}>{a.id} - {a.name}</span>
+        <Badge color={uColor(a.usage)}>{a.usage}</Badge>
+      </div>)}
+    </div>
+  </Card>;
+}
+
+// ---- Live Data Summary ----
+function LiveSummary({metaData,loading}){
+  if(loading)return <Card><div style={{textAlign:"center",padding:20,color:"var(--t3)"}}>Loading live Meta data from Noody Hub...</div></Card>;
+  if(!metaData?.summary)return null;
+  const s=metaData.summary;
+  return <Card style={{background:"linear-gradient(135deg,var(--card),var(--accbg))"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+      <div><div style={{fontSize:12,color:"var(--t3)",textTransform:"uppercase",fontWeight:500}}>Live from Noody Hub</div><div style={{fontSize:18,fontWeight:700,color:"var(--t1)"}}>Meta Ads Performance</div></div>
+      <Badge color="var(--grn)">LIVE - {metaData.dateRange||"30d"}</Badge>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:12}}>
+      {[
+        {l:"Total Spend",v:f$(s.totalSpend),c:"var(--acc2)"},
+        {l:"Purchases",v:fn(s.totalPurchases),c:"var(--t1)"},
+        {l:"Avg CPP",v:f$(s.avgCPP),c:s.avgCPP<=30?"var(--grn)":s.avgCPP<=50?"var(--ylw)":"var(--red)"},
+        {l:"ROAS",v:s.roas?s.roas.toFixed(2)+"x":"--",c:s.roas>=3?"var(--grn)":s.roas>=2?"var(--ylw)":"var(--red)"},
+        {l:"Days",v:metaData.daily?.length||"--",c:"var(--t1)"},
+      ].map((m,i)=><div key={i} style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:12,padding:14}}>
+        <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:4,fontWeight:500}}>{m.l}</div>
+        <div style={{fontSize:22,fontWeight:700,color:m.c,fontFamily:"'JetBrains Mono',monospace"}}>{m.v}</div>
+      </div>)}
+    </div>
+  </Card>;
+}
+
+// ---- Main App ----
+function MetaCoach(){
+  const [theme,setTheme]=useState("dark");
+  const toggleTheme=()=>{const t=theme==="dark"?"light":"dark";setTheme(t);document.documentElement.setAttribute("data-theme",t);};
+  const [tab,setTab]=useState("coach");
+  const [metaData,setMetaData]=useState(null);
+  const [loading,setLoading]=useState(true);
+
+  useEffect(()=>{
+    (async()=>{
+      try{
+        const r=await fetch("/api/pull-meta?days=30",{headers:{"x-api-key":API_KEY}});
+        if(r.ok){const d=await r.json();if(d.daily)setMetaData(d);}
+      }catch(e){console.error("Meta fetch:",e);}
+      setLoading(false);
+    })();
+  },[]);
+
+  const tabs=[
+    {id:"coach",label:"AI Coach",icon:"AI"},
+    {id:"structure",label:"Structure",icon:"CALC"},
+    {id:"benchmark",label:"Benchmark",icon:"TL"},
+    {id:"audiences",label:"Audiences",icon:"AUD"},
+  ];
+
+  return <div style={{minHeight:"100vh",background:"var(--bg)",color:"var(--t1)",fontFamily:"'DM Sans',-apple-system,sans-serif"}}>
+    <div style={{padding:"20px 24px 14px",borderBottom:"1px solid var(--bdr)",background:"var(--card)"}}>
+      <div style={{maxWidth:1000,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <div style={{width:40,height:40,borderRadius:10,background:"linear-gradient(135deg,var(--acc),var(--blu))",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:800,color:"#fff"}}>EE</div>
+          <div>
+            <h1 style={{fontSize:20,fontWeight:800,margin:0,letterSpacing:"-0.02em",color:"var(--t1)"}}>Meta Ads Intelligence Coach</h1>
+            <p style={{fontSize:12,color:"var(--t3)",margin:0}}>Ecommerce Equation Framework{metaData?" - Connected to Noody Hub":""}</p>
+          </div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <a href="/" style={{padding:"8px 16px",background:"var(--card2)",border:"1px solid var(--bdr)",borderRadius:8,color:"var(--t2)",textDecoration:"none",fontSize:13,fontWeight:500}}>Back to Dashboard</a>
+          <button onClick={toggleTheme} style={{padding:"10px",background:"var(--card2)",border:"1px solid var(--bdr)",borderRadius:10,cursor:"pointer",fontSize:18,width:42,height:42,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--t2)"}}>{theme==="dark"?"Sun":"Moon"}</button>
+        </div>
+      </div>
+    </div>
+
+    <div style={{borderBottom:"1px solid var(--bdr)",background:"var(--card)",position:"sticky",top:0,zIndex:100,overflowX:"auto"}}>
+      <div style={{maxWidth:1000,margin:"0 auto",display:"flex",gap:2,padding:"0 24px"}}>
+        {tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"12px 20px",background:"transparent",border:"none",borderBottom:"2px solid "+(tab===t.id?"var(--acc)":"transparent"),color:tab===t.id?"var(--acc2)":"var(--t3)",fontSize:14,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",transition:"all .2s",display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:11,fontWeight:800,fontFamily:"monospace"}}>{t.icon}</span> {t.label}
+        </button>)}
+      </div>
+    </div>
+
+    <div style={{maxWidth:1000,margin:"0 auto",padding:24,display:"flex",flexDirection:"column",gap:20}}>
+      <LiveSummary metaData={metaData} loading={loading}/>
+      {tab==="coach"&&<AICoach campaigns={[]} metaData={metaData}/>}
+      {tab==="structure"&&<CampaignCalc metaData={metaData}/>}
+      {tab==="benchmark"&&<TrafficLight metaData={metaData}/>}
+      {tab==="audiences"&&<AudienceSetup/>}
+    </div>
+  </div>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(MetaCoach));
+</script>
+</body>
+</html>
