@@ -5,550 +5,493 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Meta Ads Coach — Ecommerce Equation</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
-  :root{--bg:#06060c;--sf:#0e0e18;--card:#13131f;--ca:#191928;--bdr:#252538;--bh:#3a2848;--glow:rgba(168,85,247,0.12);--acc:#a855f7;--am:#c084fc;--al:rgba(168,85,247,0.08);--g:#22c55e;--gb:rgba(34,197,94,0.10);--gd:rgba(34,197,94,0.25);--y:#eab308;--yb:rgba(234,179,8,0.10);--yd:rgba(234,179,8,0.25);--r:#ef4444;--rb:rgba(239,68,68,0.10);--rd:rgba(239,68,68,0.25);--b:#3b82f6;--bb:rgba(59,130,246,0.10);--bd:rgba(59,130,246,0.25);--t1:#e8e8f4;--t2:#9898b0;--t3:#5a5a78;--fn:'JetBrains Mono','SF Mono',monospace;--fs:'DM Sans','Segoe UI',system-ui,sans-serif}
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{background:var(--bg);color:var(--t1);font-family:var(--fs);-webkit-font-smoothing:antialiased}
-  ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
-  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.7;transform:scale(.95)}}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-  button{font-family:var(--fs)}
-  input,select{font-family:var(--fn)}
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a14;--card:#12121e;--ca:#1a1a2a;--bdr:#252540;--acc:#7c3aed;--am:#a78bfa;--t1:#f0f0f5;--t2:#a0a0b8;--t3:#6b6b82;--g:#22c55e;--gb:rgba(34,197,94,.1);--gd:rgba(34,197,94,.25);--y:#eab308;--yb:rgba(234,179,8,.1);--yd:rgba(234,179,8,.25);--r:#ef4444;--rb:rgba(239,68,68,.1);--rd:rgba(239,68,68,.25);--b:#3b82f6;--bb:rgba(59,130,246,.1);--bd:rgba(59,130,246,.25);--p:#a855f7;--pb:rgba(168,85,247,.1);--fn:'JetBrains Mono',monospace;--fs:'DM Sans',system-ui,sans-serif}
+body{background:var(--bg);color:var(--t1);font-family:var(--fs);-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+button{font-family:var(--fs);cursor:pointer}
+.hdr{padding:16px 20px;border-bottom:1px solid var(--bdr);background:linear-gradient(180deg,var(--card),var(--bg));display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.hdr-l{display:flex;align-items:center;gap:10px}
+.hdr-logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--acc),var(--b));display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff}
+.hdr h1{font-size:17px;font-weight:800;letter-spacing:-.02em}
+.hdr p{font-size:11px;color:var(--t3)}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-live{color:var(--g);background:var(--gb);border:1px solid var(--gd)}
+.badge-off{color:var(--r);background:var(--rb);border:1px solid var(--rd)}
+.dot{width:6px;height:6px;border-radius:50%;display:inline-block}
+.nav{padding:0 20px;border-bottom:1px solid var(--bdr);background:var(--card);position:sticky;top:0;z-index:100;overflow-x:auto;display:flex;gap:2px;max-width:100%}
+.nav button{padding:11px 14px;background:none;border:none;border-bottom:2px solid transparent;color:var(--t3);font-size:12px;font-weight:600;white-space:nowrap;display:flex;align-items:center;gap:5px;transition:all .2s}
+.nav button.on{border-bottom-color:var(--acc);color:var(--am)}
+.content{max-width:1100px;margin:0 auto;padding:16px 20px 30px}
+.card{background:var(--card);border:1px solid var(--bdr);border-radius:14px;padding:22px 20px;margin-bottom:16px}
+.card.glow{border-color:#3a2848;box-shadow:0 0 40px rgba(168,85,247,.12)}
+.sh{margin-bottom:18px}
+.sh h2{font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.sh p{font-size:12px;color:var(--t3);margin:2px 0 0 26px;line-height:1.5}
+.mg{display:grid;gap:10px}
+.mg4{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+.mg3{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.mb{border-radius:10px;padding:12px 14px;min-width:0}
+.mb-l{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.mb-v{font-size:20px;font-weight:700;font-family:var(--fn)}
+.mb-s{font-size:10px;color:var(--t3);margin-top:3px}
+.mb-n{background:var(--card);border:1px solid var(--bdr)}
+.mb-g{background:var(--gb);border:1px solid var(--gd);color:var(--g)}
+.mb-y{background:var(--yb);border:1px solid var(--yd);color:var(--y)}
+.mb-r{background:var(--rb);border:1px solid var(--rd);color:var(--r)}
+.mb-b{background:var(--bb);border:1px solid var(--bd);color:var(--b)}
+.pill{padding:7px 14px;border-radius:7px;border:1px solid var(--bdr);background:transparent;color:var(--t3);font-size:12px;font-weight:600;transition:all .2s}
+.pill.on{border-color:var(--acc);background:rgba(124,58,237,.08);color:var(--am)}
+.tag{display:inline-flex;padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.tag-g{color:var(--g);background:var(--gb);border:1px solid var(--gd)}
+.tag-y{color:var(--y);background:var(--yb);border:1px solid var(--yd)}
+.tag-r{color:var(--r);background:var(--rb);border:1px solid var(--rd)}
+.tag-b{color:var(--b);background:var(--bb);border:1px solid var(--bd)}
+.tag-p{color:var(--p);background:var(--pb);border:1px solid rgba(168,85,247,.25)}
+/* Marvel Math colors */
+.marvel-superhero{border-left:3px solid #fbbf24;background:rgba(251,191,36,.06)}
+.marvel-hero{border-left:3px solid var(--g);background:var(--gb)}
+.marvel-sidekick{border-left:3px solid var(--b);background:var(--bb)}
+.marvel-civilian{border-left:3px solid var(--t3);background:rgba(107,114,128,.06)}
+.marvel-villain{border-left:3px solid var(--r);background:var(--rb)}
+.marvel-unknown{border-left:3px solid var(--bdr);background:var(--ca)}
+.action-box{padding:12px 14px;border-radius:10px;display:flex;gap:12px;align-items:flex-start;font-size:13px;line-height:1.6}
+.action-high{background:var(--rb);border:1px solid var(--rd)}
+.action-scale{background:var(--gb);border:1px solid var(--gd)}
+.action-med{background:var(--yb);border:1px solid var(--yd)}
+.action-info{background:var(--bb);border:1px solid var(--bd)}
+.setup{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.setup label{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px}
+.setup input,.setup select{width:100%;padding:10px 14px;background:var(--ca);border:1px solid var(--bdr);border-radius:8px;color:var(--t1);font-size:14px;font-family:var(--fn);outline:none;box-sizing:border-box}
+.ad-row{padding:14px 16px;border-radius:12px;margin-bottom:8px;animation:fadeIn .3s ease both}
+.ad-row-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px}
+.ad-row-name{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:400px}
+.ad-row-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:8px;margin-bottom:8px}
+.ad-row-metrics span{font-size:10px;color:var(--t3)}
+.ad-row-metrics div{font-size:14px;font-weight:600;font-family:var(--fn)}
+.verdict-box{padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.6}
+.loading{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center}
+.loading h2{font-size:20px;font-weight:700;margin-bottom:8px}
+.loading p{font-size:13px;color:var(--t2);line-height:1.6}
+.spinner{width:32px;height:32px;border:3px solid var(--bdr);border-top-color:var(--acc);border-radius:50%;margin:24px auto 0;animation:spin 1s linear infinite}
 </style>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js" crossorigin></script>
-<script src="https://unpkg.com/recharts@2.5.0/umd/Recharts.js" crossorigin></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
 <div id="root"></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script type="text/babel">
-const {useState,useEffect,useCallback,useMemo}=React;
-const {BarChart,Bar,XAxis,YAxis,CartesianGrid,Tooltip,ResponsiveContainer}=Recharts;
-
-/* ── CONFIG ─────────────────────────────────── */
+const{useState,useEffect,useCallback,useMemo}=React;
 const API_KEY="noody-eq-2026-datahub";
 
-/* ── FRAMEWORK CONSTANTS ────────────────────── */
-const FUNNEL_SPLIT={TOF:0.45,ASC:0.35,MOF:0.20};
+/* ── BENCHMARKS (from EE framework) ─────────── */
+const CAMPAIGN_FREQ={
+  tof:{good:2.0,warn:2.5,crit:3.0},
+  tom:{good:3.5,warn:4.0,crit:4.5},
+  mof:{good:4.0,warn:5.0,crit:6.0},
+  bof:{good:6.0,warn:7.0,crit:8.0},
+};
+const AD_FREQ={
+  tof:{good:1.4,okay:1.8,bad:2.0},
+  tom:{good:1.8,okay:2.0,bad:2.5},
+  mof:{good:2.0,okay:2.4,bad:3.0},
+  bof:{good:2.4,okay:3.0,bad:4.0},
+};
+const FUNNEL_SPLIT={TOF:.45,ASC:.35,MOF:.20};
 const SPEND_BRACKETS=[
   {max:500,label:"< $500/d",tof:1,asc:1,mof:1},
   {max:1000,label:"$500–$1k/d",tof:2,asc:2,mof:1},
   {max:3000,label:"$1k–$3k/d",tof:3,asc:2,mof:1},
   {max:Infinity,label:"> $3k/d",tof:4,asc:3,mof:2},
 ];
-const FREQ_BENCH={green:1.0,yellow:2.0};
-
-const AUDIENCES=[
-  {id:"001",name:"Website - All Website Visits - 180 Days",usage:"MOF"},
-  {id:"002",name:"Instagram Engagement - All - 365 Days",usage:"MOF"},
-  {id:"003",name:"Facebook Engagement - All - 365 Days",usage:"MOF"},
-  {id:"004",name:"Video - 3 Second Views - 365 Days",usage:"MOF"},
-  {id:"005",name:"Email List - Klaviyo - All Time",usage:"MOF"},
-  {id:"006",name:"Website - All Website Visits - 7 Days",usage:"Exclusion"},
-  {id:"007",name:"Website - All Website Visits - 14 Days",usage:"Exclusion"},
-  {id:"008",name:"Website - All Website Visits - 30 Days",usage:"Exclusion"},
-  {id:"009",name:"Instagram Engagement - All - 7 Days",usage:"Exclusion"},
-  {id:"010",name:"Instagram Engagement - All - 14 Days",usage:"Exclusion"},
-  {id:"011",name:"Instagram Engagement - All - 30 Days",usage:"Exclusion"},
-  {id:"012",name:"Facebook Engagement - All - 7 Days",usage:"Exclusion"},
-  {id:"013",name:"Facebook Engagement - All - 14 Days",usage:"Exclusion"},
-  {id:"014",name:"Facebook Engagement - All - 30 Days",usage:"Exclusion"},
-  {id:"015",name:"Website - Purchase - 180 Days",usage:"Lookalike"},
-  {id:"016",name:"Website - AddToCart - 180 Days",usage:"Lookalike"},
-  {id:"017",name:"Video - 95% Views - 365 Days",usage:"Lookalike"},
-  {id:"018",name:"Instagram Engagement - Visited Page - 365 Days",usage:"Lookalike"},
-  {id:"019",name:"Instagram Engagement - Saved Post - 365 Days",usage:"Lookalike"},
-  {id:"020",name:"Facebook Engagement - Like & Follow - 365 Days",usage:"Lookalike"},
-  {id:"021",name:"Facebook Engagement - Clicked CTA - 365 Days",usage:"Lookalike"},
-];
 
 /* ── UTILS ──────────────────────────────────── */
-const f$=(n)=>n==null?"—":"$"+Math.abs(Math.round(n*100)/100).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const f$=(n)=>n==null?"—":"$"+Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
 const f$r=(n)=>n==null?"—":"$"+Math.round(n).toLocaleString();
 const fx=(n)=>n==null?"—":n.toFixed(2)+"x";
 const fp=(n)=>n==null?"—":n.toFixed(1)+"%";
 
-const detectFunnel=(name)=>{
+function detectStage(name){
   const n=(name||"").toLowerCase();
-  if(n.includes("mof")||n.includes("retarget")||n.includes("remark")||n.includes("bot")||n.includes("middle"))return"MOF";
-  if(n.includes("asc")||n.includes("advantage")||n.includes("adv+")||n.includes("shopping")||n.includes("asc+"))return"ASC";
-  return"TOF";
+  if(n.includes("tom")||n.includes("top of mid"))return"tom";
+  if(n.includes("mof")||n.includes("middle")||n.includes("retarget")||n.includes("remark")||n.includes("bot"))return"mof";
+  if(n.includes("bof")||n.includes("bottom"))return"bof";
+  if(n.includes("asc")||n.includes("advantage")||n.includes("shopping"))return"asc";
+  return"tof";
+}
+
+const MARVEL={
+  superhero:{label:"Superhero",icon:"🦸",color:"#fbbf24",cls:"marvel-superhero",action:"SCALE 20%+ — This is your best performer. Duplicate and increase budget aggressively."},
+  hero:{label:"Hero",icon:"🌟",color:"#22c55e",cls:"marvel-hero",action:"SCALE 10-20% — Strong ad. Increase budget incrementally and test similar angles."},
+  sidekick:{label:"Sidekick",icon:"🤝",color:"#3b82f6",cls:"marvel-sidekick",action:"MONITOR — Supporting the team but not a star. Keep running, test new hooks."},
+  civilian:{label:"Civilian",icon:"👤",color:"#6b7280",cls:"marvel-civilian",action:"WATCH — Not contributing much. Give it 48h more or prepare replacement."},
+  villain:{label:"Villain",icon:"🦹",color:"#ef4444",cls:"marvel-villain",action:"KILL IMMEDIATELY — Wasting budget. Turn off now and replace with new creative."},
+  unknown:{label:"Unknown",icon:"❓",color:"#6b7280",cls:"marvel-unknown",action:"INSUFFICIENT DATA — Not enough spend or conversions to classify. Wait for more data."},
 };
 
-const cpaGrade=(cpa,g,y)=>{if(!cpa||cpa===0)return null;if(cpa<=g)return"green";if(cpa<=y)return"yellow";return"red";};
-const freqGrade=(f)=>{if(!f)return null;if(f<=FREQ_BENCH.green)return"green";if(f<=FREQ_BENCH.yellow)return"yellow";return"red";};
-const sColor=(s)=>s==="green"?"var(--g)":s==="yellow"?"var(--y)":s==="red"?"var(--r)":"var(--t3)";
-const sBg=(s)=>s==="green"?"var(--gb)":s==="yellow"?"var(--yb)":s==="red"?"var(--rb)":"transparent";
-const sBdr=(s)=>s==="green"?"var(--gd)":s==="yellow"?"var(--yd)":s==="red"?"var(--rd)":"var(--bdr)";
-
-/* ── COACHING ENGINE ────────────────────────── */
-function runCoach(campaigns,summary,greenCPA,yellowCPA){
-  if(!campaigns||!campaigns.length)return null;
-
-  const analyzed=campaigns.map(c=>{
-    const spend=parseFloat(c.spend)||0;
-    const purchases=parseInt(c.purchases||0)||0;
-    const revenue=parseFloat(c.purchase_value||c.revenue||0)||0;
-    const cpa=purchases>0?spend/purchases:spend>0?Infinity:0;
-    const roas=spend>0?revenue/spend:0;
-    const frequency=parseFloat(c.frequency)||0;
-    const ctr=parseFloat(c.ctr)||0;
-    const cpc=parseFloat(c.cpc)||0;
-    const name=c.campaign_name||c.name||"Unnamed";
-    const funnel=detectFunnel(name);
-    const cs=cpaGrade(cpa===Infinity?999:cpa,greenCPA,yellowCPA);
-    const fs=freqGrade(frequency);
-
-    let verdict="neutral",action="",icon="📊",priority=3;
-
-    if(purchases===0&&spend>20){
-      verdict="red";icon="🚨";priority=1;
-      action=f$r(spend)+" spent, zero purchases. "+(spend>50?"Pause immediately":"Give 24-48h more")+". Check creative + landing page.";
-    }else if(cs==="green"&&fs==="green"){
-      verdict="hero";icon="🌟";priority=1;
-      action="Hero ad. Scale 10-20%. Test similar angles. ROAS: "+fx(roas)+".";
-    }else if(cs==="green"&&fs==="yellow"){
-      verdict="green";icon="⚡";priority=2;
-      action="Strong CPA but frequency rising ("+frequency.toFixed(1)+"). Expand audience or refresh creative soon. ~7 days before fatigue.";
-    }else if(cs==="green"&&fs==="red"){
-      verdict="yellow";icon="⏰";priority=1;
-      action="Good CPA but creative fatiguing (freq "+frequency.toFixed(1)+"). Duplicate with fresh creative NOW before CPA spikes.";
-    }else if(cs==="yellow"&&(fs==="green"||!fs)){
-      verdict="yellow";icon="🔍";priority=2;
-      action="CPA "+f$(cpa)+" trending up. Test 2-3 new hooks. Don't kill yet — frequency still healthy.";
-    }else if(cs==="yellow"&&fs==="yellow"){
-      verdict="yellow";icon="⚠️";priority=2;
-      action="CPA + frequency both yellow. Fresh creative needed within 3-5 days.";
-    }else if(cs==="red"&&fs==="red"){
-      verdict="red";icon="💀";priority=1;
-      action="CPA "+f$(cpa)+" + freq "+frequency.toFixed(1)+" — dead ad. Kill now. Replace with entirely new concept.";
-    }else if(cs==="red"){
-      verdict="red";icon="🛑";priority=1;
-      action="CPA "+f$(cpa)+" too high. "+(funnel==="TOF"?"TOF looks expensive but feeds the funnel — compare to other TOF only.":"Pause and replace creative.")+(frequency>2?" High frequency is a factor.":"");
-    }else if(purchases>0){
-      verdict="green";icon="✅";priority=3;
-      action="Within range. CPA "+f$(cpa)+", ROAS "+fx(roas)+". Monitor 3-5 days.";
-    }else{
-      action="Insufficient data. Allow more time or check tracking.";priority=4;
-    }
-
-    return{name,funnel,spend,purchases,revenue,cpa:cpa===Infinity?null:cpa,roas,frequency,ctr,cpc,cpaStatus:cs,freqStatus:fs,verdict,action,icon,priority};
-  });
-
-  analyzed.sort((a,b)=>a.priority-b.priority||b.spend-a.spend);
-
-  const heroes=analyzed.filter(a=>a.verdict==="hero");
-  const healthy=analyzed.filter(a=>a.verdict==="green");
-  const warnings=analyzed.filter(a=>a.verdict==="yellow");
-  const critical=analyzed.filter(a=>a.verdict==="red");
-
-  const ts=summary?.totalSpend||analyzed.reduce((s,a)=>s+a.spend,0);
-  const tp=summary?.totalPurchases||analyzed.reduce((s,a)=>s+a.purchases,0);
-  const tr=summary?.totalPurchaseValue||analyzed.reduce((s,a)=>s+a.revenue,0);
-  const bCPA=tp>0?ts/tp:0;
-  const bROAS=ts>0?tr/ts:0;
-  const daily=ts/14;
-
-  const bracket=SPEND_BRACKETS.find(b=>daily<b.max)||SPEND_BRACKETS[3];
-  const recCampaigns=bracket.tof+bracket.asc+bracket.mof;
-
-  // Funnel breakdown
-  const fb={};
-  analyzed.forEach(a=>{
-    if(!fb[a.funnel])fb[a.funnel]={spend:0,purchases:0,revenue:0,count:0};
-    fb[a.funnel].spend+=a.spend;fb[a.funnel].purchases+=a.purchases;fb[a.funnel].revenue+=a.revenue;fb[a.funnel].count++;
-  });
-  const funnelAnalysis=Object.entries(fb).map(([f,d])=>{
-    const ratio=ts>0?d.spend/ts:0;
-    const ideal=FUNNEL_SPLIT[f]||0;
-    const diff=ratio-ideal;
-    let note=Math.abs(diff)<0.05?"On target.":diff>0?"Overspending by "+(diff*100).toFixed(0)+"pp vs ideal "+(ideal*100).toFixed(0)+"%.":"Underspending by "+(Math.abs(diff)*100).toFixed(0)+"pp vs ideal "+(ideal*100).toFixed(0)+"%. Room to scale.";
-    return{funnel:f,...d,ratio,ideal,diff,note,cpa:d.purchases>0?d.spend/d.purchases:null,roas:d.spend>0?d.revenue/d.spend:0};
-  });
-
-  // Grade
-  let grade="B",gc="var(--y)";
-  if(heroes.length>=2&&critical.length===0){grade="A";gc="var(--g)";}
-  else if(heroes.length>=1&&critical.length<=1){grade="B+";gc="var(--g)";}
-  else if(critical.length>analyzed.length/2){grade="D";gc="var(--r)";}
-  else if(critical.length>=2){grade="C";gc="var(--y)";}
-
-  // Actions
-  const actions=[];
-  if(critical.length)actions.push({p:"high",text:"Kill "+critical.length+" underperformer"+(critical.length>1?"s":"")+": "+critical.map(c=>c.name).join(", ")});
-  if(heroes.length)actions.push({p:"scale",text:"Scale "+heroes.length+" hero"+(heroes.length>1?"s":"")+" by 10-20%: "+heroes.map(c=>c.name).join(", ")});
-  if(warnings.length)actions.push({p:"medium",text:"Prepare creative refresh for "+warnings.length+" campaign"+(warnings.length>1?"s":"")+" showing fatigue"});
-  if(analyzed.length>recCampaigns+2)actions.push({p:"medium",text:analyzed.length+" campaigns active but "+bracket.label+" recommends ~"+recCampaigns+". Consider consolidating."});
-
-  return{analyzed,heroes,healthy,warnings,critical,ts,tp,tr,bCPA,bROAS,daily,bracket,recCampaigns,funnelAnalysis,grade,gc,actions};
+/* ── CPP THRESHOLDS (AOV × MER based) ──────── */
+function calcThresholds(aov,mer){
+  const base=aov*(mer/100);
+  return{
+    tof:{good:base*2,bad:base*4},
+    tom:{good:base*1.25,bad:base*2.5},
+    mof:{good:base,bad:base*2},
+    bof:{good:base*0.75,bad:base*1.5},
+    asc:{good:base*1.5,bad:base*3}, // ASC between TOF and MOF
+  };
 }
 
-/* ── UI COMPONENTS ──────────────────────────── */
-function Badge({status,children}){
-  return <span style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",borderRadius:99,fontSize:10,fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase",color:sColor(status),background:sBg(status),border:"1px solid "+sBdr(status)}}>{children}</span>;
-}
+/* ── MARVEL MATH CLASSIFIER ─────────────────── */
+function classifyAd(ad,thresholds){
+  const stage=detectStage(ad.campaign_name);
+  const cppT=thresholds[stage]||thresholds.tof;
+  const freqT=AD_FREQ[stage==="asc"?"tof":stage]||AD_FREQ.tof;
 
-function Pill({active,onClick,children}){
-  return <button onClick={onClick} style={{padding:"7px 14px",borderRadius:7,cursor:"pointer",transition:"all .2s",border:"1px solid "+(active?"var(--acc)":"var(--bdr)"),background:active?"var(--al)":"transparent",color:active?"var(--am)":"var(--t3)",fontSize:12,fontWeight:600}}>{children}</button>;
-}
+  let cppS;
+  if(ad.cpp===0&&ad.purchases===0)cppS="unknown";
+  else if(ad.cpp===0&&ad.purchases>0)cppS="good";
+  else if(ad.cpp<=cppT.good)cppS="good";
+  else if(ad.cpp<cppT.bad)cppS="okay";
+  else cppS="bad";
 
-function MetricBox({label,value,sub,status,big}){
-  return <div style={{background:status?sBg(status):"var(--card)",borderRadius:10,border:"1px solid "+(status?sBdr(status):"var(--bdr)"),padding:big?"18px 16px":"12px 14px",minWidth:0}}>
-    <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>{label}</div>
-    <div style={{fontSize:big?28:20,fontWeight:700,color:status?sColor(status):"var(--t1)",fontFamily:"var(--fn)"}}>{value}</div>
-    {sub&&<div style={{fontSize:10,color:"var(--t3)",marginTop:3}}>{sub}</div>}
-  </div>;
-}
+  let freqS;
+  if(!ad.frequency||ad.frequency===0)freqS="unknown";
+  else if(ad.frequency<=freqT.good)freqS="good";
+  else if(ad.frequency<(freqT.okay||freqT.bad))freqS="okay";
+  else freqS="bad";
 
-function Card({children,style,glow}){
-  return <div style={{background:"var(--card)",border:"1px solid "+(glow?"var(--bh)":"var(--bdr)"),borderRadius:14,padding:"22px 20px",boxShadow:glow?"0 0 40px var(--glow)":"none",...(style||{})}}>{children}</div>;
-}
+  const isHighReach=ad.reach>5000;
+  const minSpend=cppT.good; // need at least 1x good CPP in spend
 
-function SHead({icon,title,sub}){
-  return <div style={{marginBottom:18}}>
-    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
-      <span style={{fontSize:18}}>{icon}</span>
-      <h2 style={{fontSize:16,fontWeight:700,color:"var(--t1)",margin:0}}>{title}</h2>
-    </div>
-    {sub&&<p style={{fontSize:12,color:"var(--t3)",margin:"2px 0 0 26px",lineHeight:1.5}}>{sub}</p>}
-  </div>;
-}
-
-/* ── COACH REPORT ───────────────────────────── */
-function CoachReport({report,days}){
-  if(!report)return <Card><p style={{color:"var(--t3)"}}>No data loaded.</p></Card>;
-  const{analyzed,heroes,critical,ts,tp,tr,bCPA,bROAS,daily,bracket,recCampaigns,funnelAnalysis,grade,gc,actions}=report;
-  const aov=tp>0?tr/tp:0;
-  const cpaS=cpaGrade(bCPA,40,70);
-  const roasS=bROAS>=3?"green":bROAS>=2?"yellow":"red";
-
-  return <div style={{display:"flex",flexDirection:"column",gap:16}}>
-    {/* Grade */}
-    <Card glow>
-      <div style={{display:"flex",gap:20,alignItems:"center",flexWrap:"wrap"}}>
-        <div style={{width:80,height:80,borderRadius:20,display:"flex",alignItems:"center",justifyContent:"center",background:gc.replace("var(","rgba(").replace(")",",0.15)"),border:"2px solid "+gc.replace(")",",0.4)"),fontSize:36,fontWeight:800,color:gc,fontFamily:"var(--fn)"}}>{grade}</div>
-        <div style={{flex:1,minWidth:200}}>
-          <h2 style={{margin:"0 0 6px",fontSize:18,fontWeight:700}}>Account Health — Last {days} Days</h2>
-          <p style={{margin:0,fontSize:13,color:"var(--t2)",lineHeight:1.6}}>{analyzed.length} campaigns • {bracket.label} bracket • {heroes.length} hero{heroes.length!==1&&"es"} • {critical.length} critical</p>
-        </div>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginTop:18}}>
-        <MetricBox label="Total Spend" value={f$r(ts)} sub={f$r(daily)+"/day avg"} />
-        <MetricBox label="Purchases" value={tp} sub={"AOV "+f$r(aov)} />
-        <MetricBox label="Revenue" value={f$r(tr)} />
-        <MetricBox label="Blended CPA" value={f$(bCPA)} status={cpaS} />
-        <MetricBox label="ROAS" value={fx(bROAS)} status={roasS} />
-      </div>
-    </Card>
-
-    {/* Actions */}
-    {actions.length>0&&<Card>
-      <SHead icon="⚡" title="Priority Actions" sub="What to do right now" />
-      <div style={{display:"flex",flexDirection:"column",gap:8}}>
-        {actions.map((a,i)=><div key={i} style={{display:"flex",gap:12,alignItems:"flex-start",padding:"12px 14px",background:a.p==="high"?"var(--rb)":a.p==="scale"?"var(--gb)":a.p==="medium"?"var(--yb)":"var(--bb)",borderRadius:10,border:"1px solid "+(a.p==="high"?"var(--rd)":a.p==="scale"?"var(--gd)":a.p==="medium"?"var(--yd)":"var(--bd)")}}>
-          <span style={{fontSize:16,minWidth:24}}>{a.p==="high"?"🚨":a.p==="scale"?"🚀":a.p==="medium"?"⚠️":"💡"}</span>
-          <span style={{fontSize:13,color:"var(--t1)",lineHeight:1.6}}>{a.text}</span>
-        </div>)}
-      </div>
-    </Card>}
-
-    {/* Campaign Breakdown */}
-    <Card>
-      <SHead icon="🔬" title="Campaign Breakdown" sub="Every campaign assessed against the EE framework" />
-      <div style={{display:"flex",flexDirection:"column",gap:10}}>
-        {analyzed.map((c,i)=><div key={i} style={{padding:"14px 16px",borderRadius:12,background:"var(--ca)",border:"1px solid "+(c.verdict==="hero"?"var(--gd)":c.verdict==="red"?"var(--rd)":c.verdict==="yellow"?"var(--yd)":"var(--bdr)"),animation:"fadeUp .3s ease "+i*0.05+"s both"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,flexWrap:"wrap",gap:6}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
-              <span style={{fontSize:18}}>{c.icon}</span>
-              <span style={{fontSize:13,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</span>
-            </div>
-            <div style={{display:"flex",gap:6,flexShrink:0}}>
-              <Badge status={c.funnel==="TOF"?"blue":c.funnel==="ASC"?null:"green"}>{c.funnel}</Badge>
-              {c.cpaStatus&&<Badge status={c.cpaStatus}>CPA {c.cpaStatus}</Badge>}
-              {c.freqStatus&&<Badge status={c.freqStatus}>Freq {c.freqStatus}</Badge>}
-            </div>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(80px,1fr))",gap:8,marginBottom:10}}>
-            <div><span style={{fontSize:10,color:"var(--t3)"}}>SPEND</span><div style={{fontSize:14,fontWeight:600,fontFamily:"var(--fn)"}}>{f$(c.spend)}</div></div>
-            <div><span style={{fontSize:10,color:"var(--t3)"}}>PURCHASES</span><div style={{fontSize:14,fontWeight:600,fontFamily:"var(--fn)"}}>{c.purchases}</div></div>
-            <div><span style={{fontSize:10,color:"var(--t3)"}}>CPA</span><div style={{fontSize:14,fontWeight:600,fontFamily:"var(--fn)",color:c.cpaStatus?sColor(c.cpaStatus):"inherit"}}>{c.cpa!=null?f$(c.cpa):"—"}</div></div>
-            <div><span style={{fontSize:10,color:"var(--t3)"}}>ROAS</span><div style={{fontSize:14,fontWeight:600,fontFamily:"var(--fn)",color:c.roas>=3?"var(--g)":c.roas>=2?"var(--y)":c.roas>0?"var(--r)":"var(--t3)"}}>{fx(c.roas)}</div></div>
-            <div><span style={{fontSize:10,color:"var(--t3)"}}>FREQ</span><div style={{fontSize:14,fontWeight:600,fontFamily:"var(--fn)",color:c.freqStatus?sColor(c.freqStatus):"inherit"}}>{c.frequency>0?c.frequency.toFixed(2):"—"}</div></div>
-          </div>
-          <div style={{padding:"10px 12px",borderRadius:8,background:c.verdict==="hero"?"var(--gb)":c.verdict==="red"?"var(--rb)":c.verdict==="yellow"?"var(--yb)":"var(--bb)",fontSize:12,lineHeight:1.6}}>
-            <strong style={{color:c.verdict==="hero"?"var(--g)":c.verdict==="red"?"var(--r)":c.verdict==="yellow"?"var(--y)":"var(--b)"}}>Coach:</strong> {c.action}
-          </div>
-        </div>)}
-      </div>
-    </Card>
-
-    {/* Funnel Analysis */}
-    <Card>
-      <SHead icon="📊" title="Funnel Spend Analysis" sub="Actual vs framework ideal (TOF 45% / ASC 35% / MOF 20%)" />
-      <div style={{display:"flex",flexDirection:"column",gap:10}}>
-        {funnelAnalysis.map((f,i)=>{
-          const bw=Math.max(f.ratio*100,2);
-          const iw=f.ideal*100;
-          const fc=f.funnel==="TOF"?"var(--b)":f.funnel==="ASC"?"var(--acc)":"var(--g)";
-          return <div key={i} style={{padding:"14px 16px",borderRadius:10,background:"var(--ca)",border:"1px solid var(--bdr)"}}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontSize:14,fontWeight:700,color:fc,fontFamily:"var(--fn)"}}>{f.funnel}</span>
-                <span style={{fontSize:12,color:"var(--t2)"}}>{f.count} campaign{f.count!==1&&"s"}</span>
-              </div>
-              <div style={{display:"flex",gap:12,fontSize:12,fontFamily:"var(--fn)"}}>
-                <span style={{color:"var(--t2)"}}>Actual: <span style={{color:"var(--t1)",fontWeight:600}}>{(f.ratio*100).toFixed(0)}%</span></span>
-                <span style={{color:"var(--t3)"}}>Target: {(f.ideal*100).toFixed(0)}%</span>
-              </div>
-            </div>
-            <div style={{position:"relative",height:20,background:"var(--bg)",borderRadius:6,overflow:"hidden",marginBottom:8}}>
-              <div style={{position:"absolute",left:iw+"%",top:0,bottom:0,width:2,background:"var(--t3)",zIndex:2}} />
-              <div style={{height:"100%",width:bw+"%",borderRadius:6,background:fc,transition:"width .5s"}} />
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:6}}>
-              <div><span style={{fontSize:10,color:"var(--t3)"}}>SPEND</span><div style={{fontSize:13,fontWeight:600,fontFamily:"var(--fn)"}}>{f$r(f.spend)}</div></div>
-              <div><span style={{fontSize:10,color:"var(--t3)"}}>CPA</span><div style={{fontSize:13,fontWeight:600,fontFamily:"var(--fn)"}}>{f.cpa!=null?f$(f.cpa):"—"}</div></div>
-              <div><span style={{fontSize:10,color:"var(--t3)"}}>ROAS</span><div style={{fontSize:13,fontWeight:600,fontFamily:"var(--fn)"}}>{fx(f.roas)}</div></div>
-            </div>
-            <p style={{margin:0,fontSize:12,color:"var(--t2)"}}>{f.note}</p>
-          </div>;
-        })}
-      </div>
-    </Card>
-  </div>;
-}
-
-/* ── STRUCTURE CALC ─────────────────────────── */
-function StructureCalc({report}){
-  const[ds,setDs]=useState(report?Math.round(report.daily):"500");
-  const[countries,setCountries]=useState(1);
-  const[gender,setGender]=useState(false);
-  const spend=parseFloat(ds)||0;
-  const bracket=SPEND_BRACKETS.find(b=>spend<b.max)||SPEND_BRACKETS[3];
-  const ex=countries>1?{tof:spend>=500?countries-1:0,asc:spend<500&&countries>2?countries-1:spend>=500?countries-1:0,mof:spend>=3000?countries-1:0}:{tof:0,asc:0,mof:0};
-  const gn=gender?(spend<500?{tof:1,asc:1,mof:1}:spend<1000?{tof:2,asc:2,mof:2}:spend<3000?{tof:4,asc:2,mof:2}:{tof:4,asc:4,mof:2}):{tof:0,asc:0,mof:0};
-  const tot={tof:bracket.tof+ex.tof+gn.tof,asc:bracket.asc+ex.asc+gn.asc,mof:bracket.mof+ex.mof+gn.mof};
-  const total=tot.tof+tot.asc+tot.mof;
-
-  function FRow({label,color,ratio,count}){
-    return <div style={{display:"grid",gridTemplateColumns:"70px 1fr 60px 60px",gap:12,alignItems:"center",padding:"12px 14px",borderRadius:10,borderLeft:"3px solid "+color,background:color+"0d"}}>
-      <span style={{fontWeight:700,color:color,fontFamily:"var(--fn)",fontSize:14}}>{label}</span>
-      <div style={{height:8,borderRadius:4,background:color+"20",overflow:"hidden"}}><div style={{height:"100%",width:ratio*200+"%",background:color,borderRadius:4}}/></div>
-      <span style={{fontFamily:"var(--fn)",fontSize:13,color:"var(--t2)",textAlign:"center"}}>{(ratio*100).toFixed(0)}%</span>
-      <span style={{fontFamily:"var(--fn)",fontSize:18,fontWeight:700,textAlign:"center"}}>{count}</span>
-    </div>;
+  let classification;
+  if(ad.spend<minSpend){
+    classification="unknown";
+  }else if(cppS==="unknown"||freqS==="unknown"){
+    classification="unknown";
+  }else if(cppS==="good"&&freqS==="good"){
+    classification=isHighReach?"superhero":"hero";
+  }else if((cppS==="good"&&freqS==="okay")||(cppS==="okay"&&freqS==="good")){
+    classification=isHighReach?"hero":"sidekick";
+  }else if((cppS==="okay"&&freqS==="okay")||(cppS==="good"&&freqS==="bad")){
+    classification=isHighReach?"sidekick":"civilian";
+  }else{
+    classification="villain";
   }
 
-  return <Card>
-    <SHead icon="🧮" title="Campaign Structure Calculator" sub="Framework-based campaign count for your spend level" />
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:20}}>
-      <div>
-        <label style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",display:"block",marginBottom:4}}>Daily Spend</label>
-        <div style={{position:"relative"}}><span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"var(--t3)",fontSize:13}}>$</span>
-        <input type="number" value={ds} onChange={e=>setDs(e.target.value)} style={{width:"100%",padding:"10px 14px 10px 22px",background:"var(--ca)",border:"1px solid var(--bdr)",borderRadius:8,color:"var(--t1)",fontSize:14,outline:"none",boxSizing:"border-box"}} /></div>
-      </div>
-      <div>
-        <label style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",display:"block",marginBottom:4}}>Countries</label>
-        <input type="number" min="1" max="5" value={countries} onChange={e=>setCountries(parseInt(e.target.value)||1)} style={{width:"100%",padding:"10px 14px",background:"var(--ca)",border:"1px solid var(--bdr)",borderRadius:8,color:"var(--t1)",fontSize:14,outline:"none",boxSizing:"border-box"}} />
-      </div>
-      <div>
-        <label style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",display:"block",marginBottom:4}}>Gender Split</label>
-        <div style={{display:"flex",gap:6,marginTop:2}}>
-          <Pill active={!gender} onClick={()=>setGender(false)}>No</Pill>
-          <Pill active={gender} onClick={()=>setGender(true)}>Yes</Pill>
-        </div>
-      </div>
-    </div>
-    <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
-      <FRow label="TOF" color="#3b82f6" ratio={FUNNEL_SPLIT.TOF} count={tot.tof} />
-      <FRow label="ASC" color="#a855f7" ratio={FUNNEL_SPLIT.ASC} count={tot.asc} />
-      <FRow label="MOF" color="#22c55e" ratio={FUNNEL_SPLIT.MOF} count={tot.mof} />
-    </div>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",background:"var(--ca)",borderRadius:10,border:"1px solid var(--bdr)"}}>
-      <span style={{fontSize:13,color:"var(--t2)"}}>Total Campaigns</span>
-      <div style={{display:"flex",alignItems:"baseline",gap:6}}>
-        <span style={{fontSize:32,fontWeight:800,fontFamily:"var(--fn)"}}>{total}</span>
-        <span style={{fontSize:11,color:"var(--t3)"}}>@ {bracket.label}</span>
-      </div>
-    </div>
-  </Card>;
+  return{...ad,stage,classification,cppStatus:cppS,freqStatus:freqS,isHighReach};
 }
 
-/* ── AUDIENCES ──────────────────────────────── */
-function AudienceSystem(){
-  const[filter,setFilter]=useState("all");
-  const filtered=filter==="all"?AUDIENCES:AUDIENCES.filter(a=>a.usage===filter);
-  const uc=u=>u==="MOF"?"green":u==="Exclusion"?"red":"blue";
-  return <Card>
-    <SHead icon="👥" title="Audience Setup System" sub="001–100 ID naming convention" />
-    <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
-      {["all","MOF","Exclusion","Lookalike"].map(f=><Pill key={f} active={filter===f} onClick={()=>setFilter(f)}>{f==="all"?"All":f}</Pill>)}
-    </div>
-    <div style={{display:"flex",flexDirection:"column",gap:5,maxHeight:500,overflowY:"auto"}}>
-      {filtered.map(a=><div key={a.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",background:"var(--ca)",borderRadius:8,border:"1px solid var(--bdr)"}}>
-        <span style={{fontFamily:"var(--fn)",fontSize:13,fontWeight:700,color:"var(--acc)",minWidth:32}}>{a.id}</span>
-        <span style={{flex:1,fontSize:12}}>{a.name}</span>
-        <Badge status={uc(a.usage)}>{a.usage}</Badge>
-      </div>)}
-    </div>
-  </Card>;
+/* ── CAMPAIGN HEALTH ASSESSMENT ────────────── */
+function assessCampaign(c){
+  const stage=detectStage(c.campaign_name);
+  const bench=CAMPAIGN_FREQ[stage==="asc"?"tof":stage]||CAMPAIGN_FREQ.tof;
+  let status,text;
+  if(!c.frequency||c.frequency===0){status="unknown";text="No frequency data";}
+  else if(c.frequency<=bench.good){status="healthy";text="✅ Healthy — safe to scale winners";}
+  else if(c.frequency<=(bench.warn||bench.good*1.25)){status="warning";text="⚠️ Watch — frequency rising, prepare refresh";}
+  else{status="critical";text="🚨 Critical — do NOT scale, refresh creative";}
+  return{...c,stage,healthStatus:status,healthText:text,benchmark:bench.good};
 }
 
-/* ── AI COACH ───────────────────────────────── */
-function AIChat({report}){
-  const[q,setQ]=useState("");
-  const[resp,setResp]=useState("");
-  const[loading,setLoading]=useState(false);
-  const[history,setHistory]=useState([]);
-
-  const sys=`You are the Ecommerce Equation Meta Ads Coach ($100M Framework). Funnel: TOF 45%/ASC 35%/MOF 20%. Traffic Light for CPA+Frequency. Freq (14d): Green ≤1.0, Yellow ≤2.0, Red ≥3.0. Hero=Green CPA+Green Freq=scale 10-20%. TOF looks expensive but feeds funnel. Only compare within same funnel stage. Horizontal scale=add campaigns. Vertical=+10-20%.${report?"\n\nACCOUNT: Grade "+report.grade+", $"+Math.round(report.ts)+" spend, "+report.tp+" purchases, "+report.bROAS.toFixed(2)+"x ROAS, "+report.heroes.length+" heroes, "+report.critical.length+" critical.\nCampaigns: "+JSON.stringify(report.analyzed.map(c=>({n:c.name,f:c.funnel,s:Math.round(c.spend),p:c.purchases,cpa:c.cpa?Math.round(c.cpa):null,roas:Math.round(c.roas*100)/100,v:c.verdict}))):"No data."}`;
-
-  const ask=async()=>{
-    if(!q.trim())return;setLoading(true);
-    try{
-      const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:sys,messages:[...history,{role:"user",content:q}]})});
-      const d=await r.json();
-      const ans=d.content?.map(b=>b.text||"").join("\n")||"No response.";
-      setResp(ans);setHistory(p=>[...p,{role:"user",content:q},{role:"assistant",content:ans}]);
-    }catch(e){setResp("⚠️ AI Coach couldn't connect. Use the Coach Report tab for framework analysis — it runs on your data without needing an API call.");}
-    setLoading(false);setQ("");
-  };
-
-  const quickQ=["Should I scale or kill any campaigns?","What creative angles should I test?","Is my funnel spend allocation correct?","My CPA spiked — diagnose it"];
-
-  return <Card glow>
-    <SHead icon="🤖" title="AI Strategy Coach" sub="Ask questions about your account — powered by live data" />
-    {!resp&&<div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}>
-      {quickQ.map((q,i)=><button key={i} onClick={()=>setQ(q)} style={{padding:"6px 12px",background:"var(--ca)",border:"1px solid var(--bdr)",borderRadius:20,color:"var(--t2)",fontSize:11,cursor:"pointer"}}>{q}</button>)}
-    </div>}
-    {resp&&<div style={{marginBottom:16,padding:16,background:"var(--ca)",borderRadius:12,border:"1px solid var(--bdr)",whiteSpace:"pre-wrap",fontSize:13,lineHeight:1.7,maxHeight:400,overflowY:"auto"}}>{resp}</div>}
-    <div style={{display:"flex",gap:8}}>
-      <input value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&ask()} placeholder="Ask the coach anything..." style={{flex:1,padding:"11px 14px",background:"var(--ca)",border:"1px solid var(--bdr)",borderRadius:8,color:"var(--t1)",fontSize:13,outline:"none",fontFamily:"var(--fs)"}} />
-      <button onClick={ask} disabled={loading} style={{padding:"11px 20px",background:"var(--acc)",border:"none",borderRadius:8,color:"#fff",fontWeight:700,cursor:loading?"wait":"pointer",fontSize:13,opacity:loading?.6:1}}>{loading?"...":"Ask"}</button>
-    </div>
-  </Card>;
-}
-
-/* ── MAIN APP ───────────────────────────────── */
+/* ── COMPONENTS ─────────────────────────────── */
 function App(){
-  const[tab,setTab]=useState("coach");
+  const[tab,setTab]=useState("overview");
   const[loading,setLoading]=useState(true);
-  const[status,setStatus]=useState("Connecting to noody-data-hub...");
+  const[status,setStatus]=useState("Connecting...");
   const[campaigns,setCampaigns]=useState([]);
+  const[ads,setAds]=useState([]);
   const[summary,setSummary]=useState(null);
   const[apiOk,setApiOk]=useState(null);
   const[days,setDays]=useState(14);
-  const[greenCPA,setGreenCPA]=useState(40);
-  const[yellowCPA,setYellowCPA]=useState(70);
+  const[aov,setAov]=useState(78);
+  const[mer,setMer]=useState(20);
 
-  const fetchData=useCallback(async(d)=>{
-    setLoading(true);setStatus("Pulling campaign data from Meta...");
+  const thresholds=useMemo(()=>calcThresholds(aov,mer),[aov,mer]);
+
+  const fetchAll=useCallback(async(d)=>{
+    setLoading(true);
     try{
-      const r=await fetch("/api/pull-meta?days="+d+"&level=campaign",{headers:{"x-api-key":API_KEY}});
-      if(!r.ok)throw new Error("HTTP "+r.status);
-      const data=await r.json();
-      const c=data.campaigns||data.data||(Array.isArray(data)?data:[]);
-      const s=data.summary||null;
-      setCampaigns(c);setSummary(s);
-      setApiOk({ok:true,msg:c.length+" campaigns • "+d+"d"});
-      setStatus("Running framework analysis...");
-      await new Promise(r=>setTimeout(r,400));
+      setStatus("Pulling campaign data...");
+      const cr=await fetch("/api/pull-meta?days="+d+"&level=campaign",{headers:{"x-api-key":API_KEY}});
+      if(!cr.ok)throw new Error("Campaign fetch: HTTP "+cr.status);
+      const cd=await cr.json();
+      setCampaigns(cd.data||cd.campaigns||[]);
+      setSummary(cd.summary||null);
+
+      setStatus("Pulling ad-level data for Marvel Math...");
+      try{
+        const ar=await fetch("/api/pull-meta?days="+d+"&level=ad",{headers:{"x-api-key":API_KEY}});
+        if(ar.ok){const ad=await ar.json();setAds(ad.data||[]);}
+      }catch(e){console.log("Ad-level not available:",e);}
+
+      setApiOk({ok:true,msg:(cd.data||cd.campaigns||[]).length+" campaigns"});
     }catch(e){
       setApiOk({ok:false,msg:e.message});
-      setStatus("Connection failed: "+e.message);
     }
     setLoading(false);
   },[]);
 
-  useEffect(()=>{fetchData(days);},[]);
+  useEffect(()=>{fetchAll(days);},[]);
 
-  const report=useMemo(()=>runCoach(campaigns,summary,greenCPA,yellowCPA),[campaigns,summary,greenCPA,yellowCPA]);
+  // Processed data
+  const assessedCampaigns=useMemo(()=>campaigns.map(assessCampaign),[campaigns]);
+  const classifiedAds=useMemo(()=>ads.map(a=>classifyAd(a,thresholds)),[ads,thresholds]);
 
-  const changeDays=(d)=>{setDays(d);fetchData(d);};
+  const marvelCounts=useMemo(()=>{
+    const c={superhero:0,hero:0,sidekick:0,civilian:0,villain:0,unknown:0};
+    classifiedAds.forEach(a=>{c[a.classification]=(c[a.classification]||0)+1;});
+    return c;
+  },[classifiedAds]);
 
-  if(loading&&!report)return <div style={{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-    <div style={{textAlign:"center",maxWidth:400}}>
-      <div style={{width:64,height:64,borderRadius:16,margin:"0 auto 24px",background:"linear-gradient(135deg,var(--acc),var(--b))",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,animation:"pulse 2s infinite"}}>🧠</div>
-      <h2 style={{fontSize:20,fontWeight:700,marginBottom:8}}>Coach is analysing your account...</h2>
-      <p style={{fontSize:13,color:"var(--t2)",lineHeight:1.6}}>{status}</p>
-      <div style={{width:32,height:32,border:"3px solid var(--bdr)",borderTopColor:"var(--acc)",borderRadius:"50%",margin:"24px auto 0",animation:"spin 1s linear infinite"}} />
-    </div>
+  const totalSpend=summary?.totalSpend||campaigns.reduce((s,c)=>s+(parseFloat(c.spend)||0),0);
+  const totalPurchases=summary?.totalPurchases||campaigns.reduce((s,c)=>s+(parseInt(c.purchases)||0),0);
+  const totalRevenue=summary?.totalPurchaseValue||campaigns.reduce((s,c)=>s+(parseFloat(c.purchase_value)||0),0);
+  const blendedCPA=totalPurchases>0?totalSpend/totalPurchases:0;
+  const blendedROAS=totalSpend>0?totalRevenue/totalSpend:0;
+  const dailySpend=totalSpend/(days||14);
+  const estRevFromAOV=totalPurchases*aov;
+  const profit=estRevFromAOV-totalSpend;
+
+  // Priority actions
+  const villains=classifiedAds.filter(a=>a.classification==="villain");
+  const heroes=classifiedAds.filter(a=>a.classification==="hero"||a.classification==="superhero");
+  const villainWaste=villains.reduce((s,a)=>s+a.spend,0);
+  const critCampaigns=assessedCampaigns.filter(c=>c.healthStatus==="critical");
+
+  const actions=[];
+  if(villains.length)actions.push({p:"high",text:"🛑 Turn off "+villains.length+" Villain ad"+(villains.length>1?"s":"")+" — wasting "+f$r(villainWaste)});
+  if(heroes.length)actions.push({p:"scale",text:"🚀 Scale "+heroes.length+" Hero/Superhero ad"+(heroes.length>1?"s":"")+" by 10-20%"});
+  if(critCampaigns.length)actions.push({p:"high",text:"🚨 "+critCampaigns.length+" campaign"+(critCampaigns.length>1?"s":"")+" at critical frequency — do NOT scale, refresh creative"});
+  if(!actions.length&&campaigns.length)actions.push({p:"info",text:"💡 Account looks stable. Keep monitoring and testing new creative."});
+
+  if(loading&&!campaigns.length)return <div className="loading">
+    <div style={{width:64,height:64,borderRadius:16,margin:"0 auto 24px",background:"linear-gradient(135deg,var(--acc),var(--b))",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28}}>🧠</div>
+    <h2>Coach is analysing your account...</h2>
+    <p>{status}</p>
+    <div className="spinner"/>
   </div>;
 
   const tabs=[
-    {id:"coach",label:"Coach Report",icon:"🧠"},
-    {id:"structure",label:"Structure",icon:"🧮"},
-    {id:"audiences",label:"Audiences",icon:"👥"},
-    {id:"ai",label:"AI Chat",icon:"🤖"},
+    {id:"overview",label:"Account Overview",icon:"📊"},
+    {id:"campaigns",label:"Campaigns",icon:"📁"},
+    {id:"marvel",label:"Marvel Math",icon:"🦸"},
+    {id:"actions",label:"Actions",icon:"⚡"},
+    {id:"structure",label:"Structure Calc",icon:"🧮"},
     {id:"settings",label:"Settings",icon:"⚙️"},
   ];
 
-  return <div style={{minHeight:"100vh",background:"var(--bg)",color:"var(--t1)"}}>
+  return <div>
     {/* Header */}
-    <div style={{padding:"16px 20px",borderBottom:"1px solid var(--bdr)",background:"linear-gradient(180deg,var(--card) 0%,var(--bg) 100%)"}}>
-      <div style={{maxWidth:1000,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div style={{width:36,height:36,borderRadius:10,background:"linear-gradient(135deg,var(--acc),var(--b))",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:800,color:"#fff"}}>EE</div>
-          <div>
-            <h1 style={{fontSize:17,fontWeight:800,margin:0,letterSpacing:"-0.02em"}}>Meta Ads Intelligence Coach</h1>
-            <p style={{fontSize:11,color:"var(--t3)",margin:0}}>Ecommerce Equation • $100M Framework • Live</p>
-          </div>
-        </div>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          {apiOk&&<span style={{display:"inline-flex",alignItems:"center",gap:5,padding:"4px 12px",borderRadius:20,fontSize:11,fontWeight:600,color:apiOk.ok?"var(--g)":"var(--r)",background:apiOk.ok?"var(--gb)":"var(--rb)",border:"1px solid "+(apiOk.ok?"var(--gd)":"var(--rd)")}}>
-            <span style={{width:6,height:6,borderRadius:"50%",background:apiOk.ok?"var(--g)":"var(--r)"}} />{apiOk.ok?"LIVE":"OFFLINE"}
-          </span>}
-          {report&&<span style={{padding:"4px 12px",borderRadius:20,fontSize:11,fontWeight:700,color:report.gc,background:report.gc.replace(")",",0.15)"),border:"1px solid "+report.gc.replace(")",",0.4)"),fontFamily:"var(--fn)"}}>Grade: {report.grade}</span>}
-          <a href="/" style={{fontSize:11,color:"var(--t3)",textDecoration:"none",padding:"4px 10px",border:"1px solid var(--bdr)",borderRadius:6}}>← Dashboard</a>
-        </div>
+    <div className="hdr">
+      <div className="hdr-l">
+        <div className="hdr-logo">EE</div>
+        <div><h1>Meta Ads Coach</h1><p>Ecommerce Equation • Marvel Math • Live API</p></div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        {apiOk&&<span className={"badge "+(apiOk.ok?"badge-live":"badge-off")}><span className="dot" style={{background:apiOk.ok?"var(--g)":"var(--r)"}}/>{apiOk.ok?"LIVE":"OFFLINE"}</span>}
+        <a href="/" style={{fontSize:11,color:"var(--t3)",textDecoration:"none",padding:"4px 10px",border:"1px solid var(--bdr)",borderRadius:6}}>← Dashboard</a>
       </div>
     </div>
 
     {/* Nav */}
-    <div style={{padding:"0 20px",borderBottom:"1px solid var(--bdr)",background:"var(--sf)",position:"sticky",top:0,zIndex:100,overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
-      <div style={{maxWidth:1000,margin:"0 auto",display:"flex",gap:2}}>
-        {tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"11px 14px",background:"transparent",border:"none",borderBottom:"2px solid "+(tab===t.id?"var(--acc)":"transparent"),color:tab===t.id?"var(--am)":"var(--t3)",fontSize:12,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5}}><span style={{fontSize:13}}>{t.icon}</span> {t.label}</button>)}
-      </div>
+    <div className="nav">
+      {tabs.map(t=><button key={t.id} className={tab===t.id?"on":""} onClick={()=>setTab(t.id)}><span>{t.icon}</span> {t.label}</button>)}
     </div>
 
-    {/* Date range */}
-    <div style={{maxWidth:1000,margin:"0 auto",padding:"12px 20px 0",display:"flex",gap:4,alignItems:"center"}}>
+    {/* Range + Refresh */}
+    <div style={{maxWidth:1100,margin:"0 auto",padding:"12px 20px 0",display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
       <span style={{fontSize:11,color:"var(--t3)",marginRight:6}}>Range:</span>
-      {[7,14,30].map(d=><Pill key={d} active={days===d} onClick={()=>changeDays(d)}>{d}d</Pill>)}
-      <button onClick={()=>fetchData(days)} disabled={loading} style={{marginLeft:8,padding:"6px 14px",background:"transparent",border:"1px solid var(--bdr)",borderRadius:7,color:"var(--t2)",fontSize:11,cursor:"pointer",fontWeight:600}}>🔄 Refresh</button>
+      {[7,14,30].map(d=><button key={d} className={"pill"+(days===d?" on":"")} onClick={()=>{setDays(d);fetchAll(d);}}>{d}d</button>)}
+      <button onClick={()=>fetchAll(days)} disabled={loading} style={{marginLeft:8,padding:"6px 14px",background:"transparent",border:"1px solid var(--bdr)",borderRadius:7,color:"var(--t2)",fontSize:11,fontWeight:600}}>🔄 Refresh</button>
+      <span style={{marginLeft:"auto",fontSize:11,color:"var(--t3)"}}>{campaigns.length} campaigns • {ads.length} ads</span>
     </div>
 
-    {/* Content */}
-    <div style={{maxWidth:1000,margin:"0 auto",padding:"12px 20px 20px",display:"flex",flexDirection:"column",gap:16}}>
-      {tab==="coach"&&<CoachReport report={report} days={days} />}
-      {tab==="structure"&&<StructureCalc report={report} />}
-      {tab==="audiences"&&<AudienceSystem />}
-      {tab==="ai"&&<AIChat report={report} />}
-      {tab==="settings"&&<Card>
-        <SHead icon="⚙️" title="Settings" sub="Customize CPA benchmarks" />
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12}}>
-          <div>
-            <label style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",display:"block",marginBottom:4}}>🟢 Green CPA</label>
-            <input type="number" value={greenCPA} onChange={e=>setGreenCPA(parseFloat(e.target.value)||30)} style={{width:"100%",padding:"8px 12px",background:"var(--ca)",border:"1px solid var(--gd)",borderRadius:8,color:"var(--g)",fontSize:14,fontFamily:"var(--fn)",outline:"none",boxSizing:"border-box"}} />
+    <div className="content">
+      {/* ── OVERVIEW TAB ─────────────────────── */}
+      {tab==="overview"&&<div>
+        <div className="card glow">
+          <div className="sh"><h2>📊 Account Overview — Last {days} Days</h2></div>
+          <div className="mg mg4" style={{marginBottom:16}}>
+            <div className="mb mb-n"><div className="mb-l">Total Spend</div><div className="mb-v" style={{color:"var(--t1)"}}>{f$r(totalSpend)}</div><div className="mb-s">{f$r(dailySpend)}/day</div></div>
+            <div className={"mb "+(blendedROAS>=3?"mb-g":blendedROAS>=2?"mb-y":"mb-r")}><div className="mb-l">ROAS</div><div className="mb-v">{fx(blendedROAS)}</div><div className="mb-s">{blendedROAS>=3?"Excellent":blendedROAS>=2?"Good":"Needs work"}</div></div>
+            <div className="mb mb-n"><div className="mb-l">Purchases</div><div className="mb-v" style={{color:"var(--t1)"}}>{totalPurchases}</div><div className="mb-s">AOV ~{f$r(aov)}</div></div>
+            <div className={"mb "+(blendedCPA<=aov*mer/100*2?"mb-g":blendedCPA<=aov*mer/100*4?"mb-y":"mb-r")}><div className="mb-l">Blended CPP</div><div className="mb-v">{f$(blendedCPA)}</div><div className="mb-s">Target: {"<"+f$r(aov*mer/100*2)}</div></div>
+            <div className={"mb "+(profit>=0?"mb-g":"mb-r")}><div className="mb-l">Est. Profit</div><div className="mb-v">{f$r(Math.abs(profit))}</div><div className="mb-s">{profit>=0?"Profitable ✅":"Loss 🔴"}</div></div>
           </div>
-          <div>
-            <label style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",display:"block",marginBottom:4}}>🟡 Yellow CPA</label>
-            <input type="number" value={yellowCPA} onChange={e=>setYellowCPA(parseFloat(e.target.value)||50)} style={{width:"100%",padding:"8px 12px",background:"var(--ca)",border:"1px solid var(--yd)",borderRadius:8,color:"var(--y)",fontSize:14,fontFamily:"var(--fn)",outline:"none",boxSizing:"border-box"}} />
-          </div>
+
+          {/* Marvel Math Summary */}
+          {ads.length>0&&<div>
+            <div style={{fontSize:12,color:"var(--t3)",marginBottom:8,fontWeight:600}}>MARVEL MATH BREAKDOWN</div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {Object.entries(MARVEL).filter(([k])=>k!=="unknown").map(([k,v])=><div key={k} style={{flex:1,minWidth:90,padding:"10px 12px",borderRadius:10,background:v.color+"15",border:"1px solid "+v.color+"33",textAlign:"center"}}>
+                <div style={{fontSize:20}}>{v.icon}</div>
+                <div style={{fontSize:20,fontWeight:800,fontFamily:"var(--fn)",color:v.color}}>{marvelCounts[k]||0}</div>
+                <div style={{fontSize:10,color:"var(--t2)"}}>{v.label}s</div>
+              </div>)}
+            </div>
+          </div>}
         </div>
-        <div style={{marginTop:16,padding:12,background:"var(--ca)",borderRadius:8,fontSize:11,color:"var(--t3)",fontFamily:"var(--fn)",lineHeight:1.6}}>
-          <strong style={{color:"var(--t2)"}}>API:</strong> /api/pull-meta?level=campaign&days={days}<br/>
+
+        {/* Priority Actions */}
+        {actions.length>0&&<div className="card">
+          <div className="sh"><h2>⚡ Priority Actions</h2><p>What to do right now</p></div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {actions.map((a,i)=><div key={i} className={"action-box "+(a.p==="high"?"action-high":a.p==="scale"?"action-scale":a.p==="med"?"action-med":"action-info")}>{a.text}</div>)}
+          </div>
+        </div>}
+      </div>}
+
+      {/* ── CAMPAIGNS TAB ────────────────────── */}
+      {tab==="campaigns"&&<div className="card">
+        <div className="sh"><h2>📁 Campaign Health Assessment</h2><p>Frequency-based health check per funnel stage</p></div>
+        {assessedCampaigns.map((c,i)=>{
+          const sc=c.healthStatus==="healthy"?"var(--g)":c.healthStatus==="warning"?"var(--y)":"var(--r)";
+          return <div key={i} className="ad-row" style={{borderLeft:"3px solid "+sc,background:sc+"0d",animationDelay:i*0.05+"s"}}>
+            <div className="ad-row-head">
+              <span className="ad-row-name">{c.campaign_name}</span>
+              <div style={{display:"flex",gap:6}}>
+                <span className={"tag tag-"+(c.stage==="tof"||c.stage==="asc"?"b":c.stage==="mof"?"p":"g")}>{c.stage.toUpperCase()}</span>
+                <span className={"tag tag-"+(c.healthStatus==="healthy"?"g":c.healthStatus==="warning"?"y":"r")}>{c.healthStatus}</span>
+              </div>
+            </div>
+            <div className="ad-row-metrics">
+              <div><span>SPEND</span><div>{f$(c.spend)}</div></div>
+              <div><span>CPP</span><div>{c.cpp?f$(c.cpp):"—"}</div></div>
+              <div><span>PURCHASES</span><div>{c.purchases||0}</div></div>
+              <div><span>ROAS</span><div style={{color:c.roas>=3?"var(--g)":c.roas>=2?"var(--y)":c.roas>0?"var(--r)":"inherit"}}>{fx(c.roas)}</div></div>
+              <div><span>FREQUENCY</span><div style={{color:sc}}>{c.frequency?c.frequency.toFixed(2):"—"}</div></div>
+              <div><span>BENCHMARK</span><div style={{color:"var(--t3)"}}>≤{c.benchmark?.toFixed(1)}</div></div>
+            </div>
+            <div className="verdict-box" style={{background:sc+"0d"}}><strong style={{color:sc}}>{c.healthText}</strong></div>
+          </div>;
+        })}
+      </div>}
+
+      {/* ── MARVEL MATH TAB ──────────────────── */}
+      {tab==="marvel"&&<div>
+        {ads.length===0?<div className="card">
+          <div className="sh"><h2>🦸 Marvel Math Classification</h2></div>
+          <p style={{color:"var(--t2)",lineHeight:1.6}}>Ad-level data not available. Your API needs to support <code style={{color:"var(--am)"}}>?level=ad</code> to enable Marvel Math classification. Check that your pull-meta.js is updated.</p>
+        </div>:
+        <div className="card">
+          <div className="sh"><h2>🦸 Marvel Math — Ad Classification</h2><p>Every ad classified using CPP thresholds (AOV ${f$r(aov)} × MER {mer}%) + frequency by funnel stage</p></div>
+          <div style={{fontSize:11,color:"var(--t3)",padding:"8px 12px",background:"var(--ca)",borderRadius:8,marginBottom:16}}>
+            CPP Thresholds → TOF: green ≤{f$r(thresholds.tof.good)} / red ≥{f$r(thresholds.tof.bad)} &nbsp;|&nbsp; MOF: green ≤{f$r(thresholds.mof.good)} / red ≥{f$r(thresholds.mof.bad)}
+          </div>
+          {classifiedAds.sort((a,b)=>{
+            const order={superhero:0,hero:1,sidekick:2,civilian:3,villain:4,unknown:5};
+            return(order[a.classification]||5)-(order[b.classification]||5)||b.spend-a.spend;
+          }).map((a,i)=>{
+            const m=MARVEL[a.classification]||MARVEL.unknown;
+            return <div key={i} className={"ad-row "+m.cls} style={{animationDelay:i*0.03+"s"}}>
+              <div className="ad-row-head">
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:18}}>{m.icon}</span>
+                  <span className="ad-row-name">{a.ad_name||a.campaign_name}</span>
+                </div>
+                <div style={{display:"flex",gap:6}}>
+                  <span style={{padding:"3px 10px",borderRadius:99,fontSize:10,fontWeight:700,color:m.color,background:m.color+"15",border:"1px solid "+m.color+"33"}}>{m.label}</span>
+                  <span className={"tag tag-"+(a.stage==="tof"||a.stage==="asc"?"b":a.stage==="mof"?"p":"g")}>{a.stage.toUpperCase()}</span>
+                </div>
+              </div>
+              <div className="ad-row-metrics">
+                <div><span>SPEND</span><div>{f$(a.spend)}</div></div>
+                <div><span>CPP</span><div style={{color:a.cppStatus==="good"?"var(--g)":a.cppStatus==="okay"?"var(--y)":a.cppStatus==="bad"?"var(--r)":"inherit"}}>{a.cpp?f$(a.cpp):"—"}</div></div>
+                <div><span>PURCHASES</span><div>{a.purchases||0}</div></div>
+                <div><span>FREQ</span><div style={{color:a.freqStatus==="good"?"var(--g)":a.freqStatus==="okay"?"var(--y)":a.freqStatus==="bad"?"var(--r)":"inherit"}}>{a.frequency?a.frequency.toFixed(2):"—"}</div></div>
+                <div><span>REACH</span><div>{(a.reach||0).toLocaleString()}{a.isHighReach?" 🔥":""}</div></div>
+                <div><span>ROAS</span><div>{fx(a.roas)}</div></div>
+              </div>
+              <div className="verdict-box" style={{background:m.color+"0d"}}><strong style={{color:m.color}}>Action:</strong> {m.action}</div>
+            </div>;
+          })}
+        </div>}
+      </div>}
+
+      {/* ── ACTIONS TAB ──────────────────────── */}
+      {tab==="actions"&&<div>
+        {villains.length>0&&<div className="card">
+          <div className="sh"><h2>🛑 Step 1: Kill Villains</h2><p>Turn these off immediately — wasting {f$r(villainWaste)}</p></div>
+          {villains.map((a,i)=><div key={i} className="ad-row marvel-villain" style={{animationDelay:i*0.05+"s"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
+              <span style={{fontWeight:700,fontSize:13}}>🦹 {a.ad_name||a.campaign_name}</span>
+              <span style={{fontFamily:"var(--fn)",fontSize:13,color:"var(--r)"}}>{f$(a.spend)} wasted • CPP {a.cpp?f$(a.cpp):"∞"} • Freq {a.frequency?.toFixed(2)||"—"}</span>
+            </div>
+          </div>)}
+        </div>}
+
+        {heroes.length>0&&<div className="card">
+          <div className="sh"><h2>🚀 Step 2: Scale Heroes</h2><p>Increase budget 10-20% on these winners</p></div>
+          {heroes.map((a,i)=><div key={i} className={"ad-row "+(a.classification==="superhero"?"marvel-superhero":"marvel-hero")} style={{animationDelay:i*0.05+"s"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
+              <span style={{fontWeight:700,fontSize:13}}>{a.classification==="superhero"?"🦸":"🌟"} {a.ad_name||a.campaign_name}</span>
+              <span style={{fontFamily:"var(--fn)",fontSize:13,color:"var(--g)"}}>CPP {f$(a.cpp)} • ROAS {fx(a.roas)} • Freq {a.frequency?.toFixed(2)}</span>
+            </div>
+          </div>)}
+        </div>}
+
+        {!villains.length&&!heroes.length&&<div className="card">
+          <div className="sh"><h2>⚡ Actions</h2></div>
+          <p style={{color:"var(--t2)"}}>No immediate actions. {ads.length===0?"Connect ad-level data for Marvel Math classification.":"Account is stable — keep testing new creative."}</p>
+        </div>}
+      </div>}
+
+      {/* ── STRUCTURE CALC ───────────────────── */}
+      {tab==="structure"&&<div className="card">
+        <div className="sh"><h2>🧮 Campaign Structure Calculator</h2><p>How many campaigns to run based on daily spend</p></div>
+        {(()=>{
+          const bracket=SPEND_BRACKETS.find(b=>dailySpend<b.max)||SPEND_BRACKETS[3];
+          const total=bracket.tof+bracket.asc+bracket.mof;
+          return <div>
+            <div style={{padding:"16px",background:"var(--ca)",borderRadius:10,marginBottom:16}}>
+              <div style={{fontSize:12,color:"var(--t3)",marginBottom:4}}>Your daily spend: <strong style={{color:"var(--t1)",fontFamily:"var(--fn)"}}>{f$r(dailySpend)}</strong> → <strong style={{color:"var(--am)"}}>{bracket.label}</strong> bracket</div>
+            </div>
+            {[["TOF","#3b82f6",bracket.tof,45],["ASC","#a855f7",bracket.asc,35],["MOF","#22c55e",bracket.mof,20]].map(([label,color,count,pct])=>
+              <div key={label} style={{display:"grid",gridTemplateColumns:"70px 1fr 60px",gap:12,alignItems:"center",padding:"12px 14px",borderRadius:10,borderLeft:"3px solid "+color,background:color+"0d",marginBottom:8}}>
+                <span style={{fontWeight:700,color,fontFamily:"var(--fn)",fontSize:14}}>{label}</span>
+                <div style={{height:8,borderRadius:4,background:color+"20",overflow:"hidden"}}><div style={{height:"100%",width:pct*2+"%",background:color,borderRadius:4}}/></div>
+                <span style={{fontFamily:"var(--fn)",fontSize:18,fontWeight:700,textAlign:"center"}}>{count}</span>
+              </div>
+            )}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",background:"var(--ca)",borderRadius:10,marginTop:8}}>
+              <span style={{fontSize:13,color:"var(--t2)"}}>Total Campaigns</span>
+              <span style={{fontSize:32,fontWeight:800,fontFamily:"var(--fn)"}}>{total}</span>
+            </div>
+            {campaigns.length>0&&<div style={{marginTop:12,padding:"12px 14px",borderRadius:10,background:campaigns.length<=total+2?"var(--gb)":"var(--yb)",border:"1px solid "+(campaigns.length<=total+2?"var(--gd)":"var(--yd)")}}>
+              <span style={{fontSize:12}}>{campaigns.length<=total+2?"✅":"⚠️"} You have {campaigns.length} campaigns. Framework recommends ~{total} for {bracket.label}.</span>
+            </div>}
+          </div>;
+        })()}
+      </div>}
+
+      {/* ── SETTINGS ─────────────────────────── */}
+      {tab==="settings"&&<div className="card">
+        <div className="sh"><h2>⚙️ Settings</h2><p>Configure AOV and MER to set CPP thresholds</p></div>
+        <div className="setup">
+          <div><label>AOV ($)</label><input type="number" value={aov} onChange={e=>setAov(parseFloat(e.target.value)||78)}/></div>
+          <div><label>Target MER (%)</label><input type="number" value={mer} onChange={e=>setMer(parseFloat(e.target.value)||20)}/></div>
+        </div>
+        <div style={{padding:14,background:"var(--ca)",borderRadius:10,fontSize:12,color:"var(--t3)",lineHeight:1.8}}>
+          <strong style={{color:"var(--t2)"}}>CPP Thresholds (AOV × MER = {f$r(aov*mer/100)} base):</strong><br/>
+          TOF: 🟢 ≤{f$r(thresholds.tof.good)} 🔴 ≥{f$r(thresholds.tof.bad)}<br/>
+          TOM: 🟢 ≤{f$r(thresholds.tom.good)} 🔴 ≥{f$r(thresholds.tom.bad)}<br/>
+          MOF: 🟢 ≤{f$r(thresholds.mof.good)} 🔴 ≥{f$r(thresholds.mof.bad)}<br/>
+          BOF: 🟢 ≤{f$r(thresholds.bof.good)} 🔴 ≥{f$r(thresholds.bof.bad)}
+        </div>
+        <div style={{marginTop:16,padding:14,background:"var(--ca)",borderRadius:10,fontSize:11,color:"var(--t3)",fontFamily:"var(--fn)",lineHeight:1.6}}>
+          <strong style={{color:"var(--t2)"}}>API:</strong> /api/pull-meta?level=campaign|ad&days={days}<br/>
           <strong style={{color:"var(--t2)"}}>Auth:</strong> x-api-key header
         </div>
-      </Card>}
+      </div>}
     </div>
   </div>;
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
 </html>
