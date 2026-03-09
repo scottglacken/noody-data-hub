@@ -456,9 +456,9 @@ function Dashboard(){
                 setAiLoading(true);setAiCoach(null);
                 try{
                   const prompt="Analyse this ecommerce business using the Ecommerce Equation framework. Give: situation classification (1-5), constraint identification, root cause, prescribed action with specific numbers, what NOT to do, expected impact. Be direct and specific.\n\nData:\n- Revenue: $"+XERO.rev+" ("+XERO.months+" months)\n- DTC: $"+XERO.dtc+" ("+Math.round(XERO.dtc/XERO.rev*100)+"%)\n- Wholesale: $"+XERO.wh+" ("+Math.round(XERO.wh/XERO.rev*100)+"%)\n- International: $"+XERO.intl+"\n- Variable Costs: "+vcPct.toFixed(1)+"%\n- COGS: "+fp(XERO.cogs/XERO.rev*100)+", Shipping: "+fp(XERO.postage/XERO.rev*100)+"\n- Marketing MER: "+merPct.toFixed(1)+"% (blended), DTC-only MER: "+dtcMerVal.toFixed(1)+"%\n- Fixed Costs: "+fcPct.toFixed(1)+"% ($"+fn(Math.round(XERO_FIXED/XERO.months))+"/mo)\n- Net Profit: "+npPct.toFixed(1)+"%\n- LER: "+ler.toFixed(2)+"\n- Ad Spend: $"+XERO.ads;
-                  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:prompt}]})});
+                  const r=await fetch("/api/ai-coach",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":"noody-eq-2026-datahub"},body:JSON.stringify({prompt:prompt})});
                   const d=await r.json();
-                  const text=d.content?.map(b=>b.text||"").join("\n")||"No response received";
+                  const text=d.text||"{no response}";//.join("\n")||"No response received";
                   setAiCoach(text);
                 }catch(e){setAiCoach("Error: "+e.message);}
                 setAiLoading(false);
