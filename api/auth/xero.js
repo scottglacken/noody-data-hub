@@ -10,7 +10,7 @@ export default function handler(req, res) {
     response_type: 'code',
     client_id: clientId,
     redirect_uri: appUrl + '/api/auth/xero/callback',
-    scope: 'openid profile email offline_access accounting.reports.read',
+    scope: 'openid profile email offline_access',
     state: 'test123',
   });
 
