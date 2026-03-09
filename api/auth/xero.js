@@ -3,20 +3,10 @@ export default function handler(req, res) {
   const appUrl = process.env.APP_URL || 'https://noody-data-hub.vercel.app';
 
   if (!clientId) {
-    return res.status(500).json({
-      error: 'XERO_CLIENT_ID not set',
-      setup: 'Go to developer.xero.com/app/manage to create an app'
-    });
+    return res.status(500).json({ error: 'XERO_CLIENT_ID not set' });
   }
 
-  const scopes = [
-    'openid',
-    'profile',
-    'email',
-    'accounting.reports.read',
-    'accounting.transactions.read',
-    'offline_access',
-  ].join(' ');
+  const scopes = 'openid profile email offline_access';
 
   const params = new URLSearchParams({
     response_type: 'code',
