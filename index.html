@@ -174,7 +174,7 @@ function Dashboard(){
 
   const monthly=useMemo(()=>{
     let m={};
-    mergedD.forEach(d=>{
+    vis.forEach(d=>{
       let k=d.d.slice(0,7);
       if(!m[k])m[k]={rev:0,ord:0,meta:0,email:0,ship:0,items:0,mp:0,mv:0};
       m[k].rev+=d.r;m[k].ord+=d.o;m[k].meta+=d.ms;m[k].email+=d.e;m[k].ship+=d.s;m[k].items+=d.i;m[k].mp+=d.mp;m[k].mv+=d.mv;
@@ -186,7 +186,7 @@ function Dashboard(){
       roas:v.meta>0?Math.round(v.mv/v.meta*100)/100:0,
       cpp:v.mp>0?Math.round(v.meta/v.mp):0,
     }));
-  },[]);
+  },[vis]);
 
   const chartData=useMemo(()=>vis.map(d=>({
     d:d.d.slice(5),rev:Math.round(d.r),meta:Math.round(d.ms),aov:d.o>0?Math.round(d.r/d.o):0,orders:d.o,
