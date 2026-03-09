@@ -2,7 +2,7 @@ import { createClient } from 'redis';
 
 async function getRedis() {
   if (!process.env.REDIS_URL) return null;
-  const client = createClient({ url: process.env.REDIS_URL, socket: { tls: true, rejectUnauthorized: false } });
+  const client = createClient({ url: process.env.REDIS_URL });
   await client.connect();
   return client;
 }

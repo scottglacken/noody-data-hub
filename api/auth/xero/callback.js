@@ -4,7 +4,7 @@ async function getRedis() {
   if (!process.env.REDIS_URL) return null;
   const client = createClient({
     url: process.env.REDIS_URL,
-    socket: { tls: true, rejectUnauthorized: false }
+    
   });
   await client.connect();
   return client;
