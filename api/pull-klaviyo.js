@@ -30,14 +30,22 @@ export default async function handler(req, res) {
 
   try {
     // Query metric aggregates for "Placed Order" attributed to email
-    // First find the "Placed Order" metric ID
-    var metricsRes = await fetch('https://a.klaviyo.com/api/metrics/?filter=equals(name,"Placed Order")', { headers: headers });
-    if (!metricsRes.ok) {
-      var errText = await metricsRes.text();
-      throw new Error('Klaviyo metrics lookup failed: ' + metricsRes.status + ' ' + errText.slice(0, 300));
+    // First find the "Placed Order" metric ID - list all and search
+    var allMetrics = [];
+    var metricsUrl = 'https://a.klaviyo.com/api/metrics/?page[size]=50';
+    while (metricsUrl) {
+      var metricsRes = await fetch(metricsUrl, { headers: headers });
+      if (!metricsRes.ok) {
+        var errText = await metricsRes.text();
+        throw new Error('Klaviyo metrics list failed: ' + metricsRes.status + ' ' + errText.slice(0, 300));
+      }
+      var metricsPage = await metricsRes.json();
+      allMetrics = allMetrics.concat(metricsPage.data || []);
+      metricsUrl = metricsPage.links && metricsPage.links.next ? metricsPage.links.next : null;
     }
-    var metricsData = await metricsRes.json();
-    var placedOrderMetric = metricsData.data && metricsData.data[0];
+    var placedOrderMetric = allMetrics.find(function(m) {
+      return m.attributes && m.attributes.name === 'Placed Order';
+    });
 
     if (!placedOrderMetric) {
       return res.status(200).json({
