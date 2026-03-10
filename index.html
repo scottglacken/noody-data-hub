@@ -70,13 +70,23 @@ const f$=n=>n==null?"—":(n<0?"-":"")+"$"+Math.abs(Math.round(n)).toLocaleStrin
 const fp=n=>n==null?"—":n.toFixed(1)+"%";
 const fn=n=>n==null?"—":Math.round(n).toLocaleString();
 
-function MC({l,v,fmt,bm,sub,big}){
-  let dv=fmt==="$"?f$(v):fmt==="%"?fp(v):fn(v);
-  let s=bm?gs(v,bm):"n";
+function MC({l,v,fmt,bm,sub,big,v7d,inv,bmLabel,showBm}){
+  let dv=fmt==="$"?f$(v):fmt==="%"?fp(v):fmt==="x"?(v||0).toFixed(2)+"x":fn(v);
+  let s=(bm&&showBm!==false)?gs(v,bm):"n";
+  const fv7=v7d!=null?(fmt==="$"?f$(v7d):fmt==="%"?fp(v7d):fmt==="x"?(v7d||0).toFixed(2)+"x":fn(v7d)):null;
+  // 7d trend arrow
+  let arrow7="",arrowCol="var(--t3)";
+  if(v7d!=null&&v!=null&&v!==0){
+    const ch=((v7d-v)/Math.abs(v))*100;
+    if(Math.abs(ch)<2){arrow7="\u2192";arrowCol="var(--t3)";}
+    else{const good=inv?(ch<0):(ch>0);arrow7=good?"\u2191":"\u2193";arrowCol=good?"var(--grn)":"var(--red)";}
+  }
   return <div style={{background:SB[s],border:"1px solid "+SC[s]+"33",borderRadius:12,padding:big?"20px 18px":"16px",minWidth:0,transition:"all .2s"}}>
     <div style={{fontSize:12,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:5,fontWeight:500}}>{l}</div>
     <div style={{fontSize:big?32:24,fontWeight:700,color:SC[s],fontFamily:"'JetBrains Mono',monospace"}}>{dv}</div>
+    {fv7&&<div style={{fontSize:11,color:arrowCol,marginTop:3,fontFamily:"'JetBrains Mono',monospace"}}>7d: {fv7} {arrow7}</div>}
     {sub&&<div style={{fontSize:10,color:"var(--t3)",marginTop:2}}>{sub}</div>}
+    {bmLabel&&showBm!==false&&<div style={{fontSize:9,color:"var(--t3)",marginTop:2,opacity:0.7}}>{bmLabel}</div>}
   </div>;
 }
 
@@ -143,7 +153,7 @@ function AlertBar({agg,xeroChannels,klavLive}){
   </div>;
 }
 
-function PulseBar({agg,xeroChannels,klavLive}){
+function PulseBar({agg,xeroChannels,klavLive,current7d,range}){
   if(!agg)return null;
   const dtcRev=agg.tr;const metaSpend=agg.tms;const days=agg.d;
   const dtcRatio=xeroChannels.dtc/xeroChannels.rev;
@@ -158,18 +168,37 @@ function PulseBar({agg,xeroChannels,klavLive}){
   const emailPct=klavLive?agg.emailPct:null;
   const fcPct=estTotalRev>0?estFixed/estTotalRev*100:0;
   const aov=agg.aov;
+  // Compute 7d equivalents for trend arrows
+  let prof7=null,mer7=null,email7=null,fc7=null,aov7=null;
+  if(current7d&&range!==7){
+    const c7r=current7d.tr;const c7ms=current7d.tms;
+    const c7est=dtcRatio>0?c7r/dtcRatio:c7r;
+    const c7var=c7est*varRatio;const c7fc=fixedMonthly*(7/30);
+    const c7prof=c7est-c7var-c7ms-c7fc;
+    prof7=c7est>0?c7prof/c7est*100:null;
+    mer7=c7r>0?c7ms/c7r*100:null;
+    email7=klavLive?current7d.emailPct:null;
+    fc7=c7est>0?c7fc/c7est*100:null;
+    aov7=current7d.aov;
+  }
   const pills=[
-    {l:"Profit",v:profPct,fmt:"%",s:gs(profPct,BM.np)},
-    {l:"DTC MER",v:dtcMer,fmt:"%",s:dtcMer!=null?gs(dtcMer,BM.mer):"n"},
-    {l:"Email",v:emailPct,fmt:"%",s:emailPct!=null?gs(emailPct,BM.em):"n"},
-    {l:"Fixed",v:fcPct,fmt:"%",s:gs(fcPct,BM.fc)},
-    {l:"AOV",v:aov,fmt:"$",s:aov>=70?"h":aov>=50?"w":"c"},
+    {l:"Profit",v:profPct,v7:prof7,fmt:"%",s:gs(profPct,BM.np)},
+    {l:"DTC MER",v:dtcMer,v7:mer7,fmt:"%",s:dtcMer!=null?gs(dtcMer,BM.mer):"n",inv:true},
+    {l:"Email",v:emailPct,v7:email7,fmt:"%",s:emailPct!=null?gs(emailPct,BM.em):"n"},
+    {l:"Fixed",v:fcPct,v7:fc7,fmt:"%",s:gs(fcPct,BM.fc),inv:true},
+    {l:"AOV",v:aov,v7:aov7,fmt:"$",s:aov>=70?"h":aov>=50?"w":"c"},
   ];
   return <div className="pulse-bar">
     {pills.map((p,i)=>{
       const val=p.fmt==="%"?fp(p.v):f$(p.v);
-      const icon=p.s==="h"?"✅":p.s==="w"?"⚠️":p.s==="c"?"🔴":"—";
-      return <span key={i} className={"pulse-pill"+(p.s==="c"?" pulse-pill-red":"")} data-s={p.s}>{p.l}: {val} {icon}</span>;
+      const icon=p.s==="h"?"\u2705":p.s==="w"?"\u26A0\uFE0F":p.s==="c"?"\uD83D\uDD34":"\u2014";
+      // Trend arrow from 7d
+      let arrow="";
+      if(p.v7!=null&&p.v!=null&&p.v!==0){
+        const ch=((p.v7-p.v)/Math.abs(p.v))*100;
+        if(Math.abs(ch)>=2){const good=p.inv?(ch<0):(ch>0);arrow=good?" \u2191":" \u2193";}
+      }
+      return <span key={i} className={"pulse-pill"+(p.s==="c"?" pulse-pill-red":"")} data-s={p.s}>{p.l}: {val} {icon}{arrow}</span>;
     })}
   </div>;
 }
@@ -477,10 +506,30 @@ function Dashboard(){
   const agg=useMemo(()=>computeAgg(vis),[vis,sessData]);
   const prevAgg=useMemo(()=>computeAgg(prevVis),[prevVis,sessData]);
 
+  // B1: Always compute last-7-day aggregate regardless of selected range
+  const current7d=useMemo(()=>{
+    const now=new Date().toISOString().split('T')[0];
+    const weekAgo=new Date(Date.now()-7*86400000).toISOString().split('T')[0];
+    const weekData=mergedD.filter(d=>d.d>=weekAgo&&d.d<=now);
+    return computeAgg(weekData);
+  },[mergedD,sessData]);
+
+  // Part C: Benchmark toggle
+  const [showBenchmarks,setShowBenchmarks]=useState(true);
+
   // Change indicator helper
   const pctChange=(curr,prev)=>{
     if(!prev||prev===0||curr==null||prev==null)return null;
     return ((curr-prev)/Math.abs(prev))*100;
+  };
+
+  // Trend arrow: compare 7d vs period, return direction + color
+  const trend7d=(val7d,valPeriod,inv)=>{
+    if(val7d==null||valPeriod==null||valPeriod===0)return {arrow:"",color:"var(--t3)"};
+    const ch=((val7d-valPeriod)/Math.abs(valPeriod))*100;
+    if(Math.abs(ch)<2)return {arrow:"\u2192",color:"var(--t3)",label:"stable"};
+    const improving=inv?(ch<0):(ch>0);
+    return {arrow:improving?"\u2191":"\u2193",color:improving?"var(--grn)":"var(--red)",label:improving?"improving":"declining"};
   };
 
   const monthly=useMemo(()=>{
@@ -539,7 +588,7 @@ function Dashboard(){
       </div>
     </div>
 
-    <PulseBar agg={agg} xeroChannels={xeroChannels} klavLive={klavLive}/>
+    <PulseBar agg={agg} xeroChannels={xeroChannels} klavLive={klavLive} current7d={current7d} range={range}/>
 
     {(tab==="equation"||tab==="daily"||tab==="meta"||tab==="insights"||tab==="diagnose"||tab==="scale"||tab==="klaviyo"||tab==="social"||tab==="gads"||tab==="xero"||tab==="website")&&<div style={{padding:"6px 20px",display:"flex",gap:3,alignItems:"center",flexWrap:"wrap"}}>
       {[7,14,30,90,180,365].map(r=><button key={r} onClick={()=>{setRange(r);setCustomFrom("");setCustomTo("");}} style={{padding:"8px 16px",fontSize:13,borderRadius:8,minHeight:36,cursor:"pointer",background:!customFrom&&range===r?"var(--acc)":"var(--card)",color:!customFrom&&range===r?"#fff":"var(--t2)",border:!customFrom&&range===r?"1px solid var(--acc)":"1px solid var(--bdr)"}}>{r}d</button>)}
@@ -548,6 +597,7 @@ function Dashboard(){
       <span style={{fontSize:11,color:"var(--t3)"}}>→</span>
       <input type="date" value={customTo} onChange={e=>{setCustomTo(e.target.value);}} style={{padding:"6px 8px",fontSize:12,borderRadius:6,background:"var(--card)",border:"1px solid var(--bdr)",color:"var(--t1)",fontFamily:"'JetBrains Mono',monospace"}}/>
       {(shopLoading||metaLoading||xeroLoading||klavLoading||klavDetailLoading)&&<span style={{fontSize:12,color:"var(--t3)",marginLeft:8}}>⏳ Refreshing...</span>}
+      <button onClick={()=>setShowBenchmarks(!showBenchmarks)} style={{padding:"5px 10px",fontSize:11,borderRadius:6,cursor:"pointer",background:showBenchmarks?"rgba(21,128,61,0.08)":"var(--card)",color:showBenchmarks?"var(--grn)":"var(--t3)",border:"1px solid "+(showBenchmarks?"rgba(21,128,61,0.3)":"var(--bdr)"),marginLeft:8,whiteSpace:"nowrap"}}>{showBenchmarks?"Benchmarks ✓":"Benchmarks"}</button>
       <span style={{fontSize:10,color:"var(--t3)",marginLeft:"auto"}}>{vis.length} days{agg?" · "+agg.startDate+" → "+agg.endDate:""} · {(shopLive?"Shopify ✓ ":"")+(metaLive?"Meta ✓ ":"")+(klavLive?"Klaviyo ✓ ":"")+(gads?"Google ✓ ":"")+(xeroLive?"Xero ✓":"")}</span>
     </div>}
 
@@ -629,22 +679,40 @@ function Dashboard(){
       return <>
 
       {/* SITUATION BANNER */}
-      <div style={{background:sitColor+"11",border:"1px solid "+sitColor+"33",borderRadius:14,padding:16,marginBottom:16,display:"flex",alignItems:"center",gap:14}}>
-        <div style={{fontSize:28,fontWeight:700,color:sitColor,fontFamily:"'JetBrains Mono',monospace",minWidth:80,textAlign:"center"}}>S{situation}</div>
-        <div>
-          <div style={{fontSize:16,fontWeight:700,color:sitColor}}>{sitLabel}</div>
-          <div style={{fontSize:12,color:"var(--t2)",marginTop:2}}>
-            {situation===1?"Equation is healthy. Focus on SCALING.":
-             situation===2?"Profitable but constrained. DTC MER "+fp(estDtcMer)+", Fixed "+fp(estFcPct)+".":
-             situation===3?"Near breakeven. Fix efficiency before scaling.":
-             "Multiple constraints. Fix unit economics first."}
+      {(()=>{
+        // Compute 7d situation for trend
+        let sit7d=null,sit7dLabel="";
+        if(c7&&range!==7){
+          const c7dtcRatio=xeroChannels.dtc/xeroChannels.rev;
+          const c7estTotal=c7dtcRatio>0?c7.tr/c7dtcRatio:c7.tr;
+          const c7estVar=c7estTotal*(XERO_VAR/XERO.rev);
+          const c7estFixed=fixedMonthly*(7/30);
+          const c7estProfit=c7estTotal-c7estVar-c7.tms-c7estFixed;
+          const c7profPct=c7estTotal>0?c7estProfit/c7estTotal*100:0;
+          const c7dtcMer=c7.tr>0?c7.tms/c7.tr*100:0;
+          sit7d=c7profPct>=10&&c7dtcMer<=35?1:c7profPct>=5?2:c7profPct>=0?3:5;
+          if(sit7d<situation)sit7dLabel="7d trending toward S"+sit7d+" \u2191";
+          else if(sit7d>situation)sit7dLabel="7d trending toward S"+sit7d+" \u2193";
+          else sit7dLabel="7d stable at S"+sit7d;
+        }
+        return <div style={{background:sitColor+"11",border:"1px solid "+sitColor+"33",borderRadius:14,padding:16,marginBottom:16,display:"flex",alignItems:"center",gap:14}}>
+          <div style={{fontSize:28,fontWeight:700,color:sitColor,fontFamily:"'JetBrains Mono',monospace",minWidth:80,textAlign:"center"}}>S{situation}</div>
+          <div>
+            <div style={{fontSize:16,fontWeight:700,color:sitColor}}>{sitLabel}</div>
+            <div style={{fontSize:12,color:"var(--t2)",marginTop:2}}>
+              {situation===1?"Equation is healthy. Focus on SCALING.":
+               situation===2?"Profitable but constrained. DTC MER "+fp(estDtcMer)+", Fixed "+fp(estFcPct)+".":
+               situation===3?"Near breakeven. Fix efficiency before scaling.":
+               "Multiple constraints. Fix unit economics first."}
+            </div>
+            {sit7dLabel&&<div style={{fontSize:11,color:sit7d<situation?"var(--grn)":sit7d>situation?"var(--red)":"var(--t3)",marginTop:3,fontWeight:500}}>{sit7dLabel}</div>}
           </div>
-        </div>
-        <div style={{marginLeft:"auto",textAlign:"right"}}>
-          <div style={{fontSize:24,fontWeight:700,color:sitColor,fontFamily:"'JetBrains Mono',monospace"}}>{fp(estProfPct)}</div>
-          <div style={{fontSize:10,color:"var(--t3)"}}>est. net profit</div>
-        </div>
-      </div>
+          <div style={{marginLeft:"auto",textAlign:"right"}}>
+            <div style={{fontSize:24,fontWeight:700,color:sitColor,fontFamily:"'JetBrains Mono',monospace"}}>{fp(estProfPct)}</div>
+            <div style={{fontSize:10,color:"var(--t3)"}}>est. net profit</div>
+          </div>
+        </div>;
+      })()}
 
       {/* TARGETS PROGRESS */}
       <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:16,marginBottom:16}}>
@@ -664,14 +732,26 @@ function Dashboard(){
         </div>
         <div style={{fontSize:11,color:"var(--t3)",marginBottom:10}}>Online store only. {agg.startDate} \u2192 {agg.endDate}{prevAgg?" \u00B7 vs prior "+prevAgg.d+"d ("+prevAgg.startDate+" \u2192 "+prevAgg.endDate+")":""}</div>
 
-        {(()=>{
+        // 7d snapshot values
+      const c7=current7d;
+
+      {(()=>{
           const renderCards=(cards)=>cards.map((m,i)=>{
             const dv=m.f==="$"?f$(m.v):m.f==="%"?fp(m.v):m.v!=null?m.v.toFixed(2):"\u2014";
-            const s=m.bm?gs(m.v,m.bm):"n";
+            const s=(m.bm&&showBenchmarks)?gs(m.v,m.bm):"n";
+            // 7d sub-indicator
+            const fv7=m.v7d!=null?(m.f==="$"?f$(m.v7d):m.f==="%"?fp(m.v7d):m.v7d!=null?m.v7d.toFixed(2):null):null;
+            let arrow7="",arrowCol="var(--t3)";
+            if(m.v7d!=null&&m.v!=null&&m.v!==0){
+              const ch7=((m.v7d-m.v)/Math.abs(m.v))*100;
+              if(Math.abs(ch7)<2){arrow7="\u2192";arrowCol="var(--t3)";}
+              else{const good7=m.inv?(ch7<0):(ch7>0);arrow7=good7?"\u2191":"\u2193";arrowCol=good7?"var(--grn)":"var(--red)";}
+            }
             return <div key={i} style={{background:SB[s],border:"1px solid "+SC[s]+"33",borderRadius:12,padding:14}}>
               <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:4,fontWeight:500}}>{m.l}</div>
               <div style={{fontSize:m.big?28:22,fontWeight:700,color:SC[s],fontFamily:"'JetBrains Mono',monospace"}}>{dv}</div>
-              {m.sub&&<div style={{fontSize:9,color:"var(--t3)",marginTop:1}}>{m.sub}</div>}
+              {range!==7&&fv7&&<div style={{fontSize:11,color:arrowCol,marginTop:3,fontFamily:"'JetBrains Mono',monospace"}}>7d: {fv7} {arrow7}</div>}
+              {m.sub&&showBenchmarks&&<div style={{fontSize:9,color:"var(--t3)",marginTop:1}}>{m.sub}</div>}
               {m.pv!=null&&<Chg curr={m.v} prev={m.pv} inv={m.inv} fmt={m.fmt}/>}
             </div>;
           });
@@ -680,33 +760,33 @@ function Dashboard(){
             <ClusterLabel>Revenue</ClusterLabel>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8}}>
               {renderCards([
-                {l:"DTC Revenue",v:dtcRev,pv:pDtcRev,f:"$",fmt:"$",big:true},
-                {l:"Orders",v:orders,pv:pOrders,f:"n"},
-                {l:"AOV",v:aov,pv:pAov,f:"$",fmt:"$"},
+                {l:"DTC Revenue",v:dtcRev,pv:pDtcRev,f:"$",fmt:"$",big:true,v7d:c7?c7.tr:null},
+                {l:"Orders",v:orders,pv:pOrders,f:"n",v7d:c7?c7.to:null},
+                {l:"AOV",v:aov,pv:pAov,f:"$",fmt:"$",v7d:c7?c7.aov:null},
               ])}
             </div>
             <ClusterLabel>Marketing</ClusterLabel>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8}}>
               {renderCards([
-                {l:"Meta Spend",v:metaSpend,pv:pMetaSpend,f:"$",fmt:"$",inv:true},
-                {l:"DTC MER",v:mer,pv:pMer,f:"%",bm:BM.mer,inv:true,sub:"benchmark <35%"},
-                {l:"Meta ROAS",v:roas,pv:pRoas,f:"n",sub:"last-click"},
-                {l:"CPP",v:cpp,f:"$",inv:true,sub:"cost per purchase"},
+                {l:"Meta Spend",v:metaSpend,pv:pMetaSpend,f:"$",fmt:"$",inv:true,v7d:c7?c7.tms:null},
+                {l:"DTC MER",v:mer,pv:pMer,f:"%",bm:BM.mer,inv:true,sub:"benchmark <35%",v7d:c7?c7.mer:null},
+                {l:"Meta ROAS",v:roas,pv:pRoas,f:"n",sub:"last-click",v7d:c7?c7.metaROAS:null},
+                {l:"CPP",v:cpp,f:"$",inv:true,sub:"cost per purchase",v7d:c7?c7.cpp:null},
               ])}
             </div>
             <ClusterLabel>Channels</ClusterLabel>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8}}>
               {renderCards([
-                ...(emailPct!=null?[{l:"Email Rev %",v:emailPct,f:"%",bm:BM.em,sub:"benchmark 30-40%"}]:[]),
-                {l:"Shipping %",v:a.shipPct,f:"%",sub:"of DTC revenue"},
+                ...(emailPct!=null?[{l:"Email Rev %",v:emailPct,f:"%",bm:BM.em,sub:"benchmark 30-40%",v7d:c7?c7.emailPct:null}]:[]),
+                {l:"Shipping %",v:a.shipPct,f:"%",sub:"of DTC revenue",v7d:c7?c7.shipPct:null},
               ])}
             </div>
             <ClusterLabel>Traffic</ClusterLabel>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8}}>
               {renderCards([
-                {l:"Sessions",v:a.useSess||null,f:"n",sub:a.sessSource==="ga4"?a.ga4Days+"d GA4 data":"paste in Daily tab"},
-                {l:"Conv Rate",v:a.cr,f:"%",bm:{h:[2.5,100],w:[1.5,2.5]},sub:"orders / sessions"+(a.sessSource==="ga4"?" (GA4)":"")},
-                {l:"Rev/Session",v:a.rps,f:"$",sub:"RPV = CR \u00D7 AOV"+(a.sessSource==="ga4"?" (GA4)":"")},
+                {l:"Sessions",v:a.useSess||null,f:"n",sub:a.sessSource==="ga4"?a.ga4Days+"d GA4 data":"paste in Daily tab",v7d:c7?c7.useSess:null},
+                {l:"Conv Rate",v:a.cr,f:"%",bm:{h:[2.5,100],w:[1.5,2.5]},sub:"orders / sessions"+(a.sessSource==="ga4"?" (GA4)":""),v7d:c7?c7.cr:null},
+                {l:"Rev/Session",v:a.rps,f:"$",sub:"RPV = CR \u00D7 AOV"+(a.sessSource==="ga4"?" (GA4)":""),v7d:c7?c7.rps:null},
               ])}
             </div>
           </>;
@@ -833,29 +913,42 @@ function Dashboard(){
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,fontFamily:"'JetBrains Mono',monospace"}}>
               <thead><tr style={{borderBottom:"2px solid var(--bdr)"}}>
                 <th style={{padding:"8px",textAlign:"left",color:"var(--t3)",fontSize:10,fontWeight:500}}>METRIC</th>
-                <th style={{padding:"8px",textAlign:"right",color:"var(--t3)",fontSize:10}}>PRIOR ({prevAgg.d}d)</th>
-                <th style={{padding:"8px",textAlign:"right",color:"var(--t3)",fontSize:10}}>CURRENT ({a.d}d)</th>
-                <th style={{padding:"8px",textAlign:"right",color:"var(--t3)",fontSize:10}}>CHANGE</th>
+                {range!==7&&<th style={{padding:"8px",textAlign:"right",color:"var(--acc)",fontSize:10,fontWeight:600}}>7D CURRENT</th>}
+                <th style={{padding:"8px",textAlign:"right",color:"var(--t3)",fontSize:10}}>{a.d}D PERIOD</th>
+                <th style={{padding:"8px",textAlign:"right",color:"var(--t3)",fontSize:10}}>{prevAgg.d}D PRIOR</th>
+                {showBenchmarks&&<th style={{padding:"8px",textAlign:"right",color:"var(--t3)",fontSize:10}}>BENCHMARK</th>}
+                <th style={{padding:"8px",textAlign:"right",color:"var(--t3)",fontSize:10}}>TREND</th>
               </tr></thead>
               <tbody>{[
-                {l:"DTC Revenue",c:dtcRev,pv:pDtcRev,f:"$"},
-                {l:"Orders",c:orders,pv:pOrders,f:"n"},
-                {l:"AOV",c:aov,pv:pAov,f:"$"},
-                {l:"Meta Spend",c:metaSpend,pv:pMetaSpend,f:"$",inv:true},
-                {l:"DTC MER",c:mer,pv:pMer,f:"%",inv:true},
-                {l:"Meta ROAS",c:roas,pv:pRoas,f:"x"},
-                {l:"CPP",c:cpp,pv:p?p.cpp:null,f:"$",inv:true},
-                ...(emailPct!=null?[{l:"Email Rev %",c:emailPct,pv:p?p.emailPct:null,f:"%"}]:[]),
+                {l:"DTC Revenue",c:dtcRev,pv:pDtcRev,v7d:c7?c7.tr:null,f:"$",bench:"$32K/mo"},
+                {l:"Orders",c:orders,pv:pOrders,v7d:c7?c7.to:null,f:"n"},
+                {l:"AOV",c:aov,pv:pAov,v7d:c7?c7.aov:null,f:"$",bench:">$70"},
+                {l:"Meta Spend",c:metaSpend,pv:pMetaSpend,v7d:c7?c7.tms:null,f:"$",inv:true},
+                {l:"DTC MER",c:mer,pv:pMer,v7d:c7?c7.mer:null,f:"%",inv:true,bench:"<35%"},
+                {l:"Meta ROAS",c:roas,pv:pRoas,v7d:c7?c7.metaROAS:null,f:"x",bench:">2.5x"},
+                {l:"CPP",c:cpp,pv:p?p.cpp:null,v7d:c7?c7.cpp:null,f:"$",inv:true,bench:"<$15"},
+                ...(emailPct!=null?[{l:"Email Rev %",c:emailPct,pv:p?p.emailPct:null,v7d:c7?c7.emailPct:null,f:"%",bench:"30-40%"}]:[]),
               ].map((row,i)=>{
                 const ch=pctChange(row.c,row.pv);
                 const good=ch!=null?(row.inv?ch<0:ch>0):null;
                 const chCol=ch==null?"var(--t3)":Math.abs(ch)<2?"var(--t3)":good?"var(--grn)":"var(--red)";
                 const fv=v=>v==null?"\u2014":row.f==="$"?f$(v):row.f==="%"?fp(v):row.f==="x"?(v||0).toFixed(2)+"x":fn(v);
+                // Trend: compare 7d to period average
+                const t7=trend7d(row.v7d,row.c,row.inv);
+                // 7d cell color — highlight if worse than period AND near benchmark
+                let v7dCol="var(--t1)";
+                if(row.v7d!=null&&row.c!=null&&row.c!==0){
+                  const ch7=((row.v7d-row.c)/Math.abs(row.c))*100;
+                  const worse=row.inv?(ch7>5):(ch7<-5);
+                  if(worse)v7dCol="var(--red)";
+                }
                 return <tr key={i} style={{borderBottom:"1px solid var(--bdr)"}}>
                   <td style={{padding:"8px",color:"var(--t2)",fontFamily:"'DM Sans',sans-serif"}}>{row.l}</td>
-                  <td style={{padding:"8px",textAlign:"right",color:"var(--t3)"}}>{fv(row.pv)}</td>
+                  {range!==7&&<td style={{padding:"8px",textAlign:"right",color:v7dCol,fontWeight:600}}>{fv(row.v7d)}</td>}
                   <td style={{padding:"8px",textAlign:"right",color:"var(--t1)",fontWeight:600}}>{fv(row.c)}</td>
-                  <td style={{padding:"8px",textAlign:"right",color:chCol,fontWeight:600}}>{ch!=null?(ch>0?"+":"")+ch.toFixed(1)+"%":"\u2014"}</td>
+                  <td style={{padding:"8px",textAlign:"right",color:"var(--t3)"}}>{fv(row.pv)}</td>
+                  {showBenchmarks&&<td style={{padding:"8px",textAlign:"right",color:"var(--t3)",fontSize:10}}>{row.bench||"\u2014"}</td>}
+                  <td style={{padding:"8px",textAlign:"right",color:t7.color,fontWeight:600,fontSize:13}}>{t7.arrow} <span style={{fontSize:10}}>{t7.label||""}</span></td>
                 </tr>;
               })}</tbody>
             </table>
