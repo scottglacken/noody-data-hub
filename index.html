@@ -2217,7 +2217,7 @@ function Dashboard(){
                 <div style={{fontSize:10,color:"var(--t3)",marginTop:2}}>{c.sub}</div>
               </div>;})}
             </div>
-            <div style={{fontSize:10,color:"var(--t3)",marginTop:4}}>Sessions: {fn(m.totalSessions)} · Users: {fn(m.distinctUsers)} · {cl.dateRange?.start} → {cl.dateRange?.end}</div>
+            <div style={{fontSize:10,color:"var(--t3)",marginTop:4}}>Sessions: {fn(m.totalSessions)} · Users: {fn(m.distinctUsers)} · Last {cl.numDays||3} days{m.totalBotSessions>0?" · "+fn(m.totalBotSessions)+" bot sessions filtered":""}</div>
           </div>;
         })()}
 
@@ -2231,17 +2231,18 @@ function Dashboard(){
                 <th style={{...thS,textAlign:"right"}}>Revenue</th>
                 <th style={{...thS,textAlign:"right"}}>Units</th>
                 <th style={{...thS,textAlign:"right"}}>Orders</th>
-                <th style={{...thS,textAlign:"right"}}>AOV</th>
+                <th style={{...thS,textAlign:"right"}}>Avg Price</th>
               </tr></thead>
               <tbody>
                 {wd.topProducts.map((p,i)=>{
                   const revShare=totalRev>0?(p.revenue/totalRev*100):0;
+                  const avgPrice=p.units>0?p.revenue/p.units:0;
                   return <tr key={i}>
                     <td style={tdS}><span style={{fontWeight:i<3?600:400}}>{p.name}</span></td>
                     <td style={{...tdS,textAlign:"right"}}>{f$(p.revenue)} <span style={{fontSize:10,color:"var(--t3)"}}>({revShare.toFixed(0)}%)</span></td>
                     <td style={{...tdS,textAlign:"right"}}>{fn(p.units)}</td>
                     <td style={{...tdS,textAlign:"right"}}>{fn(p.orders)}</td>
-                    <td style={{...tdS,textAlign:"right"}}>{f$(p.aov)}</td>
+                    <td style={{...tdS,textAlign:"right"}}>{f$(avgPrice)}</td>
                   </tr>;
                 })}
               </tbody>

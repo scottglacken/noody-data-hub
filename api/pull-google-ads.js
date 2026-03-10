@@ -36,47 +36,10 @@ async function handleGA4(req, res, accessToken, clientId) {
     'Content-Type': 'application/json',
   };
 
-  // Run all 6 reports in parallel
-  const [dailyRes, trafficRes, landingRes, totalSessionsRes, deviceRes, engagementRes] = await Promise.all([
-    // 1. Daily sessions + conversions (purchase only)
-    fetch(ga4Url, {
-      method: 'POST', headers,
-      body: JSON.stringify({
-        dateRanges: [{ startDate, endDate }],
-        dimensions: [{ name: 'date' }],
-        metrics: [{ name: 'sessions' }, { name: 'conversions' }],
-        dimensionFilter: {
-          filter: { fieldName: 'eventName', stringFilter: { value: 'purchase' } },
-        },
-        orderBys: [{ dimension: { dimensionName: 'date' } }],
-      }),
-    }),
-    // 2. Traffic sources (top 10 channels)
-    fetch(ga4Url, {
-      method: 'POST', headers,
-      body: JSON.stringify({
-        dateRanges: [{ startDate, endDate }],
-        dimensions: [{ name: 'sessionDefaultChannelGroup' }],
-        metrics: [{ name: 'sessions' }, { name: 'conversions' }],
-        dimensionFilter: {
-          filter: { fieldName: 'eventName', stringFilter: { value: 'purchase' } },
-        },
-        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
-        limit: '10',
-      }),
-    }),
-    // 3. Landing pages (top 10, with engagedSessions for bounce rate)
-    fetch(ga4Url, {
-      method: 'POST', headers,
-      body: JSON.stringify({
-        dateRanges: [{ startDate, endDate }],
-        dimensions: [{ name: 'landingPagePlusQueryString' }],
-        metrics: [{ name: 'sessions' }, { name: 'engagedSessions' }],
-        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
-        limit: '10',
-      }),
-    }),
-    // 4. Total sessions per day (unfiltered — for accurate session counts)
+  // Run all 8 reports in parallel
+  // Queries 1-4 are unfiltered (all sessions). Queries 5-8 are purchase-filtered (conversions only).
+  const [totalSessionsRes, trafficRes, deviceRes, engagementRes, dailyPurchRes, trafficPurchRes, devicePurchRes, landingRes] = await Promise.all([
+    // 1. Total sessions per day (unfiltered)
     fetch(ga4Url, {
       method: 'POST', headers,
       body: JSON.stringify({
@@ -86,19 +49,27 @@ async function handleGA4(req, res, accessToken, clientId) {
         orderBys: [{ dimension: { dimensionName: 'date' } }],
       }),
     }),
-    // 5. Device category breakdown (purchase-filtered)
+    // 2. Traffic sources — unfiltered sessions (all visitors)
+    fetch(ga4Url, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: 'sessionDefaultChannelGroup' }],
+        metrics: [{ name: 'sessions' }],
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: '10',
+      }),
+    }),
+    // 3. Device breakdown — unfiltered sessions
     fetch(ga4Url, {
       method: 'POST', headers,
       body: JSON.stringify({
         dateRanges: [{ startDate, endDate }],
         dimensions: [{ name: 'deviceCategory' }],
-        metrics: [{ name: 'sessions' }, { name: 'conversions' }],
-        dimensionFilter: {
-          filter: { fieldName: 'eventName', stringFilter: { value: 'purchase' } },
-        },
+        metrics: [{ name: 'sessions' }],
       }),
     }),
-    // 6. Engagement summary (unfiltered)
+    // 4. Engagement summary (unfiltered)
     fetch(ga4Url, {
       method: 'POST', headers,
       body: JSON.stringify({
@@ -106,10 +77,52 @@ async function handleGA4(req, res, accessToken, clientId) {
         metrics: [{ name: 'sessions' }, { name: 'engagedSessions' }, { name: 'averageSessionDuration' }, { name: 'bounceRate' }],
       }),
     }),
+    // 5. Daily purchase conversions (purchase-filtered — for conversion counts)
+    fetch(ga4Url, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: 'date' }],
+        metrics: [{ name: 'ecommercePurchases' }],
+        orderBys: [{ dimension: { dimensionName: 'date' } }],
+      }),
+    }),
+    // 6. Traffic sources — purchase counts only
+    fetch(ga4Url, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: 'sessionDefaultChannelGroup' }],
+        metrics: [{ name: 'ecommercePurchases' }],
+        orderBys: [{ metric: { metricName: 'ecommercePurchases' }, desc: true }],
+        limit: '10',
+      }),
+    }),
+    // 7. Device breakdown — purchase counts only
+    fetch(ga4Url, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: 'deviceCategory' }],
+        metrics: [{ name: 'ecommercePurchases' }],
+      }),
+    }),
+    // 8. Landing pages (unfiltered, with engagedSessions for bounce rate)
+    fetch(ga4Url, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: 'landingPagePlusQueryString' }],
+        metrics: [{ name: 'sessions' }, { name: 'engagedSessions' }],
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: '30',
+      }),
+    }),
   ]);
 
   // Check for 403 (missing analytics scope)
-  for (const r of [dailyRes, trafficRes, landingRes, totalSessionsRes, deviceRes, engagementRes]) {
+  const allResponses = [totalSessionsRes, trafficRes, deviceRes, engagementRes, dailyPurchRes, trafficPurchRes, devicePurchRes, landingRes];
+  for (const r of allResponses) {
     if (r.status === 403) {
       const errBody = await r.json().catch(() => ({}));
       const reAuthUrl = 'https://accounts.google.com/o/oauth2/v2/auth?client_id=' + clientId +
@@ -124,60 +137,68 @@ async function handleGA4(req, res, accessToken, clientId) {
   }
 
   // Check other errors
-  for (const [label, r] of [['daily', dailyRes], ['traffic', trafficRes], ['landing', landingRes], ['totalSessions', totalSessionsRes], ['device', deviceRes], ['engagement', engagementRes]]) {
+  const labeledResponses = [['totalSessions', totalSessionsRes], ['traffic', trafficRes], ['device', deviceRes], ['engagement', engagementRes], ['dailyPurch', dailyPurchRes], ['trafficPurch', trafficPurchRes], ['devicePurch', devicePurchRes], ['landing', landingRes]];
+  for (const [label, r] of labeledResponses) {
     if (!r.ok) {
       const errText = await r.text();
       return res.status(r.status).json({ error: `GA4 ${label} report failed: ${r.status}`, detail: errText.slice(0, 500) });
     }
   }
 
-  const [dailyData, trafficData, landingData, totalSessionsData, deviceData, engagementData] = await Promise.all([
-    dailyRes.json(), trafficRes.json(), landingRes.json(), totalSessionsRes.json(), deviceRes.json(), engagementRes.json(),
+  const [totalSessionsData, trafficData, deviceData, engagementData, dailyPurchData, trafficPurchData, devicePurchData, landingData] = await Promise.all([
+    totalSessionsRes.json(), trafficRes.json(), deviceRes.json(), engagementRes.json(), dailyPurchRes.json(), trafficPurchRes.json(), devicePurchRes.json(), landingRes.json(),
   ]);
 
   // Build a map of total sessions per date (unfiltered)
   const sessionsMap = {};
   if (totalSessionsData.rows) {
     for (const row of totalSessionsData.rows) {
-      const rawDate = row.dimensionValues[0].value; // YYYYMMDD
+      const rawDate = row.dimensionValues[0].value;
       const date = rawDate.slice(0, 4) + '-' + rawDate.slice(4, 6) + '-' + rawDate.slice(6, 8);
       sessionsMap[date] = parseInt(row.metricValues[0].value) || 0;
     }
   }
 
-  // Parse daily data — use unfiltered sessions, purchase-filtered conversions
-  const daily = [];
-  let totalSessions = 0;
-  let totalConversions = 0;
-
-  // Build conversions map from purchase-filtered query
-  const conversionsMap = {};
-  if (dailyData.rows) {
-    for (const row of dailyData.rows) {
+  // Build purchases map from ecommercePurchases query
+  const purchasesMap = {};
+  if (dailyPurchData.rows) {
+    for (const row of dailyPurchData.rows) {
       const rawDate = row.dimensionValues[0].value;
       const date = rawDate.slice(0, 4) + '-' + rawDate.slice(4, 6) + '-' + rawDate.slice(6, 8);
-      conversionsMap[date] = parseInt(row.metricValues[1].value) || 0;
+      purchasesMap[date] = parseInt(row.metricValues[0].value) || 0;
     }
   }
 
-  // Merge: iterate over all dates from totalSessions
+  // Merge daily: unfiltered sessions + purchase counts
+  const daily = [];
+  let totalSessions = 0;
+  let totalConversions = 0;
   const allDates = Object.keys(sessionsMap).sort();
   for (const date of allDates) {
     const sessions = sessionsMap[date] || 0;
-    const conversions = conversionsMap[date] || 0;
+    const conversions = purchasesMap[date] || 0;
     totalSessions += sessions;
     totalConversions += conversions;
     daily.push({ date, sessions, conversions });
   }
 
-  // Parse traffic sources
+  // Build purchase counts by channel
+  const channelPurchases = {};
+  if (trafficPurchData.rows) {
+    for (const row of trafficPurchData.rows) {
+      channelPurchases[row.dimensionValues[0].value] = parseInt(row.metricValues[0].value) || 0;
+    }
+  }
+
+  // Parse traffic sources — unfiltered sessions + purchase counts
   const trafficSources = [];
   if (trafficData.rows) {
     for (const row of trafficData.rows) {
       const sessions = parseInt(row.metricValues[0].value) || 0;
-      const conversions = parseInt(row.metricValues[1].value) || 0;
+      const channel = row.dimensionValues[0].value;
+      const conversions = channelPurchases[channel] || 0;
       trafficSources.push({
-        channel: row.dimensionValues[0].value,
+        channel,
         sessions,
         conversions,
         conversionRate: sessions > 0 ? Math.round((conversions / sessions) * 10000) / 100 : 0,
@@ -185,34 +206,53 @@ async function handleGA4(req, res, accessToken, clientId) {
     }
   }
 
-  // Parse landing pages
-  const landingPages = [];
-  if (landingData.rows) {
-    for (const row of landingData.rows) {
-      const sessions = parseInt(row.metricValues[0].value) || 0;
-      const engagedSessions = parseInt(row.metricValues[1].value) || 0;
-      landingPages.push({
-        page: row.dimensionValues[0].value,
-        sessions,
-        bounceRate: sessions > 0 ? Math.round(((sessions - engagedSessions) / sessions) * 10000) / 100 : 0,
-      });
+  // Build purchase counts by device
+  const devicePurchases = {};
+  if (devicePurchData.rows) {
+    for (const row of devicePurchData.rows) {
+      devicePurchases[row.dimensionValues[0].value] = parseInt(row.metricValues[0].value) || 0;
     }
   }
 
-  // Parse device breakdown
+  // Parse device breakdown — unfiltered sessions + purchase counts
   const devices = [];
   if (deviceData.rows) {
     for (const row of deviceData.rows) {
       const sessions = parseInt(row.metricValues[0].value) || 0;
-      const conversions = parseInt(row.metricValues[1].value) || 0;
+      const device = row.dimensionValues[0].value;
+      const conversions = devicePurchases[device] || 0;
       devices.push({
-        device: row.dimensionValues[0].value,
+        device,
         sessions,
         conversions,
         conversionRate: sessions > 0 ? Math.round((conversions / sessions) * 10000) / 100 : 0,
       });
     }
   }
+
+  // Parse landing pages — collapse query params, merge duplicates
+  const landingPageMap = {};
+  if (landingData.rows) {
+    for (const row of landingData.rows) {
+      const rawPage = row.dimensionValues[0].value;
+      const page = rawPage.split('?')[0] || rawPage;
+      const sessions = parseInt(row.metricValues[0].value) || 0;
+      const engagedSessions = parseInt(row.metricValues[1].value) || 0;
+      if (!landingPageMap[page]) {
+        landingPageMap[page] = { page, sessions: 0, engagedSessions: 0 };
+      }
+      landingPageMap[page].sessions += sessions;
+      landingPageMap[page].engagedSessions += engagedSessions;
+    }
+  }
+  const landingPages = Object.values(landingPageMap)
+    .map(lp => ({
+      page: lp.page,
+      sessions: lp.sessions,
+      bounceRate: lp.sessions > 0 ? Math.round(((lp.sessions - lp.engagedSessions) / lp.sessions) * 10000) / 100 : 0,
+    }))
+    .sort((a, b) => b.sessions - a.sessions)
+    .slice(0, 10);
 
   // Parse engagement summary
   let engagementRate = 0;

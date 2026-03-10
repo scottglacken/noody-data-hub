@@ -14,61 +14,105 @@ export default async function handler(req, res) {
   }
 
   // Microsoft Clarity mode — no Shopify needed
+  // Uses Clarity Data Export API: https://learn.microsoft.com/en-us/clarity/setup-and-installation/clarity-data-export-api
+  // Limited to last 1-3 days (numOfDays param), 10 requests/day max
   if (req.query.type === 'clarity') {
     var clarityToken = process.env.CLARITY_API_TOKEN;
     var clarityProject = process.env.CLARITY_PROJECT_ID;
-    if (!clarityToken || !clarityProject) {
+    if (!clarityToken) {
       return res.status(200).json({
         error: 'missing_config',
-        message: 'Clarity not configured. Set CLARITY_API_TOKEN and CLARITY_PROJECT_ID env vars.',
-        setup: 'Get your API token from clarity.microsoft.com → Settings → API Access'
+        message: 'Clarity not configured. Set CLARITY_API_TOKEN env var.',
+        setup: 'Go to clarity.microsoft.com → Settings → Data Export → Generate API token',
+        projectId: clarityProject || null
       });
     }
-    var cDays = parseInt(req.query.days) || 30;
-    var cEnd = new Date().toISOString().split('T')[0];
-    var cStart = new Date(Date.now() - cDays * 86400000).toISOString().split('T')[0];
-    var cBase = 'https://www.clarity.ms/export-data/api/v1/project/' + clarityProject;
+    var cNumDays = Math.min(3, Math.max(1, parseInt(req.query.days) || 3));
+    var cBase = 'https://www.clarity.ms/export-data/api/v1/project-live-insights';
     var cHeaders = { 'Authorization': 'Bearer ' + clarityToken, 'Content-Type': 'application/json' };
     try {
+      // Fetch traffic metrics and URL-dimensioned breakdown in parallel
       var cResults = await Promise.all([
-        fetch(cBase + '/metrics?startDate=' + cStart + '&endDate=' + cEnd, { headers: cHeaders }),
-        fetch(cBase + '/popular-pages?startDate=' + cStart + '&endDate=' + cEnd + '&count=10', { headers: cHeaders })
+        fetch(cBase + '?numOfDays=' + cNumDays, { headers: cHeaders }),
+        fetch(cBase + '?numOfDays=' + cNumDays + '&dimension1=URL', { headers: cHeaders })
       ]);
       var metricsRes = cResults[0];
       var pagesRes = cResults[1];
       if (!metricsRes.ok) {
         var mErr = await metricsRes.text();
-        return res.status(200).json({ error: 'clarity_api_error', message: 'Clarity metrics API returned ' + metricsRes.status, detail: mErr.slice(0, 300) });
+        return res.status(200).json({ error: 'clarity_api_error', message: 'Clarity API returned ' + metricsRes.status, detail: mErr.slice(0, 500), hint: metricsRes.status === 401 ? 'Token may be expired. Regenerate at clarity.microsoft.com → Settings → Data Export' : metricsRes.status === 429 ? 'Daily limit reached (10 requests/day)' : '' });
       }
-      var metricsData = await metricsRes.json();
-      var pagesData = pagesRes.ok ? await pagesRes.json() : [];
-      var popularPages = [];
-      if (Array.isArray(pagesData)) {
-        for (var pi = 0; pi < pagesData.length; pi++) {
-          var pg = pagesData[pi];
-          popularPages.push({
-            url: pg.url || pg.page || '',
-            sessions: pg.sessions || pg.totalSessions || 0,
-            avgScrollDepth: pg.scrollDepth || pg.avgScrollDepth || 0,
-            avgEngagementTime: pg.engagementTime || pg.avgEngagementTime || 0,
-            rageClicks: pg.rageClickRate || pg.rageClicks || 0
-          });
+      var metricsArr = await metricsRes.json();
+      var pagesArr = pagesRes.ok ? await pagesRes.json() : [];
+
+      // Parse metrics array — Clarity returns [{metricName:"Traffic", information:[{...}]}, ...]
+      var totalSessions = 0, totalBotSessions = 0, distinctUsers = 0, pagesPerSession = 0;
+      var deadClicks = 0, rageClicks = 0, quickbacks = 0, excessiveScrolls = 0, scrollDepth = 0;
+      if (Array.isArray(metricsArr)) {
+        for (var mi = 0; mi < metricsArr.length; mi++) {
+          var metric = metricsArr[mi];
+          var info = metric.information;
+          if (!info || !info.length) continue;
+          // Aggregate across all info rows (may be broken by dimensions)
+          for (var mj = 0; mj < info.length; mj++) {
+            var row = info[mj];
+            totalSessions += parseInt(row.totalSessionCount) || 0;
+            totalBotSessions += parseInt(row.totalBotSessionCount) || 0;
+            distinctUsers += parseInt(row.distantUserCount || row.distinctUserCount) || 0;
+            if (row.PagesPerSessionPercentage) pagesPerSession = parseFloat(row.PagesPerSessionPercentage) || 0;
+            deadClicks += parseInt(row.deadClickCount || row.Dead_Click_Count) || 0;
+            rageClicks += parseInt(row.rageClickCount || row.Rage_Click_Count) || 0;
+            quickbacks += parseInt(row.quickbackClickCount || row.Quickback_Click_Count) || 0;
+            excessiveScrolls += parseInt(row.excessiveScrollCount || row.Excessive_Scroll) || 0;
+            if (row.scrollDepth || row.Scroll_Depth) scrollDepth = parseFloat(row.scrollDepth || row.Scroll_Depth) || 0;
+          }
         }
       }
+      var humanSessions = totalSessions - totalBotSessions;
+      if (humanSessions < 0) humanSessions = totalSessions;
+
+      // Compute rates (as percentage of human sessions)
+      var deadClickRate = humanSessions > 0 ? (deadClicks / humanSessions * 100) : 0;
+      var rageClickRate = humanSessions > 0 ? (rageClicks / humanSessions * 100) : 0;
+      var quickbackRate = humanSessions > 0 ? (quickbacks / humanSessions * 100) : 0;
+      var excessiveScrollRate = humanSessions > 0 ? (excessiveScrolls / humanSessions * 100) : 0;
+
+      // Parse popular pages from URL-dimensioned query
+      var popularPages = [];
+      if (Array.isArray(pagesArr)) {
+        for (var pi = 0; pi < pagesArr.length; pi++) {
+          var pMetric = pagesArr[pi];
+          if (!pMetric.information) continue;
+          for (var pj = 0; pj < pMetric.information.length; pj++) {
+            var pr = pMetric.information[pj];
+            if (pr.URL) {
+              popularPages.push({
+                url: pr.URL,
+                sessions: parseInt(pr.totalSessionCount) || 0,
+                rageClicks: parseInt(pr.rageClickCount || pr.Rage_Click_Count) || 0,
+                deadClicks: parseInt(pr.deadClickCount || pr.Dead_Click_Count) || 0
+              });
+            }
+          }
+        }
+      }
+      popularPages.sort(function(a, b) { return b.sessions - a.sessions; });
+      popularPages = popularPages.slice(0, 10);
+
       return res.status(200).json({
-        projectId: clarityProject,
+        projectId: clarityProject || 'embedded-in-token',
         pulledAt: new Date().toISOString(),
-        dateRange: { start: cStart, end: cEnd },
+        numDays: cNumDays,
         metrics: {
-          totalSessions: metricsData.totalSessions || 0,
-          distinctUsers: metricsData.distinctUsers || 0,
-          pagesPerSession: Math.round((metricsData.pagesPerSession || 0) * 100) / 100,
-          avgScrollDepth: Math.round((metricsData.scrollDepth || 0) * 100) / 100,
-          avgEngagementTime: Math.round((metricsData.engagementTime || 0) * 100) / 100,
-          deadClickRate: Math.round((metricsData.deadClickRate || 0) * 100) / 100,
-          rageClickRate: Math.round((metricsData.rageClickRate || 0) * 100) / 100,
-          quickbackRate: Math.round((metricsData.quickbackRate || 0) * 100) / 100,
-          excessiveScrollRate: Math.round((metricsData.excessiveScrollRate || 0) * 100) / 100
+          totalSessions: humanSessions,
+          totalBotSessions: totalBotSessions,
+          distinctUsers: distinctUsers,
+          pagesPerSession: Math.round(pagesPerSession * 100) / 100,
+          avgScrollDepth: Math.round(scrollDepth * 100) / 100,
+          deadClickRate: Math.round(deadClickRate * 100) / 100,
+          rageClickRate: Math.round(rageClickRate * 100) / 100,
+          quickbackRate: Math.round(quickbackRate * 100) / 100,
+          excessiveScrollRate: Math.round(excessiveScrollRate * 100) / 100
         },
         popularPages: popularPages
       });
@@ -133,7 +177,7 @@ export default async function handler(req, res) {
         var wo = validOrders[wi];
         var woPrice = parseFloat(wo.total_price) || 0;
         var woDisc = parseFloat(wo.total_discounts) || 0;
-        var woIsNew = wo.customer && wo.customer.orders_count <= 1;
+        var woIsNew = !wo.customer || !wo.customer.orders_count || parseInt(wo.customer.orders_count) <= 1;
 
         wTotalRev += woPrice;
 
@@ -259,7 +303,7 @@ export default async function handler(req, res) {
       d.totalDiscounts += parseFloat(order.total_discounts) || 0;
       var shipAmt = order.total_shipping_price_set && order.total_shipping_price_set.shop_money ? order.total_shipping_price_set.shop_money.amount : 0;
       d.totalShipping += parseFloat(shipAmt);
-      if (order.customer && order.customer.orders_count <= 1) d.newCustomers += 1;
+      if (!order.customer || !order.customer.orders_count || parseInt(order.customer.orders_count) <= 1) d.newCustomers += 1;
       else d.returningCustomers += 1;
       if (order.line_items) {
         for (var j = 0; j < order.line_items.length; j++) {
