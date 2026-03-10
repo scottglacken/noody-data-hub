@@ -342,7 +342,7 @@ export default async function handler(req, res) {
       try {
         var delivMetrics = {};
         var metricNames = ['Received Email', 'Opened Email', 'Clicked Email', 'Bounced Email',
-          'Unsubscribed', 'Unsubscribed from List', 'Marked Email as Spam',
+          'Unsubscribed from Email Marketing', 'Unsubscribed from List', 'Marked Email as Spam',
           'Dropped Email', 'Subscribed to List'];
         for (var mn = 0; mn < metricNames.length; mn++) {
           var metricObj = allMetrics.find(function(m) { return m.attributes && m.attributes.name === metricNames[mn]; });
@@ -358,7 +358,7 @@ export default async function handler(req, res) {
         }
 
         var received = delivMetrics['Received Email'] || 0;
-        var unsubTotal = (delivMetrics['Unsubscribed'] || 0) + (delivMetrics['Unsubscribed from List'] || 0);
+        var unsubTotal = (delivMetrics['Unsubscribed from Email Marketing'] || 0) + (delivMetrics['Unsubscribed from List'] || 0);
         detail.deliverability = {
           received: received,
           opened: delivMetrics['Opened Email'] || 0,
