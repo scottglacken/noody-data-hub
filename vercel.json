@@ -2,5 +2,10 @@
   "rewrites": [
     { "source": "/", "destination": "/index.html" },
     { "source": "/coach", "destination": "/coach.html" }
-  ]
+  ],
+  "functions": {
+    "api/ai-coach.js": {
+      "includeFiles": "context/**"
+    }
+  }
 }

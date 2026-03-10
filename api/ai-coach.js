@@ -17,7 +17,7 @@ function loadContext(keys) {
     const file = CONTEXT_FILES[key];
     if (!file) continue;
     try {
-      const fp = path.join(process.cwd(), 'context', file);
+      const fp = path.join(__dirname, '..', 'context', file);
       const content = fs.readFileSync(fp, 'utf8');
       parts.push(content);
     } catch (e) {
