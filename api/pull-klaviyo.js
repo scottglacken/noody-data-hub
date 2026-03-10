@@ -66,6 +66,13 @@ export default async function handler(req, res) {
     var r = await fetch('https://a.klaviyo.com/api/metric-aggregates/', {
       method: 'POST', headers: headers, body: JSON.stringify(body),
     });
+    if (r.status === 429) {
+      // Rate limited — wait and retry once
+      await new Promise(function(resolve) { setTimeout(resolve, 1500); });
+      r = await fetch('https://a.klaviyo.com/api/metric-aggregates/', {
+        method: 'POST', headers: headers, body: JSON.stringify(body),
+      });
+    }
     if (!r.ok) return null;
     var d = await r.json();
     return d.data && d.data.attributes || null;
@@ -327,9 +334,16 @@ export default async function handler(req, res) {
           var metricObj = allMetrics.find(function(m) { return m.attributes && m.attributes.name === metricNames[mn]; });
           if (metricObj) metricQueries.push({ name: metricNames[mn], id: metricObj.id });
         }
-        var delivResults = await Promise.all(metricQueries.map(function(mq) {
-          return queryAggregate(mq.id, null).then(function(agg) { return { name: mq.name, agg: agg }; }).catch(function() { return { name: mq.name, agg: null }; });
-        }));
+        // Run in batches of 4 to avoid Klaviyo rate limits
+        var delivResults = [];
+        var batchSize = 4;
+        for (var bi = 0; bi < metricQueries.length; bi += batchSize) {
+          var batch = metricQueries.slice(bi, bi + batchSize);
+          var batchResults = await Promise.all(batch.map(function(mq) {
+            return queryAggregate(mq.id, null).then(function(agg) { return { name: mq.name, agg: agg }; }).catch(function() { return { name: mq.name, agg: null }; });
+          }));
+          delivResults = delivResults.concat(batchResults);
+        }
         delivResults.forEach(function(dr) {
           if (dr.agg && dr.agg.data) {
             var total = 0;
