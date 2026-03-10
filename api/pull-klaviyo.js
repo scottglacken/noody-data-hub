@@ -190,8 +190,13 @@ export default async function handler(req, res) {
     if (wantDetail) {
       var detail = {};
 
-      // 1) Flow performance via Klaviyo reporting API
+      // 1) Flow performance via Klaviyo reporting API + flow list for names
       try {
+        // Fetch flow list for name/status lookup
+        var rawFlows = await fetchAll('https://a.klaviyo.com/api/flows/');
+        var flowNameMap = {};
+        rawFlows.forEach(function(f) { flowNameMap[f.id] = f.attributes; });
+
         var flowReportBody = {
           data: {
             type: 'flow-values-report',
@@ -209,20 +214,34 @@ export default async function handler(req, res) {
           var flowReportData = await flowReportRes.json();
           var flowResults = flowReportData.data && flowReportData.data.attributes && flowReportData.data.attributes.results || [];
           var totalFlowRev = 0;
+          var reportedFlowIds = {};
           detail.flows = flowResults.map(function(fr) {
             var stats = fr.statistics || {};
             var rev = stats.conversion_value || 0;
             var conv = stats.conversions || 0;
+            var fId = fr.groupings && fr.groupings.flow_id || '';
+            var flowInfo = flowNameMap[fId];
+            reportedFlowIds[fId] = true;
             totalFlowRev += rev;
             return {
-              id: fr.groupings && fr.groupings.flow_id || '',
-              name: fr.groupings && fr.groupings.flow_name || 'Unknown',
-              status: fr.groupings && fr.groupings.flow_status || 'unknown',
+              id: fId,
+              name: flowInfo ? flowInfo.name : (fId || 'Unknown'),
+              status: flowInfo ? flowInfo.status : 'unknown',
               revenue: Math.round(rev * 100) / 100,
               conversions: conv,
               recipients: 0,
-              revenuePerRecipient: stats.revenue_per_recipient || 0,
+              revenuePerRecipient: stats.revenue_per_recipient ? Math.round(stats.revenue_per_recipient * 100) / 100 : 0,
             };
+          });
+          // Add flows not in report (no revenue in period)
+          rawFlows.forEach(function(f) {
+            if (!reportedFlowIds[f.id]) {
+              detail.flows.push({
+                id: f.id, name: f.attributes.name || 'Unnamed',
+                status: f.attributes.status || 'unknown',
+                revenue: 0, conversions: 0, recipients: 0, revenuePerRecipient: 0,
+              });
+            }
           });
           detail.flows.sort(function(a, b) { return b.revenue - a.revenue; });
           detail.totalFlowRevenue = Math.round(totalFlowRev * 100) / 100;
@@ -233,8 +252,15 @@ export default async function handler(req, res) {
         }
       } catch (e) { detail.flowError = e.message; detail.flows = []; }
 
-      // 2) Campaign performance via Klaviyo reporting API
+      // 2) Campaign performance via Klaviyo reporting API + campaign list for names
       try {
+        // Fetch campaign list for name/status/sendTime lookup
+        var rawCampaigns = await fetchAll(
+          'https://a.klaviyo.com/api/campaigns/?filter=equals(messages.channel,%27email%27)&sort=-updated_at', 50
+        );
+        var campNameMap = {};
+        rawCampaigns.forEach(function(c) { campNameMap[c.id] = c.attributes; });
+
         var campReportBody = {
           data: {
             type: 'campaign-values-report',
@@ -256,16 +282,18 @@ export default async function handler(req, res) {
             var stats = cr.statistics || {};
             var rev = stats.conversion_value || 0;
             var conv = stats.conversions || 0;
+            var cId = cr.groupings && cr.groupings.campaign_id || '';
+            var campInfo = campNameMap[cId];
             totalCampRev += rev;
             return {
-              id: cr.groupings && cr.groupings.campaign_id || '',
-              name: cr.groupings && cr.groupings.campaign_name || 'Unknown',
-              status: cr.groupings && cr.groupings.send_status || 'unknown',
-              sendTime: cr.groupings && cr.groupings.send_time || null,
+              id: cId,
+              name: campInfo ? campInfo.name : (cId || 'Unknown'),
+              status: campInfo ? campInfo.status : 'unknown',
+              sendTime: campInfo ? (campInfo.send_time || campInfo.scheduled_at) : null,
               revenue: Math.round(rev * 100) / 100,
               conversions: conv,
               recipients: 0,
-              revenuePerRecipient: stats.revenue_per_recipient || 0,
+              revenuePerRecipient: stats.revenue_per_recipient ? Math.round(stats.revenue_per_recipient * 100) / 100 : 0,
             };
           });
           detail.campaigns.sort(function(a, b) { return b.revenue - a.revenue; });
