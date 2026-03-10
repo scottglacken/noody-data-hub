@@ -82,11 +82,20 @@ function Tab({a,onClick,children,icon,accent}){
 }
 
 function AiSummary({text,loading,label}){
+  const [expanded,setExpanded]=useState(false);
   if(!text&&!loading)return null;
+  // Split text into lines; show first 2, rest behind expander
+  const lines=text?text.split("\n"):[];
+  const preview=lines.slice(0,2).join("\n");
+  const hasMore=lines.length>2;
+  const shown=expanded||!hasMore?text:preview;
   return <div style={{background:"linear-gradient(135deg,rgba(79,110,247,0.04),rgba(124,58,237,0.04))",border:"1px solid rgba(79,110,247,0.2)",borderRadius:12,padding:16,marginBottom:14}}>
     <div style={{fontSize:11,color:"var(--acc)",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:8}}>{label||"AI Analysis"}</div>
     {loading?<div style={{fontSize:13,color:"var(--t3)"}}>Analysing...</div>
-    :<div style={{fontSize:13,color:"var(--t2)",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{text}</div>}
+    :<>
+      <div style={{fontSize:13,color:"var(--t2)",lineHeight:1.7,whiteSpace:"pre-wrap",maxHeight:expanded?"none":"3.6em",overflow:"hidden"}}>{shown}</div>
+      {hasMore&&<button onClick={()=>setExpanded(!expanded)} style={{background:"none",border:"none",color:"var(--acc)",fontSize:12,cursor:"pointer",marginTop:6,padding:0,fontWeight:500}}>{expanded?"Show less ▴":"Show full analysis ▾"}</button>}
+    </>}
   </div>;
 }
 
@@ -591,31 +600,53 @@ function Dashboard(){
         </div>
         <div style={{fontSize:11,color:"var(--t3)",marginBottom:10}}>Online store only. {agg.startDate} \u2192 {agg.endDate}{prevAgg?" \u00B7 vs prior "+prevAgg.d+"d ("+prevAgg.startDate+" \u2192 "+prevAgg.endDate+")":""}</div>
 
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8}}>
-          {[
-            {l:"DTC Revenue",v:dtcRev,pv:pDtcRev,f:"$",fmt:"$"},
-            {l:"Orders",v:orders,pv:pOrders,f:"n"},
-            {l:"AOV",v:aov,pv:pAov,f:"$",fmt:"$"},
-            {l:"Meta Spend",v:metaSpend,pv:pMetaSpend,f:"$",fmt:"$",inv:true},
-            {l:"DTC MER",v:mer,pv:pMer,f:"%",bm:BM.mer,inv:true,sub:"benchmark <35%"},
-            {l:"Meta ROAS",v:roas,pv:pRoas,f:"n",sub:"last-click"},
-            {l:"CPP",v:cpp,f:"$",inv:true,sub:"cost per purchase"},
-            ...(emailPct!=null?[{l:"Email Rev %",v:emailPct,f:"%",bm:BM.em,sub:"benchmark 30-40%"}]:[]),
-            {l:"Sessions",v:a.useSess||null,f:"n",sub:a.sessSource==="ga4"?a.ga4Days+"d GA4 data":"paste in Daily tab"},
-            {l:"Conv Rate",v:a.cr,f:"%",bm:{h:[2.5,100],w:[1.5,2.5]},sub:"orders / sessions"+(a.sessSource==="ga4"?" (GA4)":"")},
-            {l:"Rev/Session",v:a.rps,f:"$",sub:"RPV = CR \u00D7 AOV"+(a.sessSource==="ga4"?" (GA4)":"")},
-            {l:"Shipping %",v:a.shipPct,f:"%",sub:"of DTC revenue"},
-          ].map((m,i)=>{
+        {(()=>{
+          const renderCards=(cards)=>cards.map((m,i)=>{
             const dv=m.f==="$"?f$(m.v):m.f==="%"?fp(m.v):m.v!=null?m.v.toFixed(2):"\u2014";
             const s=m.bm?gs(m.v,m.bm):"n";
             return <div key={i} style={{background:SB[s],border:"1px solid "+SC[s]+"33",borderRadius:12,padding:14}}>
               <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:4,fontWeight:500}}>{m.l}</div>
-              <div style={{fontSize:i===0?28:22,fontWeight:700,color:SC[s],fontFamily:"'JetBrains Mono',monospace"}}>{dv}</div>
+              <div style={{fontSize:m.big?28:22,fontWeight:700,color:SC[s],fontFamily:"'JetBrains Mono',monospace"}}>{dv}</div>
               {m.sub&&<div style={{fontSize:9,color:"var(--t3)",marginTop:1}}>{m.sub}</div>}
               {m.pv!=null&&<Chg curr={m.v} prev={m.pv} inv={m.inv} fmt={m.fmt}/>}
             </div>;
-          })}
-        </div>
+          });
+          const ClusterLabel=({children})=><div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.08em",fontWeight:600,marginBottom:6,marginTop:14,paddingBottom:4,borderBottom:"1px solid var(--bdr)"}}>{children}</div>;
+          return <>
+            <ClusterLabel>Revenue</ClusterLabel>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8}}>
+              {renderCards([
+                {l:"DTC Revenue",v:dtcRev,pv:pDtcRev,f:"$",fmt:"$",big:true},
+                {l:"Orders",v:orders,pv:pOrders,f:"n"},
+                {l:"AOV",v:aov,pv:pAov,f:"$",fmt:"$"},
+              ])}
+            </div>
+            <ClusterLabel>Marketing</ClusterLabel>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8}}>
+              {renderCards([
+                {l:"Meta Spend",v:metaSpend,pv:pMetaSpend,f:"$",fmt:"$",inv:true},
+                {l:"DTC MER",v:mer,pv:pMer,f:"%",bm:BM.mer,inv:true,sub:"benchmark <35%"},
+                {l:"Meta ROAS",v:roas,pv:pRoas,f:"n",sub:"last-click"},
+                {l:"CPP",v:cpp,f:"$",inv:true,sub:"cost per purchase"},
+              ])}
+            </div>
+            <ClusterLabel>Channels</ClusterLabel>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8}}>
+              {renderCards([
+                ...(emailPct!=null?[{l:"Email Rev %",v:emailPct,f:"%",bm:BM.em,sub:"benchmark 30-40%"}]:[]),
+                {l:"Shipping %",v:a.shipPct,f:"%",sub:"of DTC revenue"},
+              ])}
+            </div>
+            <ClusterLabel>Traffic</ClusterLabel>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8}}>
+              {renderCards([
+                {l:"Sessions",v:a.useSess||null,f:"n",sub:a.sessSource==="ga4"?a.ga4Days+"d GA4 data":"paste in Daily tab"},
+                {l:"Conv Rate",v:a.cr,f:"%",bm:{h:[2.5,100],w:[1.5,2.5]},sub:"orders / sessions"+(a.sessSource==="ga4"?" (GA4)":"")},
+                {l:"Rev/Session",v:a.rps,f:"$",sub:"RPV = CR \u00D7 AOV"+(a.sessSource==="ga4"?" (GA4)":"")},
+              ])}
+            </div>
+          </>;
+        })()}
       </div>
 
       {/* THE EQUATION */}
@@ -655,37 +686,34 @@ function Dashboard(){
         </div>
       </div>
 
-      {/* EE BENCHMARK SCORECARD */}
-      <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:20}}>
-        <div style={{fontSize:11,color:"var(--t3)",marginBottom:10,textTransform:"uppercase"}}>EE Benchmark Scorecard \u2014 {days} Day Period</div>
-        {[
-          {l:"Variable Costs",v:estVarPct,b:BM.vc,t:"< 40%",note:"Xero ratio applied to est. revenue"},
-          {l:"Blended MER",v:estMerPct,b:BM.mer,t:"< 35%",note:"Ad spend \u00F7 est. total revenue"},
-          {l:"DTC-Only MER",v:estDtcMer,b:BM.mer,t:"< 35%",note:"Ad spend \u00F7 Shopify DTC revenue \u2014 the REAL cost"},
-          {l:"Fixed Costs",v:estFcPct,b:BM.fc,t:"< 20%",note:f$(fixedMonthly)+"/mo prorated to "+days+"d"},
-          {l:"Net Profit",v:estProfPct,b:BM.np,t:"> 10%",note:"Estimated from equation"},
-          ...(emailPct!=null?[{l:"Email Rev %",v:emailPct,b:BM.em,t:"30\u201340%",note:f$(emailRev)+" email \u00F7 "+f$(dtcRev)+" DTC"}]:[]),
-          {l:"LER",v:ler,b:{h:[2,100],w:[1.5,2]},t:"> $2.00",note:"Est. gross margin \u00F7 prorated wages",fmt:"$"},
-          {l:"Contribution Margin",v:contribMargin,b:{h:[40,100],w:[25,40]},t:"40\u201360%",note:"(Revenue \u2212 Variable) \u00F7 Revenue"},
-          {l:"AOV",v:aov,b:{h:[70,500],w:[50,70]},t:"> $70",note:fn(orders)+" orders",fmt:"$"},
-          {l:"Meta ROAS",v:roas||0,b:{h:[2.5,100],w:[1.5,2.5]},t:"> 2.5x",note:"Purchase value \u00F7 Meta spend",fmt:"x"},
-          ...(ltgpCac!=null?[{l:"LTGP:CAC",v:ltgpCac,b:{h:[3,100],w:[2,3]},t:"> 3:1",note:"(LTV \u00D7 GM) \u00F7 CAC \u2014 est. LTV=2\u00D7AOV",fmt:"x"}]:[]),
-        ].map((m,i)=>{
-          const s=gs(m.fmt==="$"||m.fmt==="x"?m.v:m.v,m.b);
-          return <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:i<10?"1px solid var(--bdr)":"none"}}>
-            <div>
-              <div style={{fontSize:12,color:"var(--t2)",fontWeight:500}}>{m.l}</div>
-              <div style={{fontSize:9,color:"var(--t3)",marginTop:1}}>{m.note}</div>
-            </div>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:9,color:"var(--t3)"}}>{m.t}</span>
-              <span style={{fontSize:14,fontWeight:700,color:SC[s],fontFamily:"'JetBrains Mono',monospace"}}>
-                {m.fmt==="$"?m.v.toFixed(2):m.fmt==="x"?(m.v||0).toFixed(2)+"x":fp(m.v)}
-              </span>
-              <span style={{fontSize:13}}>{s==="h"?"\u2705":s==="w"?"\u26A0\uFE0F":"\uD83D\uDD34"}</span>
-            </div>
+      {/* EE BENCHMARK SCORECARD — Traffic Light Grid */}
+      <div style={{marginBottom:20}}>
+        <div style={{fontSize:11,color:"var(--t3)",marginBottom:10,textTransform:"uppercase"}}>EE Benchmark Scorecard — {days} Day Period</div>
+        {(()=>{
+          const tiles=[
+            {l:"Variable Costs",v:estVarPct,b:BM.vc,t:"< 40%",fmt:"%"},
+            {l:"DTC MER",v:estDtcMer,b:BM.mer,t:"< 35%",fmt:"%"},
+            {l:"Fixed Costs",v:estFcPct,b:BM.fc,t:"< 20%",fmt:"%"},
+            {l:"Net Profit",v:estProfPct,b:BM.np,t:"> 10%",fmt:"%"},
+            ...(emailPct!=null?[{l:"Email Rev %",v:emailPct,b:BM.em,t:"30–40%",fmt:"%"}]:[{l:"Email Rev %",v:null,b:BM.em,t:"30–40%",fmt:"%"}]),
+            {l:"LER",v:ler,b:{h:[2,100],w:[1.5,2]},t:"> $2",fmt:"$"},
+            {l:"AOV",v:aov,b:{h:[70,500],w:[50,70]},t:"> $70",fmt:"$"},
+            {l:"Meta ROAS",v:roas||0,b:{h:[2.5,100],w:[1.5,2.5]},t:"> 2.5x",fmt:"x"},
+            ...(ltgpCac!=null?[{l:"LTGP:CAC",v:ltgpCac,b:{h:[3,100],w:[2,3]},t:"> 3:1",fmt:"x"}]:[]),
+          ];
+          return <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+            {tiles.map((m,i)=>{
+              const s=m.v!=null?gs(m.v,m.b):"n";
+              const dv=m.v==null?"—":m.fmt==="$"?m.v.toFixed(2):m.fmt==="x"?(m.v).toFixed(2)+"x":fp(m.v);
+              const icon=s==="h"?"✅":s==="w"?"⚠️":s==="c"?"🔴":"—";
+              return <div key={i} style={{background:SB[s],border:"1px solid "+SC[s]+"33",borderRadius:12,padding:14,textAlign:"center"}}>
+                <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.04em",marginBottom:4}}>{m.l}</div>
+                <div style={{fontSize:22,fontWeight:700,color:SC[s],fontFamily:"'JetBrains Mono',monospace"}}>{dv} <span style={{fontSize:14}}>{icon}</span></div>
+                <div style={{fontSize:9,color:"var(--t3)",marginTop:2}}>Target: {m.t}</div>
+              </div>;
+            })}
           </div>;
-        })}
+        })()}
       </div>
 
       {/* CHANNEL COMPARISON */}
