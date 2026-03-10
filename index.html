@@ -53,8 +53,10 @@ function MC({l,v,fmt,bm,sub,big}){
   </div>;
 }
 
-function Tab({a,onClick,children,icon}){
-  return <button onClick={onClick} style={{padding:"11px 20px",background:a?"var(--acc)":"transparent",border:a?"1px solid var(--acc)":"1px solid var(--bdr)",borderRadius:10,color:a?"#fff":"var(--t2)",fontSize:14,fontWeight:a?600:500,cursor:"pointer",display:"flex",alignItems:"center",gap:7,minHeight:44,whiteSpace:"nowrap",transition:"all .2s"}}><span style={{fontSize:17}}>{icon}</span>{children}</button>;
+function Tab({a,onClick,children,icon,accent}){
+  const bg=a?(accent||"var(--acc)"):"transparent";
+  const bdr=a?(accent||"var(--acc)"):"var(--bdr)";
+  return <button onClick={onClick} style={{padding:"11px 20px",background:bg,border:"1px solid "+bdr,borderRadius:10,color:a?"#fff":"var(--t2)",fontSize:14,fontWeight:a?600:500,cursor:"pointer",display:"flex",alignItems:"center",gap:7,minHeight:44,whiteSpace:"nowrap",transition:"all .2s"}}><span style={{fontSize:17}}>{icon}</span>{children}</button>;
 }
 
 function Dashboard(){
@@ -123,9 +125,10 @@ function Dashboard(){
 
   // Auto-fetch on first visit to relevant tabs
   useEffect(()=>{
-    if((tab==="daily"||tab==="equation"||tab==="meta"||tab==="diagnose"||tab==="scale")&&!shopLive&&!shopLoading)fetchShop();
-    if((tab==="daily"||tab==="meta")&&!metaLive&&!metaLoading)fetchMeta();
-    if((tab==="equation"||tab==="diagnose"||tab==="scale")&&!xeroLive&&!xeroLoading)fetchXero(xeroMonths);
+    if((tab==="daily"||tab==="equation"||tab==="meta"||tab==="diagnose"||tab==="scale"||tab==="insights")&&!shopLive&&!shopLoading)fetchShop();
+    if((tab==="daily"||tab==="meta"||tab==="insights")&&!metaLive&&!metaLoading)fetchMeta();
+    if((tab==="equation"||tab==="diagnose"||tab==="scale"||tab==="insights")&&!xeroLive&&!xeroLoading)fetchXero(xeroMonths);
+    if((tab==="gads"||tab==="insights")&&!gads&&!gadsLoading)fetchGads(gadsDays);
   },[tab]);
 
   // Merge hardcoded D with live Shopify+Meta data
@@ -221,6 +224,7 @@ function Dashboard(){
         <Tab a={tab==="scale"} onClick={()=>setTab("scale")} icon="🚀">Scale Model</Tab>
         <Tab a={tab==="gads"} onClick={()=>setTab("gads")} icon="🎯">Google Ads</Tab>
         <Tab a={tab==="xero"} onClick={()=>setTab("xero")} icon="📋">Xero P&L</Tab>
+        <Tab a={tab==="insights"} onClick={()=>setTab("insights")} icon="✦" accent="#7c3aed">Insights</Tab>
       </div>
       <button onClick={toggleTheme} style={{padding:"10px",background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,cursor:"pointer",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",width:44,height:44,transition:"all .2s",color:"var(--t2)",flexShrink:0}} title={theme==="dark"?"Light mode":"Dark mode"}>{theme==="dark"?"☀️":"🌙"}</button>
     </div>
@@ -820,6 +824,202 @@ function Dashboard(){
         </div>
       </>}
     </>}
+
+    {tab==="insights"&&(()=>{
+      // ─── Compute all insight data ───
+      const vcPct=XERO_VAR/XERO.rev*100;
+      const merPct=XERO_MKT/XERO.rev*100;
+      const fcPct=XERO_FIXED/XERO.rev*100;
+      const npPct=XERO_PROFIT/XERO.rev*100;
+      const dtcMerVal=XERO_MKT/XERO.dtc*100;
+      const ler=(XERO.rev-XERO_VAR)/XERO.wages;
+      const metaROAS=agg&&agg.tms>0?agg.tmv/agg.tms:null;
+      const currentAOV=agg&&agg.to>0?agg.tr/agg.to:65;
+      const whPct=Math.round(XERO.wh/XERO.rev*100);
+      const dtcPct=Math.round(XERO.dtc/XERO.rev*100);
+      const intlPct=Math.round(XERO.intl/XERO.rev*100);
+      const metaPctBudget=XERO_MKT>0?Math.round(XERO.ads/XERO_MKT*100):91;
+      const googleSpend=gads?gads.summary.totalSpend:XERO_MKT-XERO.ads;
+      
+      // Email % from recent data
+      const last90=mergedD.slice(-90);
+      const emailRevs=last90.filter(d=>d.e>0).map(d=>d.r>0?(d.e/d.r*100):0);
+      const emailMin=emailRevs.length?Math.round(Math.min(...emailRevs)):11;
+      const emailMax=emailRevs.length?Math.round(Math.max(...emailRevs)):44;
+      const emailAvg=emailRevs.length?Math.round(emailRevs.reduce((a,b)=>a+b,0)/emailRevs.length):25;
+      
+      // Monthly ROAS analysis
+      const monthlyRoas=monthly.filter(m=>m.meta>0).map(m=>({month:m.month,roas:m.roas,spend:m.meta,rev:m.rev,mer:m.mer}));
+      const bestMonth=monthlyRoas.length?monthlyRoas.reduce((a,b)=>b.roas>a.roas?b:a):null;
+      const worstMonth=monthlyRoas.length?monthlyRoas.reduce((a,b)=>b.roas<a.roas&&b.meta>200?b:a):null;
+
+      const insights=[
+        {type:"critical",icon:"🚨",title:`DTC-Only MER at ${dtcMerVal.toFixed(1)}% — Nearly Double the 35% Benchmark`,
+         body:`Blended MER looks manageable at <strong>${merPct.toFixed(1)}%</strong> because wholesale ($${fn(XERO.wh)}, ${whPct}% of revenue) carries zero ad spend. Isolating DTC revenue ($${fn(XERO.dtc)}) against total marketing ($${fn(XERO_MKT)}), your true MER is <strong style="color:var(--red)">${dtcMerVal.toFixed(1)}%</strong>. For every $1 of DTC revenue, you spend $${(dtcMerVal/100).toFixed(2)} on marketing. The EE benchmark is $0.35. Either dramatically improve ad efficiency, grow email share to 30%+, or reframe DTC as an acquisition channel that feeds wholesale.`,
+         actions:[
+           {week:"Week 1–2",text:"Audit Meta campaigns — pause anything below 1.5x ROAS. Reallocate to top 3 performers."},
+           {week:"Week 3–4",text:"Launch email revenue push — get from "+emailAvg+"% floor to 30%+ consistent via automated flows."},
+         ]},
+
+        {type:"warning",icon:"📧",title:`Email Revenue Swinging ${emailMin}–${emailMax}% — Needs to Lock in at 30–40%`,
+         body:`Email is your highest-margin channel (LER $${ler.toFixed(2)}, well above $2.00 benchmark), but wild swings between ${emailMin}% and ${emailMax}% of revenue indicate reliance on campaign blasts rather than automated flows. At ${emailMax}%, your DTC economics work beautifully. At ${emailMin}%, MER blows out because ads carry more weight. <strong>The fix isn't more campaigns — it's better flows.</strong> Automated flows (welcome, post-purchase, winback, browse abandonment) provide a stable floor.`,
+         actions:[
+           {week:"Week 1",text:"Audit Klaviyo flows — ensure Welcome, Browse Abandonment, Post-Purchase, and Winback are all live and optimized."},
+           {week:"Week 2",text:"Track flow vs campaign revenue separately. Target: 60% of email revenue from flows."},
+           {week:"Week 3–4",text:"Build educational nurture sequence (skin quiz → product rec → social proof) to increase subscriber-to-buyer rate."},
+         ]},
+
+        {type:"warning",icon:"🏗️",title:`Fixed Costs at ${fcPct.toFixed(1)}% — Above 20% Benchmark, But Don't Cut`,
+         body:`At <strong>${fcPct.toFixed(1)}%</strong> of revenue, fixed costs are ~5pts above the 20% target. However, in Situation 1, this is a <strong>scale problem, not a cost problem</strong>. Your fixed costs (~$${fn(Math.round(XERO_FIXED/XERO.months))}/mo) include wages, software, rent, and consulting that won't grow proportionally with revenue. If you increase revenue by 40% to $${fn(Math.round(XERO.rev*1.4))}, fixed cost ratio drops to ~${(fcPct*XERO.rev/(XERO.rev*1.4)).toFixed(1)}% — below benchmark. <strong>The lever is revenue growth, not cost cutting.</strong>`,
+         actions:[
+           {week:"This Month",text:"Resist cutting staff or tools. Set 90-day revenue target of +20% from baseline."},
+           {week:"Ongoing",text:"Track fixed costs as absolute $ monthly. Only flag if they increase without corresponding revenue growth."},
+         ]},
+
+        {type:metaROAS>=2.5?"opportunity":"warning",icon:"📊",title:`Meta is ${metaPctBudget}% of Ad Budget at ${metaROAS?metaROAS.toFixed(2):"~2.1"}x ROAS — Diversification Risk`,
+         body:`With <strong>$${fn(XERO.ads)}</strong> annually on Meta (${metaPctBudget}% of ad spend), you have severe platform concentration risk. A Meta algorithm change, CPM increase, or policy issue could cripple acquisition overnight. At ${metaROAS?metaROAS.toFixed(2):"~2.1"}x ROAS, the channel is ${metaROAS>=2?"performing adequately":"underperforming"} — test diversification into Google Shopping${gads?" (currently $"+fn(gads.summary.totalSpend)+" at "+gads.summary.roas+"x ROAS)":""}, TikTok, and organic/SEO as insurance.`+(bestMonth?` Best performing month was <strong>${bestMonth.month}</strong> at ${bestMonth.roas}x ROAS.`:""),
+         actions:[
+           {week:"Week 1–2",text:"Increase Google Shopping budget — test Performance Max with product feed optimization."},
+           {week:"Week 3–4",text:"Launch 2 TikTok creative tests ($50/day) — repurpose top Meta UGC."},
+           {week:"Month 2",text:"Target channel mix: 70% Meta / 20% Google / 10% TikTok within 6 months."},
+         ]},
+
+        {type:"opportunity",icon:"💰",title:`AOV at $${Math.round(currentAOV)} — Each $10 Lift Drops DTC MER by ~${Math.round(dtcMerVal - (dtcMerVal*currentAOV/(currentAOV+10)))} Points`,
+         body:`AOV is the most powerful lever for improving MER without changing ad spend. Increasing from $${Math.round(currentAOV)} to $75 through bundles and upsells means each order generates more revenue at the same CPA, pulling DTC MER toward <strong>${(dtcMerVal*currentAOV/75).toFixed(1)}%</strong> — meaningfully closer to 35%.`,
+         actions:[
+           {week:"Week 1",text:"Implement cart upsell — 'Add Bedtime Bestie' or 'Complete the Bundle' with small incentive."},
+           {week:"Week 2",text:"Create Complete Care Bundle at $89 (Calm Balm + Lotion Potion + Soft Suds) on PDP and homepage."},
+           {week:"Week 3",text:"Test free shipping threshold at $80 to incentivize larger carts."},
+         ]},
+
+        {type:"info",icon:"🏪",title:`Wholesale (${whPct}%) Exceeds DTC (${dtcPct}%) — Strategic Implications`,
+         body:`Channel mix: wholesale at <strong>${whPct}%</strong> vs DTC at <strong>${dtcPct}%</strong> vs international at <strong>${intlPct}%</strong>. This is unusual for a brand investing $${fn(XERO_MKT)} in digital ads. Key question: <strong>does retail drive its own demand, or does DTC marketing create awareness that converts at Farmers?</strong> If the latter, DTC ad spend is partially subsidising wholesale — making true DTC MER even worse.`,
+         actions:[
+           {week:"Week 1",text:"Survey 50 recent Farmers customers: 'How did you first hear about Noody?' — quantify DTC→Retail halo."},
+           {week:"Week 2",text:"Geographic test: pause Meta in one region for 2 weeks, track if Farmers sales there decline."},
+         ]},
+
+        {type:"opportunity",icon:"✅",title:`Variable Costs at ${vcPct.toFixed(1)}% — Healthy, Room to Fine-Tune`,
+         body:`Variable costs are <strong>below the 40% benchmark</strong>. Product margins are solid, giving room to absorb some marketing inefficiency. COGS at ${fp(XERO.cogs/XERO.rev*100)}, shipping at ${fp(XERO.postage/XERO.rev*100)}, packaging at ${fp(XERO.pkg/XERO.rev*100)}. Minor optimisation: negotiate courier rates at your volume, and review Afterpay merchant fees.`,
+         actions:[
+           {week:"This Month",text:"Review courier contract — at your shipment volume, negotiate rates or test NZ Post vs CourierPost."},
+         ]},
+
+        {type:"opportunity",icon:"🎯",title:`Situation 1: Profitable at ${npPct.toFixed(1)}% — Calibrate Session Roadmap`,
+         body:`You're in <strong>Situation 1</strong> (profitable). The playbook: Calibrate → Scale → Optimise. Profit margin of ${npPct.toFixed(1)}% is above the 10% minimum. However, <strong>DTC MER at ${dtcMerVal.toFixed(1)}%</strong> and <strong>fixed costs at ${fcPct.toFixed(1)}%</strong> mean you need revenue growth more than cost cutting. The EE framework says: when profitable with high fixed %, the answer is almost always SCALE — grow revenue to leverage the fixed cost base. LER at ${ler.toFixed(2)} confirms wages are generating sufficient gross margin.`,
+         actions:[
+           {week:"Week 1: Calibrate",text:"Lock in all EE inputs with live data. Verify Xero P&L matches tracking. Set 90-day targets."},
+           {week:"Week 2: Stabilise Email",text:"Get email revenue floor above 25% of DTC revenue. Activate all automated flows."},
+           {week:"Week 3: AOV Push",text:"Launch bundle strategy and cart upsell. Target AOV $"+Math.round(currentAOV)+" → $75."},
+           {week:"Week 4: Scale Test",text:"Increase Meta spend by 15% on top 3 campaigns. Monitor weekly — if DTC MER doesn't worsen, continue."},
+         ]},
+      ];
+
+      const critCount=insights.filter(i=>i.type==="critical").length;
+      const warnCount=insights.filter(i=>i.type==="warning").length;
+      const oppCount=insights.filter(i=>i.type==="opportunity").length;
+      const infoCount=insights.filter(i=>i.type==="info").length;
+      const totalActions=insights.reduce((a,ins)=>a+(ins.actions?ins.actions.length:0),0);
+      const typeColors={critical:"var(--red)",warning:"var(--ylw)",opportunity:"var(--grn)",info:"var(--acc)"};
+      const typeBg={critical:"rgba(239,68,68,0.06)",warning:"rgba(245,158,11,0.06)",opportunity:"rgba(16,185,129,0.06)",info:"rgba(79,110,247,0.06)"};
+      const typeBdr={critical:"rgba(239,68,68,0.25)",warning:"rgba(245,158,11,0.25)",opportunity:"rgba(16,185,129,0.25)",info:"rgba(79,110,247,0.25)"};
+
+      return <>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <div>
+            <h2 style={{fontSize:20,fontWeight:700,margin:0,color:"#a78bfa"}}>✦ Strategic Insights</h2>
+            <div style={{fontSize:11,color:"var(--t3)",marginTop:2}}>Auto-generated from live data × Ecommerce Equation benchmarks</div>
+          </div>
+          <div style={{fontSize:10,color:"var(--t3)"}}>{(shopLive?"Shopify ✓ ":"")+(metaLive?"Meta ✓ ":"")+(gads?"Google ✓ ":"")+(xeroLive?"Xero ✓":"")}</div>
+        </div>
+
+        {/* Summary pills */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:20}}>
+          {[
+            {n:critCount,l:"Critical",c:"var(--red)"},
+            {n:warnCount,l:"Warnings",c:"var(--ylw)"},
+            {n:oppCount,l:"Opportunities",c:"var(--grn)"},
+            {n:infoCount,l:"Informational",c:"var(--acc)"},
+            {n:totalActions,l:"Actions",c:"#a78bfa"},
+          ].map((p,i)=><div key={i} style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:12,padding:"14px 10px",textAlign:"center"}}>
+            <div style={{fontSize:24,fontWeight:700,color:p.c,fontFamily:"'JetBrains Mono',monospace"}}>{p.n}</div>
+            <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em",marginTop:2}}>{p.l}</div>
+          </div>)}
+        </div>
+
+        {/* Insight cards */}
+        {insights.map((ins,idx)=><div key={idx} style={{
+          background:typeBg[ins.type],
+          border:"1px solid "+typeBdr[ins.type],
+          borderLeft:"4px solid "+typeColors[ins.type],
+          borderRadius:12,padding:20,marginBottom:12
+        }}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+            <span style={{fontSize:20}}>{ins.icon}</span>
+            <div style={{fontSize:15,fontWeight:600,color:"var(--t1)"}}>{ins.title}</div>
+          </div>
+          <div style={{fontSize:13,color:"var(--t2)",lineHeight:1.7}} dangerouslySetInnerHTML={{__html:ins.body}}/>
+          {ins.actions&&ins.actions.map((a,ai)=><div key={ai} style={{
+            marginTop:ai===0?12:6,padding:"10px 14px",
+            background:"rgba(167,139,250,0.06)",border:"1px solid rgba(167,139,250,0.15)",
+            borderLeft:"3px solid #a78bfa",borderRadius:"0 8px 8px 0"
+          }}>
+            <div style={{fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em",color:"#a78bfa",marginBottom:3}}>↳ {a.week}</div>
+            <div style={{fontSize:12,color:"var(--t1)"}}>{a.text}</div>
+          </div>)}
+        </div>)}
+
+        {/* Monthly ROAS trend */}
+        {monthlyRoas.length>2&&<div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:12}}>
+          <div style={{fontSize:11,color:"var(--t3)",marginBottom:8,textTransform:"uppercase"}}>Meta ROAS by Month</div>
+          <ResponsiveContainer width="100%" height={200}>
+            <ComposedChart data={monthlyRoas}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e"/>
+              <XAxis dataKey="month" tick={{fill:"#6b7280",fontSize:9}}/>
+              <YAxis yAxisId="roas" tick={{fill:"#6b7280",fontSize:9}} domain={[0,"auto"]}/>
+              <YAxis yAxisId="spend" orientation="right" tick={{fill:"#6b7280",fontSize:9}}/>
+              <Tooltip contentStyle={{background:"var(--bdr)",border:"1px solid #2d2d44",borderRadius:8,fontSize:11}}/>
+              <Bar yAxisId="spend" dataKey="spend" fill="#a855f722" radius={[3,3,0,0]} name="Meta Spend ($)"/>
+              <Line yAxisId="roas" type="monotone" dataKey="roas" stroke="#10b981" strokeWidth={2} dot={{r:3}} name="ROAS"/>
+              <ReferenceLine yAxisId="roas" y={2.5} stroke="#f59e0b66" strokeDasharray="3 3" label={{value:"2.5x target",fill:"#f59e0b",fontSize:9}}/>
+            </ComposedChart>
+          </ResponsiveContainer>
+          {bestMonth&&worstMonth&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:10}}>
+            <div style={{background:"rgba(16,185,129,0.06)",borderRadius:8,padding:10,textAlign:"center"}}>
+              <div style={{fontSize:10,color:"var(--t3)"}}>BEST MONTH</div>
+              <div style={{fontSize:16,fontWeight:700,color:"#10b981",fontFamily:"'JetBrains Mono',monospace"}}>{bestMonth.month} — {bestMonth.roas}x</div>
+            </div>
+            <div style={{background:"rgba(239,68,68,0.06)",borderRadius:8,padding:10,textAlign:"center"}}>
+              <div style={{fontSize:10,color:"var(--t3)"}}>WORST MONTH</div>
+              <div style={{fontSize:16,fontWeight:700,color:"#ef4444",fontFamily:"'JetBrains Mono',monospace"}}>{worstMonth.month} — {worstMonth.roas}x</div>
+            </div>
+          </div>}
+        </div>}
+
+        {/* Quick reference benchmarks */}
+        <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18}}>
+          <div style={{fontSize:11,color:"var(--t3)",marginBottom:10,textTransform:"uppercase"}}>Ecommerce Equation Benchmarks vs Actuals</div>
+          <div style={{display:"grid",gap:8}}>
+            {[
+              {l:"Variable Costs",actual:vcPct,target:"< 40%",status:vcPct<=40?"h":vcPct<=50?"w":"c"},
+              {l:"MER (Blended)",actual:merPct,target:"< 35%",status:merPct<=35?"h":merPct<=45?"w":"c"},
+              {l:"MER (DTC-Only)",actual:dtcMerVal,target:"< 35%",status:dtcMerVal<=35?"h":dtcMerVal<=45?"w":"c"},
+              {l:"Fixed Costs",actual:fcPct,target:"< 20%",status:fcPct<=20?"h":fcPct<=30?"w":"c"},
+              {l:"Net Profit",actual:npPct,target:"> 10%",status:npPct>=10?"h":npPct>=5?"w":"c"},
+              {l:"Email Rev %",actual:emailAvg,target:"30–40%",status:emailAvg>=30&&emailAvg<=40?"h":emailAvg>=15?"w":"c"},
+              {l:"LER",actual:ler,target:"> $2.00",status:ler>=2?"h":ler>=1.5?"w":"c",fmt:"$"},
+            ].map((b,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:i<6?"1px solid var(--bdr)":"none"}}>
+              <span style={{fontSize:13,color:"var(--t2)"}}>{b.l}</span>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:9,color:"var(--t3)"}}>{b.target}</span>
+                <span style={{fontSize:14,fontWeight:700,color:SC[b.status],fontFamily:"'JetBrains Mono',monospace"}}>{b.fmt==="$"?b.actual.toFixed(2):fp(b.actual)}</span>
+                <span style={{fontSize:12}}>{b.status==="h"?"✅":b.status==="w"?"⚠️":"🔴"}</span>
+              </div>
+            </div>)}
+          </div>
+        </div>
+      </>;
+    })()}
 
     </div>
   </div>;
