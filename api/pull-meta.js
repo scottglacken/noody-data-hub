@@ -38,18 +38,18 @@ export default async function handler(req, res) {
 
     try {
       var fbUrl = 'https://graph.facebook.com/v19.0/' + pageId + '/insights' +
-        '?metric=page_impressions,page_engaged_users,page_fans' +
+        '?metric=page_impressions,page_post_engagements,page_views_total,page_fan_adds' +
         '&period=day&since=' + sinceDate + '&until=' + untilDate +
         '&access_token=' + token;
 
       var igInsightsUrl = 'https://graph.facebook.com/v19.0/' + igId + '/insights' +
-        '?metric=impressions,reach,follower_count' +
+        '?metric=reach,follower_count,profile_views,accounts_engaged,total_interactions' +
         '&period=day&since=' + sinceDate + '&until=' + untilDate +
         '&access_token=' + token;
 
       var igMediaUrl = 'https://graph.facebook.com/v19.0/' + igId + '/media' +
         '?fields=id,caption,media_type,like_count,comments_count,timestamp,permalink' +
-        '&limit=25&access_token=' + token;
+        '&limit=20&access_token=' + token;
 
       var results = await Promise.all([
         fetch(fbUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }),
@@ -69,12 +69,15 @@ export default async function handler(req, res) {
       } else {
         var fbMetrics = fbData.data || [];
         var impressionsMetric = fbMetrics.find(function(m) { return m.name === 'page_impressions'; });
-        var engagedMetric = fbMetrics.find(function(m) { return m.name === 'page_engaged_users'; });
-        var fansMetric = fbMetrics.find(function(m) { return m.name === 'page_fans'; });
+        var engagedMetric = fbMetrics.find(function(m) { return m.name === 'page_post_engagements'; });
+        var viewsMetric = fbMetrics.find(function(m) { return m.name === 'page_views_total'; });
+        var fanAddsMetric = fbMetrics.find(function(m) { return m.name === 'page_fan_adds'; });
 
-        if (fansMetric && fansMetric.values && fansMetric.values.length > 0) {
-          facebook.pageLikes = fansMetric.values[fansMetric.values.length - 1].value || 0;
-        }
+        var fanAddsValues = fanAddsMetric ? (fanAddsMetric.values || []) : [];
+        facebook.newFans = fanAddsValues.reduce(function(s, v) { return s + (v.value || 0); }, 0);
+
+        var viewsValues = viewsMetric ? (viewsMetric.values || []) : [];
+        facebook.pageViews = viewsValues.reduce(function(s, v) { return s + (v.value || 0); }, 0);
 
         var engagedValues = engagedMetric ? (engagedMetric.values || []) : [];
         var impressionValues = impressionsMetric ? (impressionsMetric.values || []) : [];
@@ -97,35 +100,49 @@ export default async function handler(req, res) {
       if (!facebook.error) delete facebook.error;
 
       // Parse Instagram insights
-      var instagram = { followers: 0, reach: 0, impressions: 0, daily: [], error: null };
+      var instagram = { followers: 0, reach: 0, profileViews: 0, accountsEngaged: 0, totalInteractions: 0, daily: [], error: null };
       if (igInsights._error || igInsights.error) {
         instagram.error = igInsights._error || igInsights.error.message ||
           'Instagram insights failed. Ensure the token has instagram_basic and instagram_manage_insights permissions.';
       } else {
         var igMetrics = igInsights.data || [];
-        var igImpressions = igMetrics.find(function(m) { return m.name === 'impressions'; });
         var igReach = igMetrics.find(function(m) { return m.name === 'reach'; });
         var igFollowers = igMetrics.find(function(m) { return m.name === 'follower_count'; });
+        var igProfileViews = igMetrics.find(function(m) { return m.name === 'profile_views'; });
+        var igEngaged = igMetrics.find(function(m) { return m.name === 'accounts_engaged'; });
+        var igInteractions = igMetrics.find(function(m) { return m.name === 'total_interactions'; });
 
         if (igFollowers && igFollowers.values && igFollowers.values.length > 0) {
           instagram.followers = igFollowers.values[igFollowers.values.length - 1].value || 0;
         }
 
         var igReachValues = igReach ? (igReach.values || []) : [];
-        var igImpressionValues = igImpressions ? (igImpressions.values || []) : [];
+        var igProfileValues = igProfileViews ? (igProfileViews.values || []) : [];
+        var igEngagedValues = igEngaged ? (igEngaged.values || []) : [];
+        var igInteractionValues = igInteractions ? (igInteractions.values || []) : [];
 
         instagram.reach = igReachValues.reduce(function(s, v) { return s + (v.value || 0); }, 0);
-        instagram.impressions = igImpressionValues.reduce(function(s, v) { return s + (v.value || 0); }, 0);
+        instagram.profileViews = igProfileValues.reduce(function(s, v) { return s + (v.value || 0); }, 0);
+        instagram.accountsEngaged = igEngagedValues.reduce(function(s, v) { return s + (v.value || 0); }, 0);
+        instagram.totalInteractions = igInteractionValues.reduce(function(s, v) { return s + (v.value || 0); }, 0);
 
         var igDailyMap = {};
         igReachValues.forEach(function(v) {
           var d = v.end_time ? v.end_time.split('T')[0] : '';
-          if (d) igDailyMap[d] = { date: d, reach: v.value || 0, impressions: 0 };
+          if (d) igDailyMap[d] = { date: d, reach: v.value || 0, profileViews: 0, engaged: 0, interactions: 0 };
         });
-        igImpressionValues.forEach(function(v) {
+        igProfileValues.forEach(function(v) {
           var d = v.end_time ? v.end_time.split('T')[0] : '';
-          if (d && igDailyMap[d]) igDailyMap[d].impressions = v.value || 0;
-          else if (d) igDailyMap[d] = { date: d, reach: 0, impressions: v.value || 0 };
+          if (d && igDailyMap[d]) igDailyMap[d].profileViews = v.value || 0;
+          else if (d) igDailyMap[d] = { date: d, reach: 0, profileViews: v.value || 0, engaged: 0, interactions: 0 };
+        });
+        igEngagedValues.forEach(function(v) {
+          var d = v.end_time ? v.end_time.split('T')[0] : '';
+          if (d && igDailyMap[d]) igDailyMap[d].engaged = v.value || 0;
+        });
+        igInteractionValues.forEach(function(v) {
+          var d = v.end_time ? v.end_time.split('T')[0] : '';
+          if (d && igDailyMap[d]) igDailyMap[d].interactions = v.value || 0;
         });
         instagram.daily = Object.keys(igDailyMap).sort().map(function(k) { return igDailyMap[k]; });
       }

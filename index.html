@@ -1633,10 +1633,13 @@ function Dashboard(){
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:14}}>
           <MC l="IG Followers" v={ig.followers||0} fmt="#" big />
           <MC l="IG Reach (30d)" v={ig.reach||0} fmt="#" />
-          <MC l="IG Impressions (30d)" v={ig.impressions||0} fmt="#" />
-          <MC l="FB Page Likes" v={fb.pageLikes||0} fmt="#" big />
-          <MC l="FB Engaged Users (30d)" v={fb.engagedUsers||0} fmt="#" />
-          <MC l="FB Impressions (30d)" v={fb.impressions||0} fmt="#" />
+          <MC l="IG Profile Views" v={ig.profileViews||0} fmt="#" />
+          <MC l="IG Engaged Accounts" v={ig.accountsEngaged||0} fmt="#" />
+          <MC l="IG Interactions" v={ig.totalInteractions||0} fmt="#" />
+          <MC l="FB Impressions (30d)" v={fb.impressions||0} fmt="#" big />
+          <MC l="FB Engagements" v={fb.engagedUsers||0} fmt="#" />
+          <MC l="FB Page Views" v={fb.pageViews||0} fmt="#" />
+          <MC l="FB New Fans" v={fb.newFans||0} fmt="#" />
         </div>
 
         {ig.error&&<div style={{fontSize:12,color:"var(--ylw)",marginBottom:8}}>IG: {ig.error}</div>}
@@ -1651,7 +1654,7 @@ function Dashboard(){
               <YAxis tick={{fill:"var(--t3)",fontSize:10}} tickFormatter={v=>v>=1000?(v/1000).toFixed(0)+"k":v} />
               <Tooltip contentStyle={{background:"var(--tipbg)",border:"1px solid var(--tipbdr)",borderRadius:8,fontSize:12}} />
               {ig.daily?.length>0&&<Area type="monotone" dataKey="reach" fill="rgba(168,85,247,0.1)" stroke="#a855f7" strokeWidth={2} name="IG Reach" />}
-              {ig.daily?.length>0&&<Line type="monotone" dataKey="impressions" stroke="var(--acc)" strokeWidth={1.5} dot={false} name="IG Impressions" />}
+              {ig.daily?.length>0&&<Line type="monotone" dataKey="interactions" stroke="var(--acc)" strokeWidth={1.5} dot={false} name="IG Interactions" />}
             </ComposedChart>
           </ResponsiveContainer>
         </div>}
