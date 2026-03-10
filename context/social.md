@@ -1,42 +1,67 @@
-# Social Media Benchmarks — DTC Skincare/Beauty (<10K Followers)
+# Social Media — Noody Skincare Context
 
-## Instagram Benchmarks
-- **Engagement Rate (post-level)**: 3-6% (likes+comments / followers). Under 2% = poor, 2-3% = fair, 3-6% = good, 6%+ = excellent
-- **Account Engagement Rate**: 8-15% (accounts_engaged / followers). Measures unique accounts interacting
-- **Reach Rate**: 20-40% of followers per post (organic only — paid reach inflates this dramatically)
-- **Stories Views**: 5-10% of followers
-- **Profile Visit Rate**: 2-5% of reach converts to profile views
-- **Save Rate**: 2-4% of reach (high = content is valuable/educational)
-- **Share Rate**: 1-2% of reach (high = content is relatable/shareable)
-- **Follower Growth**: 2-5% monthly for sub-10K accounts. At 5% growth, ~14 months from 5K to 10K
-- **Best posting frequency**: 5x/week minimum (3 Reels, 2 carousels) for growth phase
+## Role: Top of Funnel Awareness
+Social feeds into the top of funnel — creates organic awareness that Meta ads convert. Strong organic social reduces reliance on paid acquisition and builds brand trust.
 
-## Facebook Page Benchmarks
-- **Page Engagement Rate**: 1-3% (engagements / reach)
-- **Organic Post Reach**: 5-15% of page likes
-- **Link Click Rate**: 1-3% of reach
+## Content Strategy
+Recommended content mix:
+- **60% Education**: Eczema management, ingredient explainers, skincare tips, "Did you know" posts
+- **30% UGC/Results**: Customer testimonials, before/after skin results, reviews, real family stories
+- **10% Behind-the-scenes**: Production, team, founder story, brand values
 
-## Content Type Performance (Instagram)
-- **Reels**: 2-5x more reach than static posts. Prioritise for growth and discovery
-- **Carousel**: Highest save rate. Best for educational/how-to content. Drives deeper engagement
-- **UGC/Testimonials**: Highest conversion to website visit. Feature real customer results
-- **Educational Content**: Highest share rate for skincare. "Did you know" posts, ingredient explainers
-- **Static Images**: Lowest reach but good for brand consistency
+## Content Format Performance (Noody-Specific)
+**Carousels dramatically outperform reels for Noody:**
+| Format | Engagement Rate | Notes |
+|--------|----------------|-------|
+| Carousel | 7.8% | Best performer — educational content shines |
+| Reels | 1.3% | Underperforming despite general platform push |
+| Static | — | Lowest reach but good for brand consistency |
 
-## Social → Revenue Benchmarks (DTC ecommerce)
-- **Revenue per social session**: $0.50-$2.00 is healthy for DTC skincare
-- **Social as % of DTC revenue**: 3-8% is typical for organic social
-- **Instagram vs Facebook**: IG typically 2-3x higher rev/session for skincare/beauty
-- **Conversion rate from social traffic**: 0.5-1.5% (lower than email, similar to paid social)
+This contradicts general advice to prioritize reels. For Noody, carousels work better — likely because the audience values educational/informational content about eczema over entertainment-style video.
 
-## Noody-Specific Context
-- NZ-based eczema/baby skincare brand. Niche = high trust, high engagement potential
-- Medical/sensitive skin niche commands higher engagement than general beauty
-- Key content pillars: eczema education, ingredient transparency, customer results, baby care tips
-- Target audience: NZ parents (especially mothers) with children who have eczema/sensitive skin
-- ~486 followers (estimated). Reach is ~4,157/day but mostly from paid ads, not organic
-- Profile views: 189/30d. Engaged accounts: 45/30d. Account engagement: 9.3% (well above 3-6% benchmark)
-- Post engagement: 1.6% (below 3% benchmark — needs improvement in likes/comments per post)
-- Carousels dramatically outperform reels: 7.8% engagement rate vs 1.3% for reels
-- This contradicts general advice to prioritise reels — for Noody, carousels work better
-- Posting frequency: needs to increase to minimum 5x/week
+## Instagram Benchmarks (DTC Skincare, <10K Followers)
+| Metric | Benchmark | Noody Current |
+|--------|-----------|---------------|
+| Post Engagement Rate | 3-6% (likes+comments/followers) | 1.6% (needs work) |
+| Account Engagement Rate | 8-15% (engaged accounts/followers) | 9.3% (healthy) |
+| Reach Rate | 20-40% of followers/post | ~4,157/day (mostly paid) |
+| Profile Visit Rate | 2-5% of reach | 189/30d |
+| Follower Growth | 2-5% monthly | — |
+| Stories Views | 5-10% of followers | — |
+
+## Social Revenue Contribution
+| Metric | Benchmark | Noody Current |
+|--------|-----------|---------------|
+| Social as % of DTC Revenue | 3-8% typical | 3.2% |
+| Revenue per social session | $0.50-$2.00 | — |
+
+## Noody Current Profile
+- **Followers**: ~486
+- **Reach**: ~4,157/day (inflated by paid — organic reach much lower)
+- **Profile Views**: 189/30d
+- **Engaged Accounts**: 45/30d
+- **Account Engagement**: 9.3% (well above 3-6% benchmark — small but engaged community)
+- **Post Engagement**: 1.6% (below 3% benchmark — needs more likes/comments per post)
+
+## Growth Strategy
+With 486 followers, the priority is clear:
+1. **Focus on Instagram only** for the next 60 days — don't spread across platforms
+2. **Target 2,000 followers by month 3** (requires ~5% weekly growth)
+3. **Posting frequency**: Minimum 5x/week (3 carousels, 2 other formats) for growth phase
+4. **Double down on carousels** since they perform 6x better than reels for Noody
+5. **Engage actively**: Reply to every comment, engage with similar accounts, use relevant hashtags
+
+## Key Insight
+Noody's niche (medical/sensitive skin, eczema) commands higher engagement than general beauty — parents actively seek trustworthy skincare information. Educational carousel content plays perfectly to this. The audience wants to LEARN, not be entertained.
+
+## Facebook
+- **Page insights**: Limited data available (API returns #100 error on most metrics)
+- **Fan count** from page info endpoint is the only reliable FB metric
+- **Strategy**: Mirror Instagram content to FB, but don't invest extra effort — IG is the priority
+
+## Content Pillars for Noody
+1. **Eczema education**: Triggers, management, seasonal tips, ingredient science
+2. **Ingredient transparency**: What's in the products and why, what's NOT in them
+3. **Customer results**: Before/after, testimonials, family stories
+4. **Baby care tips**: Beyond skincare — parenting content that builds broader trust
+5. **Behind the brand**: NZ-made, founder story, production process
