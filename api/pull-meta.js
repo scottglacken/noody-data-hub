@@ -37,35 +37,54 @@ export default async function handler(req, res) {
     var untilDate = new Date().toISOString().split('T')[0];
 
     try {
-      var fbUrl = 'https://graph.facebook.com/v19.0/' + pageId + '/insights' +
+      // Step 1: Get Page Access Token (required for page insights)
+      var pageTokenUrl = 'https://graph.facebook.com/v19.0/' + pageId +
+        '?fields=access_token&access_token=' + token;
+      var pageTokenResult = await fetch(pageTokenUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; });
+      var pageToken = (pageTokenResult && pageTokenResult.access_token) ? pageTokenResult.access_token : null;
+
+      // Step 2: Build API URLs
+      // FB Page insights — requires page token
+      var fbUrl = pageToken ? ('https://graph.facebook.com/v19.0/' + pageId + '/insights' +
         '?metric=page_impressions,page_post_engagements,page_views_total,page_fan_adds' +
         '&period=day&since=' + sinceDate + '&until=' + untilDate +
-        '&access_token=' + token;
+        '&access_token=' + pageToken) : null;
 
-      var igInsightsUrl = 'https://graph.facebook.com/v19.0/' + igId + '/insights' +
-        '?metric=reach,follower_count,profile_views,accounts_engaged,total_interactions' +
+      // IG daily metrics (period=day)
+      var igDailyUrl = 'https://graph.facebook.com/v19.0/' + igId + '/insights' +
+        '?metric=reach,follower_count' +
         '&period=day&since=' + sinceDate + '&until=' + untilDate +
         '&access_token=' + token;
 
+      // IG total_value metrics (need metric_type=total_value)
+      var igTotalUrl = 'https://graph.facebook.com/v19.0/' + igId + '/insights' +
+        '?metric=profile_views,accounts_engaged,total_interactions' +
+        '&period=day&metric_type=total_value&since=' + sinceDate + '&until=' + untilDate +
+        '&access_token=' + token;
+
+      // IG media (posts)
       var igMediaUrl = 'https://graph.facebook.com/v19.0/' + igId + '/media' +
         '?fields=id,caption,media_type,like_count,comments_count,timestamp,permalink' +
         '&limit=20&access_token=' + token;
 
-      var results = await Promise.all([
-        fetch(fbUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }),
-        fetch(igInsightsUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }),
+      var fetches = [
+        fbUrl ? fetch(fbUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }) : Promise.resolve({ _error: 'No page token — user token cannot access page insights. Grant pages_read_engagement permission.' }),
+        fetch(igDailyUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }),
+        fetch(igTotalUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }),
         fetch(igMediaUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }),
-      ]);
+      ];
+      var results = await Promise.all(fetches);
 
       var fbData = results[0];
-      var igInsights = results[1];
-      var igMedia = results[2];
+      var igDailyInsights = results[1];
+      var igTotalInsights = results[2];
+      var igMedia = results[3];
 
       // Parse Facebook Page insights
       var facebook = { pageLikes: 0, engagedUsers: 0, impressions: 0, daily: [], error: null };
       if (fbData._error || fbData.error) {
-        facebook.error = fbData._error || fbData.error.message ||
-          'Facebook Page insights failed. Ensure the token has pages_read_engagement permission.';
+        facebook.error = fbData._error || (fbData.error ? fbData.error.message : null) ||
+          'Facebook Page insights failed. Ensure the token has pages_read_engagement permission and the Page is linked.';
       } else {
         var fbMetrics = fbData.data || [];
         var impressionsMetric = fbMetrics.find(function(m) { return m.name === 'page_impressions'; });
@@ -99,52 +118,71 @@ export default async function handler(req, res) {
       }
       if (!facebook.error) delete facebook.error;
 
-      // Parse Instagram insights
+      // Parse Instagram insights (from two separate API calls)
       var instagram = { followers: 0, reach: 0, profileViews: 0, accountsEngaged: 0, totalInteractions: 0, daily: [], error: null };
-      if (igInsights._error || igInsights.error) {
-        instagram.error = igInsights._error || igInsights.error.message ||
-          'Instagram insights failed. Ensure the token has instagram_basic and instagram_manage_insights permissions.';
+
+      // A) Daily metrics (reach, follower_count)
+      var igDailyError = null;
+      if (igDailyInsights._error || igDailyInsights.error) {
+        igDailyError = igDailyInsights._error || (igDailyInsights.error ? igDailyInsights.error.message : 'IG daily insights failed');
       } else {
-        var igMetrics = igInsights.data || [];
-        var igReach = igMetrics.find(function(m) { return m.name === 'reach'; });
-        var igFollowers = igMetrics.find(function(m) { return m.name === 'follower_count'; });
-        var igProfileViews = igMetrics.find(function(m) { return m.name === 'profile_views'; });
-        var igEngaged = igMetrics.find(function(m) { return m.name === 'accounts_engaged'; });
-        var igInteractions = igMetrics.find(function(m) { return m.name === 'total_interactions'; });
+        var igDailyMetrics = igDailyInsights.data || [];
+        var igReach = igDailyMetrics.find(function(m) { return m.name === 'reach'; });
+        var igFollowers = igDailyMetrics.find(function(m) { return m.name === 'follower_count'; });
 
         if (igFollowers && igFollowers.values && igFollowers.values.length > 0) {
           instagram.followers = igFollowers.values[igFollowers.values.length - 1].value || 0;
         }
 
         var igReachValues = igReach ? (igReach.values || []) : [];
+        instagram.reach = igReachValues.reduce(function(s, v) { return s + (v.value || 0); }, 0);
+
+        igReachValues.forEach(function(v) {
+          var d = v.end_time ? v.end_time.split('T')[0] : '';
+          if (d) instagram.daily.push({ date: d, reach: v.value || 0, profileViews: 0, engaged: 0, interactions: 0 });
+        });
+      }
+
+      // B) Total value metrics (profile_views, accounts_engaged, total_interactions)
+      var igTotalError = null;
+      if (igTotalInsights._error || igTotalInsights.error) {
+        igTotalError = igTotalInsights._error || (igTotalInsights.error ? igTotalInsights.error.message : 'IG total insights failed');
+      } else {
+        var igTotalMetrics = igTotalInsights.data || [];
+        var igProfileViews = igTotalMetrics.find(function(m) { return m.name === 'profile_views'; });
+        var igEngaged = igTotalMetrics.find(function(m) { return m.name === 'accounts_engaged'; });
+        var igInteractions = igTotalMetrics.find(function(m) { return m.name === 'total_interactions'; });
+
         var igProfileValues = igProfileViews ? (igProfileViews.values || []) : [];
         var igEngagedValues = igEngaged ? (igEngaged.values || []) : [];
         var igInteractionValues = igInteractions ? (igInteractions.values || []) : [];
 
-        instagram.reach = igReachValues.reduce(function(s, v) { return s + (v.value || 0); }, 0);
         instagram.profileViews = igProfileValues.reduce(function(s, v) { return s + (v.value || 0); }, 0);
         instagram.accountsEngaged = igEngagedValues.reduce(function(s, v) { return s + (v.value || 0); }, 0);
         instagram.totalInteractions = igInteractionValues.reduce(function(s, v) { return s + (v.value || 0); }, 0);
 
-        var igDailyMap = {};
-        igReachValues.forEach(function(v) {
-          var d = v.end_time ? v.end_time.split('T')[0] : '';
-          if (d) igDailyMap[d] = { date: d, reach: v.value || 0, profileViews: 0, engaged: 0, interactions: 0 };
-        });
+        // Merge total_value daily data into existing daily array
+        var dailyMap = {};
+        instagram.daily.forEach(function(row) { dailyMap[row.date] = row; });
         igProfileValues.forEach(function(v) {
           var d = v.end_time ? v.end_time.split('T')[0] : '';
-          if (d && igDailyMap[d]) igDailyMap[d].profileViews = v.value || 0;
-          else if (d) igDailyMap[d] = { date: d, reach: 0, profileViews: v.value || 0, engaged: 0, interactions: 0 };
+          if (d && dailyMap[d]) dailyMap[d].profileViews = v.value || 0;
         });
         igEngagedValues.forEach(function(v) {
           var d = v.end_time ? v.end_time.split('T')[0] : '';
-          if (d && igDailyMap[d]) igDailyMap[d].engaged = v.value || 0;
+          if (d && dailyMap[d]) dailyMap[d].engaged = v.value || 0;
         });
         igInteractionValues.forEach(function(v) {
           var d = v.end_time ? v.end_time.split('T')[0] : '';
-          if (d && igDailyMap[d]) igDailyMap[d].interactions = v.value || 0;
+          if (d && dailyMap[d]) dailyMap[d].interactions = v.value || 0;
         });
-        instagram.daily = Object.keys(igDailyMap).sort().map(function(k) { return igDailyMap[k]; });
+      }
+
+      // Set error only if both calls failed
+      if (igDailyError && igTotalError) {
+        instagram.error = 'Daily: ' + igDailyError + ' | Total: ' + igTotalError;
+      } else if (igDailyError) {
+        instagram.error = igDailyError;
       }
       if (!instagram.error) delete instagram.error;
 
@@ -165,6 +203,17 @@ export default async function handler(req, res) {
         var mediaError = igMedia._error || (igMedia.error ? igMedia.error.message : 'Unknown error');
         recentPosts = [];
         instagram.mediaError = mediaError;
+      }
+
+      // Follower estimation fallback: if API returned 0 followers but we have posts,
+      // estimate from post engagement (avg likes * ~20 is a rough follower estimate for small accounts)
+      if (instagram.followers === 0 && recentPosts.length > 0) {
+        var totalLikes = recentPosts.reduce(function(s, p) { return s + p.likes; }, 0);
+        var avgLikes = totalLikes / recentPosts.length;
+        if (avgLikes > 0) {
+          instagram.followersEstimated = true;
+          instagram.followers = Math.round(avgLikes * 20);
+        }
       }
 
       return res.status(200).json({

@@ -1696,7 +1696,7 @@ function Dashboard(){
 
         {/* A) KEY METRICS */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:14}}>
-          <MC l="IG Followers" v={followers} fmt="#" big />
+          <MC l="IG Followers" v={followers} fmt="#" big sub={ig.followersEstimated?"Estimated from post engagement":""} />
           <MC l="IG Reach (30d)" v={ig.reach||0} fmt="#" />
           <MC l="IG Profile Views" v={ig.profileViews||0} fmt="#" />
           <MC l="IG Engaged Accounts" v={ig.accountsEngaged||0} fmt="#" />
