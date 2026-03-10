@@ -208,7 +208,7 @@ function Dashboard(){
   const fetchKlav=useCallback(async()=>{
     setKlavLoading(true);
     try{
-      const r=await fetch('/api/pull-klaviyo?days=400',{headers:{"x-api-key":"noody-eq-2026-datahub"}});
+      const r=await fetch('/api/pull-klaviyo?days=365',{headers:{"x-api-key":"noody-eq-2026-datahub"}});
       if(r.ok){const d=await r.json();if(d.daily)setKlavLive(d);}
     }catch(e){console.error("Klaviyo:",e);}
     setKlavLoading(false);

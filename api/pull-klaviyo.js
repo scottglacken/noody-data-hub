@@ -17,7 +17,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing KLAVIYO_API_KEY env var' });
   }
 
-  var days = parseInt(req.query.days) || 30;
+  var days = Math.min(parseInt(req.query.days) || 30, 364); // Klaviyo API max 1 year (364 to avoid off-by-one with T23:59:59Z)
   var sinceDate = new Date(Date.now() - days * 86400000).toISOString().split('T')[0];
   var untilDate = new Date().toISOString().split('T')[0];
 
