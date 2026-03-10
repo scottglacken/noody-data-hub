@@ -34,7 +34,7 @@ const XERO_VAR = XERO.cogs+XERO.testing+XERO.postage+XERO.pkg+XERO.txn+XERO.reba
 const XERO_MKT = XERO.ads+XERO.mktOther+XERO.photo;
 const XERO_FIXED = XERO.wages+XERO.subs+XERO.rent+XERO.consult+XERO.opex+XERO.general+XERO.otherFixed;
 const XERO_PROFIT = XERO.rev-XERO_VAR-XERO_MKT-XERO_FIXED;
-const XERO_RECENT={dtc:55873,wh:94749,intl:33529,rev:184151};
+const XERO_RECENT={dtc:55873,wh:95267,intl:33011,rev:196032};
 
 const BM = {fc:{h:[0,20],w:[20,30]},vc:{h:[0,40],w:[40,50]},mer:{h:[0,35],w:[35,45]},np:{h:[10,100],w:[5,10]},em:{h:[30,100],w:[15,30]}};
 
@@ -290,6 +290,24 @@ function Dashboard(){
     return {rev:s.revenue||0,gp:s.grossProfit||0,gm:s.grossMargin||0,np:s.netProfit||0,nm:s.netMargin||0,cogs:s.cogs||0,exp:s.totalExpenses||0};
   },[xeroLive]);
 
+  // Dynamic channel ratios from Xero P&L (override XERO_RECENT when live data available)
+  const xeroChannels=useMemo(()=>{
+    if(!xeroLive?.profitAndLoss?.sections)return XERO_RECENT;
+    const inc=xeroLive.profitAndLoss.sections["Income"];
+    if(!inc||!inc.items)return XERO_RECENT;
+    let dtc=0,wh=0,intl=0,rev=0;
+    inc.items.forEach(function(item){
+      const n=(item.name||"").toLowerCase();const v=item.value||0;
+      if(n.indexOf("online")!==-1)dtc+=v;
+      else if(n==="sales - wholesale")wh+=v;
+      else if(n.indexOf("wholesale international")!==-1)wh+=v;
+      else if(n==="sales - international")intl+=v;
+    });
+    rev=inc.total||0;
+    if(dtc>0&&rev>0)return {dtc:Math.round(dtc),wh:Math.round(wh),intl:Math.round(intl),rev:Math.round(rev)};
+    return XERO_RECENT;
+  },[xeroLive]);
+
   const vis=useMemo(()=>{
     if(customFrom&&customTo) return mergedD.filter(d=>d.d>=customFrom&&d.d<=customTo);
     return mergedD.slice(-range);
@@ -360,9 +378,9 @@ function Dashboard(){
   })),[vis]);
 
   const PIES=[
-    {name:"DTC",value:XERO_RECENT.dtc,color:"#2563eb"},
-    {name:"Wholesale",value:XERO_RECENT.wh,color:"#7c3aed"},
-    {name:"International",value:XERO_RECENT.intl,color:"#06b6d4"},
+    {name:"DTC",value:xeroChannels.dtc,color:"#2563eb"},
+    {name:"Wholesale",value:xeroChannels.wh,color:"#7c3aed"},
+    {name:"International",value:xeroChannels.intl,color:"#06b6d4"},
   ];
 
   // Channel data computed in Equation tab IIFE
@@ -421,9 +439,9 @@ function Dashboard(){
       const days=a.d;
 
       // Estimated full-business using Xero ratios (prefer recent 3-month over annual)
-      const dtcRatio=XERO_RECENT.dtc/XERO_RECENT.rev;
-      const whRatio=XERO_RECENT.wh/XERO_RECENT.rev;
-      const intlRatio=XERO_RECENT.intl/XERO_RECENT.rev;
+      const dtcRatio=xeroChannels.dtc/xeroChannels.rev;
+      const whRatio=xeroChannels.wh/xeroChannels.rev;
+      const intlRatio=xeroChannels.intl/xeroChannels.rev;
       const estTotalRev=dtcRatio>0?dtcRev/dtcRatio:dtcRev;
       const estWholesale=estTotalRev*whRatio;
       const estIntl=estTotalRev*intlRatio;
@@ -998,7 +1016,7 @@ function Dashboard(){
       if(!agg)return <div style={{padding:40,textAlign:"center",color:"var(--t3)"}}>Loading data...</div>;
       const a=agg;const days=a.d;
       const dtcRev=a.tr;const metaSpend=a.tms;
-      const dtcRatio=XERO_RECENT.dtc/XERO_RECENT.rev;const whRatio=XERO_RECENT.wh/XERO_RECENT.rev;
+      const dtcRatio=xeroChannels.dtc/xeroChannels.rev;const whRatio=xeroChannels.wh/xeroChannels.rev;
       const varRatio=XERO_VAR/XERO.rev;const fixedMonthly=XERO_FIXED/XERO.months;
       const estTotalRev=dtcRatio>0?dtcRev/dtcRatio:dtcRev;
       const estVariable=estTotalRev*varRatio;const estFixed=fixedMonthly*(days/30);
@@ -1071,7 +1089,7 @@ function Dashboard(){
       if(!agg)return <div style={{padding:40,textAlign:"center",color:"var(--t3)"}}>Loading data...</div>;
       const a=agg;const days=a.d;
       const dtcRev=a.tr;const metaSpend=a.tms;
-      const dtcRatio=XERO_RECENT.dtc/XERO_RECENT.rev;const varRatio=XERO_VAR/XERO.rev;
+      const dtcRatio=xeroChannels.dtc/xeroChannels.rev;const varRatio=XERO_VAR/XERO.rev;
       const fixedMonthly=XERO_FIXED/XERO.months;
       const estTotalRev=dtcRatio>0?dtcRev/dtcRatio:dtcRev;
       const annRev=Math.round(estTotalRev/(days/365));
@@ -1239,7 +1257,7 @@ function Dashboard(){
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,fontFamily:"'JetBrains Mono',monospace"}}>
               <thead><tr style={{borderBottom:"1px solid var(--bdr)"}}>
-                {["Campaign","Type","Spend","Clicks","Impr","CTR","Conv","Value","ROAS"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:"var(--t3)",fontWeight:500,fontSize:11,textTransform:"uppercase"}}>{h}</th>)}
+                {["Campaign","Type","Spend","Clicks","Impr","CTR","Conv","Value","ROAS","Entries"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:"var(--t3)",fontWeight:500,fontSize:11,textTransform:"uppercase"}}>{h}</th>)}
               </tr></thead>
               <tbody>{gads.campaigns.map((c,i)=>{
                 const cRoas=c.spend>0?c.conversionValue/c.spend:0;
@@ -1253,6 +1271,7 @@ function Dashboard(){
                   <td style={{padding:"6px 8px"}}>{Math.round(c.conversions)}</td>
                   <td style={{padding:"6px 8px"}}>{f$(c.conversionValue)}</td>
                   <td style={{padding:"6px 8px",color:cRoas>=5?"#10b981":cRoas>=2?"#f59e0b":"#ef4444"}}>{cRoas.toFixed(1)}x</td>
+                  <td style={{padding:"6px 8px",color:"var(--t3)"}}>{c.entries||"—"}</td>
                 </tr>;
               })}</tbody>
             </table>
@@ -1795,17 +1814,16 @@ function Dashboard(){
           </div>
         </div>}
 
-        {/* E) DAILY CHARTS */}
-        {(ig.daily?.length>1||fb.daily?.length>1)&&<div style={cardS}>
-          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Daily Reach & Interactions</div>
+        {/* E) DAILY CHARTS — only reach has daily breakdown (total_value metrics are aggregate only) */}
+        {ig.daily?.length>1&&<div style={cardS}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Daily Reach (incl. paid)</div>
           <ResponsiveContainer width="100%" height={220}>
-            <ComposedChart data={ig.daily?.length?ig.daily:fb.daily}>
+            <ComposedChart data={ig.daily}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--grid)" />
-              <XAxis dataKey="date" tick={{fill:"var(--t3)",fontSize:10}} interval={Math.max(0,Math.floor((ig.daily?.length||fb.daily?.length||1)/10)-1)} />
+              <XAxis dataKey="date" tick={{fill:"var(--t3)",fontSize:10}} interval={Math.max(0,Math.floor((ig.daily?.length||1)/10)-1)} />
               <YAxis tick={{fill:"var(--t3)",fontSize:10}} tickFormatter={v=>v>=1000?(v/1000).toFixed(0)+"k":v} />
               <Tooltip contentStyle={{background:"var(--tipbg)",border:"1px solid var(--tipbdr)",borderRadius:8,fontSize:12}} />
-              {ig.daily?.length>0&&<Area type="monotone" dataKey="reach" fill="rgba(168,85,247,0.1)" stroke="#a855f7" strokeWidth={2} name="IG Reach" />}
-              {ig.daily?.length>0&&<Line type="monotone" dataKey="interactions" stroke="var(--acc)" strokeWidth={1.5} dot={false} name="IG Interactions" />}
+              <Area type="monotone" dataKey="reach" fill="rgba(168,85,247,0.1)" stroke="#a855f7" strokeWidth={2} name="IG Reach" />
             </ComposedChart>
           </ResponsiveContainer>
         </div>}
@@ -1890,7 +1908,7 @@ function Dashboard(){
       // ─── Compute all insight data from selected range ───
       const a=agg;const days=a.d;
       const dtcRev=a.tr;const metaSpend=a.tms;
-      const dtcRatio=XERO_RECENT.dtc/XERO_RECENT.rev;const whRatio=XERO_RECENT.wh/XERO_RECENT.rev;const intlRatio=XERO_RECENT.intl/XERO_RECENT.rev;
+      const dtcRatio=xeroChannels.dtc/xeroChannels.rev;const whRatio=xeroChannels.wh/xeroChannels.rev;const intlRatio=xeroChannels.intl/xeroChannels.rev;
       const varRatio=XERO_VAR/XERO.rev;const fixedMonthly=XERO_FIXED/XERO.months;
       const estTotalRev=dtcRatio>0?dtcRev/dtcRatio:dtcRev;
       const estVariable=estTotalRev*varRatio;const estFixed=fixedMonthly*(days/30);
@@ -1910,12 +1928,12 @@ function Dashboard(){
       const metaPctBudget=totalAdSpend>0?Math.round(metaSpend/totalAdSpend*100):100;
       const googleSpend=gads?gads.summary.totalSpend:0;
       
-      // Email % from selected range
+      // Email % from selected range — only use when Klaviyo live data has loaded
       const last90=vis;
-      const emailRevs=last90.filter(d=>d.e>0).map(d=>d.r>0?(d.e/d.r*100):0);
-      const emailMin=emailRevs.length?Math.round(Math.min(...emailRevs)):11;
-      const emailMax=emailRevs.length?Math.round(Math.max(...emailRevs)):44;
-      const emailAvg=emailRevs.length?Math.round(emailRevs.reduce((a,b)=>a+b,0)/emailRevs.length):25;
+      const emailRevs=klavLive?last90.filter(d=>d.e>0).map(d=>d.r>0?(d.e/d.r*100):0):[];
+      const emailMin=emailRevs.length?Math.round(Math.min(...emailRevs)):0;
+      const emailMax=emailRevs.length?Math.round(Math.max(...emailRevs)):0;
+      const emailAvg=emailRevs.length?Math.round(emailRevs.reduce((a,b)=>a+b,0)/emailRevs.length):0;
       
       // Monthly ROAS analysis
       const monthlyRoas=monthly.filter(m=>m.meta>0).map(m=>({month:m.month,roas:m.roas,spend:m.meta,rev:m.rev,mer:m.mer}));
@@ -1944,8 +1962,8 @@ function Dashboard(){
            {week:"Week 3–4",text:"Launch email revenue push — get from "+emailAvg+"% floor to 30%+ consistent via automated flows."},
          ]},
 
-        {type:emailAvg>=30?"opportunity":"warning",icon:"📧",title:"Email Revenue "+(emailMin>0?emailMin+"–":"")+emailMax+"% — "+(emailAvg>=30?"Healthy":"Needs to Lock in at 30–40%"),
-         body:"Email is your highest-margin channel (LER $"+ler.toFixed(2)+(ler>=2?", well above $2.00 benchmark":"")+"), but "+(emailMax-emailMin>15?"wild swings between "+emailMin+"% and "+emailMax+"% of revenue indicate reliance on campaign blasts rather than automated flows":"range of "+emailMin+"–"+emailMax+"% needs tightening")+". At "+emailMax+"%, your DTC economics work beautifully. At "+emailMin+"%, MER blows out because ads carry more weight. <strong>The fix isn't more campaigns — it's better flows.</strong> Automated flows (welcome, post-purchase, winback, browse abandonment) provide a stable floor.",
+        {type:!klavLive?"warning":emailAvg>=30?"opportunity":"warning",icon:"📧",title:!klavLive?"Email Revenue — Klaviyo Loading...":"Email Revenue "+(emailMin>0?emailMin+"–":"")+emailMax+"% — "+(emailAvg>=30?"Healthy":"Needs to Lock in at 30–40%"),
+         body:!klavLive?"<strong>Klaviyo data has not loaded yet.</strong> Reload the page and wait for Klaviyo to connect before reviewing email metrics. Email should be 30–40% of DTC revenue.":"Email is your highest-margin channel (LER $"+ler.toFixed(2)+(ler>=2?", well above $2.00 benchmark":"")+"), but "+(emailMax-emailMin>15?"wild swings between "+emailMin+"% and "+emailMax+"% of revenue indicate reliance on campaign blasts rather than automated flows":"range of "+emailMin+"–"+emailMax+"% needs tightening")+". At "+emailMax+"%, your DTC economics work beautifully. At "+emailMin+"%, MER blows out because ads carry more weight. <strong>The fix isn't more campaigns — it's better flows.</strong> Automated flows (welcome, post-purchase, winback, browse abandonment) provide a stable floor.",
          actions:[
            {week:"Week 1",text:"Audit Klaviyo flows — ensure Welcome, Browse Abandonment, Post-Purchase, and Winback are all live and optimized."},
            {week:"Week 2",text:"Track flow vs campaign revenue separately. Target: 60% of email revenue from flows."},
