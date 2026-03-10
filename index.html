@@ -36,6 +36,15 @@ const XERO_FIXED = XERO.wages+XERO.subs+XERO.rent+XERO.consult+XERO.opex+XERO.ge
 const XERO_PROFIT = XERO.rev-XERO_VAR-XERO_MKT-XERO_FIXED;
 
 const BM = {fc:{h:[0,20],w:[20,30]},vc:{h:[0,40],w:[40,50]},mer:{h:[0,35],w:[35,45]},np:{h:[10,100],w:[5,10]},em:{h:[30,100],w:[15,30]}};
+
+// Monthly targets
+const TARGETS = {
+  monthlyDtcRev: 32000,   // Monthly DTC revenue target
+  monthlyAdSpend: 8000,    // Monthly ad spend budget
+  aov: 75,                 // AOV target
+  emailPct: 35,            // Email rev % target
+  metaROAS: 2.5,           // Meta ROAS target
+};
 function gs(v,b){if(!b||v==null)return"n";if(v>=b.h[0]&&v<=b.h[1])return"h";if(v>=b.w[0]&&v<=b.w[1])return"w";return"c";}
 const SC={h:"#10b981",w:"#f59e0b",c:"#ef4444",n:"#6b7280"};
 const SB={h:"rgba(16,185,129,0.08)",w:"rgba(245,158,11,0.08)",c:"rgba(239,68,68,0.08)",n:"rgba(107,114,128,0.06)"};
@@ -59,6 +68,33 @@ function Tab({a,onClick,children,icon,accent}){
   return <button onClick={onClick} style={{padding:"11px 20px",background:bg,border:"1px solid "+bdr,borderRadius:10,color:a?"#fff":"var(--t2)",fontSize:14,fontWeight:a?600:500,cursor:"pointer",display:"flex",alignItems:"center",gap:7,minHeight:44,whiteSpace:"nowrap",transition:"all .2s"}}><span style={{fontSize:17}}>{icon}</span>{children}</button>;
 }
 
+function AiSummary({text,loading,label}){
+  if(!text&&!loading)return null;
+  return <div style={{background:"linear-gradient(135deg,rgba(79,110,247,0.04),rgba(124,58,237,0.04))",border:"1px solid rgba(79,110,247,0.2)",borderRadius:12,padding:16,marginBottom:14}}>
+    <div style={{fontSize:11,color:"var(--acc)",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:8}}>{label||"AI Analysis"}</div>
+    {loading?<div style={{fontSize:13,color:"var(--t3)"}}>Analysing...</div>
+    :<div style={{fontSize:13,color:"var(--t2)",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{text}</div>}
+  </div>;
+}
+
+function TargetBar({label,current,target,fmt,inv}){
+  if(current==null||target==null)return null;
+  const pct=inv?Math.min(100,target>0?(target/current)*100:0):Math.min(100,target>0?(current/target)*100:0);
+  const met=inv?current<=target:current>=target;
+  const col=met?"var(--grn)":pct>=70?"var(--ylw)":"var(--red)";
+  const fv=fmt==="$"?f$(current):fmt==="%"?fp(current):current.toFixed(2)+"x";
+  const tv=fmt==="$"?f$(target):fmt==="%"?target+"%":target+"x";
+  return <div style={{marginBottom:8}}>
+    <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:3}}>
+      <span style={{color:"var(--t3)"}}>{label}</span>
+      <span style={{color:col,fontWeight:600,fontFamily:"'JetBrains Mono',monospace"}}>{fv} <span style={{color:"var(--t3)",fontWeight:400}}>/ {tv}</span></span>
+    </div>
+    <div style={{height:4,background:"var(--bdr)",borderRadius:2,overflow:"hidden"}}>
+      <div style={{height:"100%",width:Math.min(pct,100)+"%",background:col,borderRadius:2,transition:"width .4s"}}/>
+    </div>
+  </div>;
+}
+
 function Dashboard(){
   const [tab,setTab]=useState("equation");
   const [theme,setTheme]=useState("dark");
@@ -68,6 +104,23 @@ function Dashboard(){
   const [customTo,setCustomTo]=useState("");
   const [aiCoach,setAiCoach]=useState(null);
   const [aiLoading,setAiLoading]=useState(false);
+  // Per-tab AI summaries
+  const [tabAi,setTabAi]=useState({});
+  const [tabAiLoading,setTabAiLoading]=useState({});
+  const [tabAiRange,setTabAiRange]=useState({});
+  const rangeKey=customFrom&&customTo?customFrom+"_"+customTo:String(range);
+  const fetchTabAi=useCallback(async(tabName,prompt,ctxKeys)=>{
+    const key=tabName+"_"+rangeKey;
+    if(tabAi[key])return;
+    setTabAiLoading(p=>({...p,[tabName]:true}));
+    try{
+      const r=await fetch("/api/ai-coach",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":"noody-eq-2026-datahub"},body:JSON.stringify({prompt,context:ctxKeys,max_tokens:800})});
+      const d=await r.json();
+      setTabAi(p=>({...p,[key]:d.text||"No response"}));
+      setTabAiRange(p=>({...p,[tabName]:rangeKey}));
+    }catch(e){setTabAi(p=>({...p,[key]:"Error: "+e.message}));}
+    setTabAiLoading(p=>({...p,[tabName]:false}));
+  },[rangeKey,tabAi]);
   const [gads,setGads]=useState(null);
   const [gadsLoading,setGadsLoading]=useState(false);
   const [gadsError,setGadsError]=useState(null);
@@ -367,6 +420,16 @@ function Dashboard(){
         </div>
       </div>
 
+      {/* TARGETS PROGRESS */}
+      <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:16,marginBottom:16}}>
+        <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:10}}>Monthly Targets (prorated from {days}d)</div>
+        <TargetBar label="DTC Revenue" current={dtcRev/(days/30)} target={TARGETS.monthlyDtcRev} fmt="$"/>
+        <TargetBar label="Ad Spend Budget" current={metaSpend/(days/30)} target={TARGETS.monthlyAdSpend} fmt="$" inv/>
+        <TargetBar label="AOV" current={aov} target={TARGETS.aov} fmt="$"/>
+        <TargetBar label="Email Rev %" current={emailPct||0} target={TARGETS.emailPct} fmt="%"/>
+        <TargetBar label="Meta ROAS" current={roas||0} target={TARGETS.metaROAS} fmt="x"/>
+      </div>
+
       {/* DTC LIVE PERFORMANCE */}
       <div style={{marginBottom:20}}>
         <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:10}}>
@@ -614,11 +677,28 @@ function Dashboard(){
     </>;
     })()}
 
-    {tab==="daily"&&agg&&<>
+    {tab==="daily"&&agg&&(()=>{
+      const _days=agg.d;const _mo=_days/30;
+      const _moRev=agg.tr/_mo;const _moSpend=agg.tms/_mo;
+      const _dailyAiKey="daily_"+rangeKey;
+      if(!tabAi[_dailyAiKey]&&!tabAiLoading.daily){
+        const _p="Analyse this "+_days+"-day DTC daily performance ("+agg.startDate+" to "+agg.endDate+"). Give 3-5 sentences with specific numbers, period-over-period insight, and one actionable recommendation.\n\nRevenue: $"+fn(agg.tr)+" ("+f$(agg.avgRev)+"/day)\nOrders: "+fn(agg.to)+" ("+fn(agg.avgOrd)+"/day)\nAOV: $"+Math.round(agg.aov)+" (target: $"+TARGETS.aov+")\nMeta Spend: $"+fn(agg.tms)+"\nMER: "+(agg.mer?agg.mer.toFixed(1):"—")+"%\nROAS: "+(agg.metaROAS?agg.metaROAS.toFixed(2):"—")+"x\nEmail %: "+(agg.emailPct?agg.emailPct.toFixed(1):"—")+"%"+(prevAgg?"\n\nPrior period: Rev $"+fn(prevAgg.tr)+", AOV $"+Math.round(prevAgg.aov)+", MER "+(prevAgg.mer?prevAgg.mer.toFixed(1):"—")+"%":"");
+        setTimeout(()=>fetchTabAi("daily",_p,["shopify","klaviyo"]),0);
+      }
+      return <>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <h2 style={{fontSize:20,fontWeight:700,margin:0}}>Last {agg.d} Days</h2>
         <div style={{fontSize:11,color:"var(--t3)"}}>{f$(agg.avgRev)}/day · {fn(agg.avgOrd)} orders/day</div>
       </div>
+      {/* Targets */}
+      <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:12,padding:14,marginBottom:14}}>
+        <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:8}}>Monthly Targets (prorated from {_days}d)</div>
+        <TargetBar label="DTC Revenue" current={_moRev} target={TARGETS.monthlyDtcRev} fmt="$"/>
+        <TargetBar label="Ad Spend" current={_moSpend} target={TARGETS.monthlyAdSpend} fmt="$" inv/>
+        <TargetBar label="AOV" current={agg.aov} target={TARGETS.aov} fmt="$"/>
+        <TargetBar label="Email Rev %" current={agg.emailPct||0} target={TARGETS.emailPct} fmt="%"/>
+      </div>
+      <AiSummary text={tabAi[_dailyAiKey]} loading={tabAiLoading.daily} label={"AI Daily Analysis — "+_days+"d"}/>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:7,marginBottom:14}}>
         <MC l="Revenue" v={agg.tr} fmt="$" big/>
         <MC l="Meta Spend" v={agg.tms} fmt="$"/>
@@ -669,9 +749,18 @@ function Dashboard(){
           </div>
         </div>
       </>}
-    </>}
+    </>;
+    })()}
 
-    {tab==="meta"&&<>
+    {tab==="meta"&&(()=>{
+      if(!agg)return null;
+      const _days=agg.d;const _mo=_days/30;
+      const _metaAiKey="meta_"+rangeKey;
+      if(!tabAi[_metaAiKey]&&!tabAiLoading.meta){
+        const _p="Analyse Meta Ads performance for "+agg.startDate+" to "+agg.endDate+" ("+_days+"d). Give 3-5 sentences with specific numbers, highlight best/worst trends, and one clear recommendation.\n\nMeta Spend: $"+fn(agg.tms)+"\nPurchases: "+fn(agg.tmp)+"\nCPP: $"+Math.round(agg.cpp||0)+"\nROAS: "+(agg.metaROAS?agg.metaROAS.toFixed(2):"—")+"x (target: "+TARGETS.metaROAS+"x)\nMER: "+(agg.mer?agg.mer.toFixed(1):"—")+"%\nDTC Revenue: $"+fn(agg.tr)+(prevAgg?"\n\nPrior period: Spend $"+fn(prevAgg.tms)+", ROAS "+(prevAgg.metaROAS?prevAgg.metaROAS.toFixed(2):"—")+"x, CPP $"+Math.round(prevAgg.cpp||0):"");
+        setTimeout(()=>fetchTabAi("meta",_p,["meta"]),0);
+      }
+      return <>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <h2 style={{fontSize:20,fontWeight:700,margin:0}}>Meta Ads Performance</h2>
         <a href="/meta-coach.html" style={{padding:"10px 20px",background:"var(--acc,#c94f8a)",color:"#fff",borderRadius:10,textDecoration:"none",fontSize:14,fontWeight:600,transition:"all .2s"}}>Open Meta Coach</a>
@@ -683,6 +772,13 @@ function Dashboard(){
         <MC l="Meta ROAS" v={agg&&agg.tms>0?agg.tmv/agg.tms:0} fmt="n" sub="last-click"/>
         <MC l="% of Ad Budget" v={agg&&agg.tms>0?100:0} fmt="%" sub="Meta"/>
       </div>
+      {/* Meta Targets */}
+      <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:12,padding:14,marginBottom:14}}>
+        <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:8}}>Targets</div>
+        <TargetBar label="Meta ROAS" current={agg.metaROAS||0} target={TARGETS.metaROAS} fmt="x"/>
+        <TargetBar label="Monthly Ad Spend" current={agg.tms/_mo} target={TARGETS.monthlyAdSpend} fmt="$" inv/>
+      </div>
+      <AiSummary text={tabAi[_metaAiKey]} loading={tabAiLoading.meta} label={"AI Meta Analysis — "+_days+"d"}/>
       <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:10}}>
         <div style={{fontSize:11,color:"var(--t3)",marginBottom:8}}>MONTHLY META SPEND & MER</div>
         <ResponsiveContainer width="100%" height={200}>
@@ -721,7 +817,8 @@ function Dashboard(){
           </table>
         </div>
       </div>
-    </>}
+    </>;
+    })()}
 
     {tab==="diagnose"&&(()=>{
       if(!agg)return <div style={{padding:40,textAlign:"center",color:"var(--t3)"}}>Loading data...</div>;
@@ -877,7 +974,14 @@ function Dashboard(){
     </>;
     })()}
 
-    {tab==="gads"&&<>
+    {tab==="gads"&&(()=>{
+      const _gadsAiKey="gads_"+gadsDays;
+      if(gads&&!tabAi[_gadsAiKey]&&!tabAiLoading.gads){
+        const s=gads.summary;
+        const _p="Analyse Google Ads performance for the last "+gadsDays+" day(s). Give 3-5 sentences with specific numbers and one recommendation.\n\nSpend: $"+fn(s.totalSpend)+"\nClicks: "+fn(s.totalClicks)+"\nImpressions: "+fn(s.totalImpressions)+"\nCTR: "+(s.avgCtr||0).toFixed(1)+"%\nConversions: "+fn(s.totalConversions)+"\nConv Value: $"+fn(s.totalConversionValue)+"\nROAS: "+(s.roas||0).toFixed(1)+"x\nCost/Conv: $"+Math.round(s.costPerConversion||0)+"\nCampaigns: "+gads.campaigns.length;
+        setTimeout(()=>fetchTabAi("gads",_p,["google"]),0);
+      }
+      return <>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
         <h2 style={{fontSize:20,fontWeight:700,margin:0}}>Google Ads — Live Data</h2>
         <div style={{display:"flex",gap:3,alignItems:"center"}}>
@@ -908,6 +1012,7 @@ function Dashboard(){
           <MC l="Cost/Conv" v={gads.summary.costPerConversion} fmt="$" bm={{h:[0,15],w:[15,30]}}/>
           <MC l="ROAS" v={gads.summary.roas} fmt="n" sub="conv value / spend" bm={{h:[5,100],w:[2,5]}}/>
         </div>
+        <AiSummary text={tabAi[_gadsAiKey]} loading={tabAiLoading.gads} label={"AI Google Ads Analysis — "+gadsDays+"d"}/>
 
         {/* Combined Ad Spend comparison */}
         {agg&&<div style={{background:"linear-gradient(135deg,rgba(37,99,235,0.06),rgba(124,58,237,0.06))",border:"1px solid rgba(37,99,235,0.2)",borderRadius:14,padding:18,marginBottom:14}}>
@@ -958,9 +1063,19 @@ function Dashboard(){
           <div style={{fontSize:10,color:"var(--t3)",marginTop:8,textAlign:"right"}}>Pulled: {gads.pulledAt?new Date(gads.pulledAt).toLocaleString("en-NZ",{timeZone:"Pacific/Auckland"}):""}</div>
         </div>
       </>}
-    </>}
+    </>;
+    })()}
 
-    {tab==="xero"&&<>
+    {tab==="xero"&&(()=>{
+      const _xeroAiKey="xero_"+xeroMonths;
+      if(xeroLive&&!tabAi[_xeroAiKey]&&!tabAiLoading.xero){
+        const xs=xeroLive.profitAndLoss?.summary;
+        if(xs){
+          const _p="Analyse this Xero P&L for "+xeroMonths+" months using the Ecommerce Equation. Give 3-5 sentences with specific numbers, highlight the biggest concern and opportunity.\n\nRevenue: $"+fn(xs.revenue||0)+"\nCOGS: $"+fn(xs.cogs||0)+"\nGross Profit: $"+fn(xs.grossProfit||0)+" ("+((xs.grossMargin||0)).toFixed(1)+"%)\nExpenses: $"+fn(xs.totalExpenses||0)+"\nNet Profit: $"+fn(xs.netProfit||0)+" ("+(xs.netMargin||0).toFixed(1)+"%)\n\nXero annual benchmarks: VC 34.7%, MKT 25%, FC 25.2%, Profit 15.1%";
+          setTimeout(()=>fetchTabAi("xero",_p,["xero"]),0);
+        }
+      }
+      return <>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
         <h2 style={{fontSize:20,fontWeight:700,margin:0,color:"var(--t1)"}}>Xero P&L — Live</h2>
         <div style={{display:"flex",gap:6,alignItems:"center"}}>
@@ -989,6 +1104,7 @@ function Dashboard(){
           <MC l="Net Profit" v={xeroLive.profitAndLoss?.summary?.netProfit} fmt="$"/>
           <MC l="Net Margin" v={xeroLive.profitAndLoss?.summary?.netMargin} fmt="%" bm={{h:[10,100],w:[0,10]}}/>
         </div>
+        <AiSummary text={tabAi[_xeroAiKey]} loading={tabAiLoading.xero} label={"AI P&L Analysis — "+xeroMonths+"mo"}/>
 
         {xeroLive.profitAndLoss?.sections&&Object.entries(xeroLive.profitAndLoss.sections).map(([sec,data])=>(
           <div key={sec} style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:12}}>
@@ -1019,7 +1135,8 @@ function Dashboard(){
           Pulled: {xeroLive.pulledAt?new Date(xeroLive.pulledAt).toLocaleString("en-NZ",{timeZone:"Pacific/Auckland"}):"—"} · Token: {xeroLive.tokenStatus||"—"}
         </div>
       </>}
-    </>}
+    </>;
+    })()}
 
     {tab==="insights"&&(()=>{
       if(!agg)return <div style={{padding:40,textAlign:"center",color:"var(--t3)"}}>Loading data...</div>;
