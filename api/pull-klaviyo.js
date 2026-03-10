@@ -70,9 +70,8 @@ export default async function handler(req, res) {
           filter: [
             'greater-or-equal(datetime,' + sinceDate + 'T00:00:00Z)',
             'less-than(datetime,' + untilDate + 'T23:59:59Z)',
-                'equals($attributed_channel,"email")',
           ],
-          by: ['$attribution_channel'],
+          by: ['$attributed_channel'],
           timezone: 'Pacific/Auckland',
         },
       },
@@ -88,7 +87,7 @@ export default async function handler(req, res) {
       var aggErr = await aggRes.text();
       // If metric aggregates fails (needs higher tier), fall back to simpler approach
       if (aggRes.status === 403 || aggRes.status === 400) {
-        // Fallback: query without $attribution_channel grouping
+        // Fallback: query without $attributed_channel grouping
         var simplebody = {
           data: {
             type: 'metric-aggregate',
@@ -99,7 +98,6 @@ export default async function handler(req, res) {
               filter: [
                 'greater-or-equal(datetime,' + sinceDate + 'T00:00:00Z)',
                 'less-than(datetime,' + untilDate + 'T23:59:59Z)',
-                'equals($attributed_channel,"email")',
               ],
               timezone: 'Pacific/Auckland',
             },
