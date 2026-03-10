@@ -214,6 +214,18 @@ function Dashboard(){
     setKlavLoading(false);
   },[]);
 
+  // Social organic data (Instagram + Facebook)
+  const [socialData,setSocialData]=useState(null);
+  const [socialLoading,setSocialLoading]=useState(false);
+  const fetchSocial=useCallback(async()=>{
+    setSocialLoading(true);
+    try{
+      const r=await fetch('/api/pull-meta?type=organic&days=30',{headers:{"x-api-key":"noody-eq-2026-datahub"}});
+      if(r.ok){const d=await r.json();setSocialData(d);}
+    }catch(e){console.error("Social:",e);}
+    setSocialLoading(false);
+  },[]);
+
   // Klaviyo detail data (flows, campaigns, deliverability)
   const [klavDetail,setKlavDetail]=useState(null);
   const [klavDetailLoading,setKlavDetailLoading]=useState(false);
@@ -235,6 +247,7 @@ function Dashboard(){
     if((tab==="gads"||tab==="insights")&&!gads&&!gadsLoading)fetchGads(gadsDays);
     if((tab==="equation"||tab==="daily"||tab==="insights"||tab==="klaviyo")&&!klavLive&&!klavLoading)fetchKlav();
     if(tab==="klaviyo"&&!klavDetail&&!klavDetailLoading)fetchKlavDetail(klavDetailDays);
+    if(tab==="social"&&!socialData&&!socialLoading)fetchSocial();
     if((tab==="equation"||tab==="daily")&&!ga4&&!ga4Loading)fetchGa4();
   },[tab]);
 
@@ -371,6 +384,7 @@ function Dashboard(){
         <Tab a={tab==="gads"} onClick={()=>setTab("gads")} icon="🎯">Google Ads</Tab>
         <Tab a={tab==="xero"} onClick={()=>setTab("xero")} icon="📋">Xero P&L</Tab>
         <Tab a={tab==="klaviyo"} onClick={()=>setTab("klaviyo")} icon="📧">Klaviyo</Tab>
+        <Tab a={tab==="social"} onClick={()=>setTab("social")} icon="📱">Social</Tab>
         <Tab a={tab==="insights"} onClick={()=>setTab("insights")} icon="✦" accent="#7c3aed">Insights</Tab>
       </div>
       <button onClick={toggleTheme} style={{padding:"10px",background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,cursor:"pointer",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",width:44,height:44,transition:"all .2s",color:"var(--t2)",flexShrink:0}} title={theme==="dark"?"Light mode":"Dark mode"}>{theme==="dark"?"☀️":"🌙"}</button>
@@ -1540,6 +1554,146 @@ function Dashboard(){
           {[30,60,90,180].map(d=><button key={d} onClick={()=>{setKlavDetailDays(d);setKlavDetail(null);fetchKlavDetail(d);}} style={{padding:"6px 14px",fontSize:12,borderRadius:8,cursor:"pointer",background:klavDetailDays===d?"var(--acc)":"var(--card)",color:klavDetailDays===d?"#fff":"var(--t2)",border:klavDetailDays===d?"1px solid var(--acc)":"1px solid var(--bdr)"}}>{d}d detail</button>)}
           {klavDetailLoading&&<span style={{fontSize:12,color:"var(--t3)"}}>Loading detail data...</span>}
           {klavDetail&&<span style={{fontSize:10,color:"var(--t3)",marginLeft:"auto"}}>Detail: {klavDetail.dateRange?.start} → {klavDetail.dateRange?.end} · Pulled: {klavDetail.pulledAt?new Date(klavDetail.pulledAt).toLocaleString("en-NZ",{timeZone:"Pacific/Auckland"}):"—"}</span>}
+        </div>
+      </>;
+    })()}
+
+    {tab==="social"&&(()=>{
+      const cardS={background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:12,padding:16,marginBottom:14};
+      const thS={fontSize:11,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",padding:"8px 10px",textAlign:"left",borderBottom:"1px solid var(--bdr)"};
+      const tdS={fontSize:13,padding:"8px 10px",borderBottom:"1px solid var(--bdr)",fontFamily:"'JetBrains Mono',monospace"};
+
+      if(socialData&&socialData.setup){
+        return <>
+          <div style={{fontSize:20,fontWeight:700,marginBottom:16}}>Social Media</div>
+          <div style={{...cardS,borderColor:"var(--ylw)",background:"rgba(234,179,8,0.06)"}}>
+            <div style={{fontSize:14,fontWeight:600,color:"var(--ylw)",marginBottom:8}}>Setup Required</div>
+            <div style={{fontSize:13,color:"var(--t2)",lineHeight:1.7}}>{socialData.message}</div>
+            <div style={{fontSize:12,color:"var(--t3)",marginTop:12}}>Once added, redeploy on Vercel and refresh this page.</div>
+          </div>
+          <div style={cardS}>
+            <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Social → Revenue Attribution (from Shopify)</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10}}>
+              <MC l="Instagram Revenue" v={483} fmt="$" sub="331 sessions" />
+              <MC l="Facebook Revenue" v={278} fmt="$" sub="451 sessions" />
+              <MC l="Total Social Rev" v={761} fmt="$" sub="782 sessions" />
+              <MC l="Social Rev/Session" v={0.97} fmt="$" />
+            </div>
+          </div>
+        </>;
+      }
+
+      if(socialLoading&&!socialData){
+        return <>
+          <div style={{fontSize:20,fontWeight:700,marginBottom:16}}>Social Media</div>
+          <div style={{padding:40,textAlign:"center",color:"var(--t3)"}}>Loading social data...</div>
+        </>;
+      }
+
+      const ig=socialData?.instagram||{};
+      const fb=socialData?.facebook||{};
+      const posts=socialData?.recentPosts||[];
+      const hasData=socialData&&socialData.success;
+      const topPosts=[...posts].sort((a,b)=>(b.likes+b.comments)-(a.likes+a.comments));
+
+      return <>
+        <div style={{fontSize:20,fontWeight:700,marginBottom:16}}>Social Media</div>
+
+        {!hasData&&!socialLoading&&<div style={{...cardS,borderColor:"var(--ylw)",background:"rgba(234,179,8,0.06)"}}>
+          <div style={{fontSize:13,color:"var(--t2)"}}>{socialData?.error||socialData?.message||"Unable to load social data. Check Meta API permissions."}</div>
+          {socialData?.hint&&<div style={{fontSize:12,color:"var(--t3)",marginTop:6}}>{socialData.hint}</div>}
+        </div>}
+
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:14}}>
+          <MC l="IG Followers" v={ig.followers||0} fmt="#" big />
+          <MC l="IG Reach (30d)" v={ig.reach||0} fmt="#" />
+          <MC l="IG Impressions (30d)" v={ig.impressions||0} fmt="#" />
+          <MC l="FB Page Likes" v={fb.pageLikes||0} fmt="#" big />
+          <MC l="FB Engaged Users (30d)" v={fb.engagedUsers||0} fmt="#" />
+          <MC l="FB Impressions (30d)" v={fb.impressions||0} fmt="#" />
+        </div>
+
+        {ig.error&&<div style={{fontSize:12,color:"var(--ylw)",marginBottom:8}}>IG: {ig.error}</div>}
+        {fb.error&&<div style={{fontSize:12,color:"var(--ylw)",marginBottom:8}}>FB: {fb.error}</div>}
+
+        {(ig.daily?.length>1||fb.daily?.length>1)&&<div style={cardS}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Daily Reach & Impressions</div>
+          <ResponsiveContainer width="100%" height={220}>
+            <ComposedChart data={ig.daily?.length?ig.daily:fb.daily}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--grid)" />
+              <XAxis dataKey="date" tick={{fill:"var(--t3)",fontSize:10}} interval={Math.max(0,Math.floor((ig.daily?.length||fb.daily?.length||1)/10)-1)} />
+              <YAxis tick={{fill:"var(--t3)",fontSize:10}} tickFormatter={v=>v>=1000?(v/1000).toFixed(0)+"k":v} />
+              <Tooltip contentStyle={{background:"var(--tipbg)",border:"1px solid var(--tipbdr)",borderRadius:8,fontSize:12}} />
+              {ig.daily?.length>0&&<Area type="monotone" dataKey="reach" fill="rgba(168,85,247,0.1)" stroke="#a855f7" strokeWidth={2} name="IG Reach" />}
+              {ig.daily?.length>0&&<Line type="monotone" dataKey="impressions" stroke="var(--acc)" strokeWidth={1.5} dot={false} name="IG Impressions" />}
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>}
+
+        {fb.daily?.length>1&&<div style={cardS}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Facebook Page: Daily Impressions & Engagement</div>
+          <ResponsiveContainer width="100%" height={180}>
+            <ComposedChart data={fb.daily}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--grid)" />
+              <XAxis dataKey="date" tick={{fill:"var(--t3)",fontSize:10}} interval={Math.max(0,Math.floor(fb.daily.length/10)-1)} />
+              <YAxis tick={{fill:"var(--t3)",fontSize:10}} />
+              <Tooltip contentStyle={{background:"var(--tipbg)",border:"1px solid var(--tipbdr)",borderRadius:8,fontSize:12}} />
+              <Bar dataKey="impressions" fill="rgba(79,110,247,0.3)" radius={[3,3,0,0]} name="FB Impressions" />
+              <Line type="monotone" dataKey="engaged" stroke="#10b981" strokeWidth={2} dot={false} name="Engaged Users" />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>}
+
+        {posts.length>0&&<div style={cardS}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Recent Instagram Posts (Top by Engagement)</div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse"}}>
+              <thead><tr>
+                <th style={thS}>Date</th>
+                <th style={thS}>Caption</th>
+                <th style={thS}>Type</th>
+                <th style={{...thS,textAlign:"right"}}>Likes</th>
+                <th style={{...thS,textAlign:"right"}}>Comments</th>
+                <th style={{...thS,textAlign:"right"}}>Engagement</th>
+                <th style={thS}>Link</th>
+              </tr></thead>
+              <tbody>
+                {topPosts.slice(0,15).map((p,i)=>{
+                  const eng=p.likes+p.comments;
+                  const typeLabel=p.type==="CAROUSEL_ALBUM"?"Carousel":p.type==="VIDEO"?"Video":"Image";
+                  return <tr key={i}>
+                    <td style={tdS}>{p.date}</td>
+                    <td style={{...tdS,fontFamily:"'DM Sans',sans-serif",maxWidth:250,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.caption||"—"}</td>
+                    <td style={{...tdS,fontSize:11}}><span style={{padding:"2px 8px",borderRadius:6,background:p.type==="VIDEO"?"rgba(168,85,247,0.15)":p.type==="CAROUSEL_ALBUM"?"rgba(79,110,247,0.15)":"rgba(107,114,128,0.1)",color:p.type==="VIDEO"?"#a855f7":p.type==="CAROUSEL_ALBUM"?"var(--acc)":"var(--t3)"}}>{typeLabel}</span></td>
+                    <td style={{...tdS,textAlign:"right",color:"var(--red)"}}>{fn(p.likes)}</td>
+                    <td style={{...tdS,textAlign:"right"}}>{fn(p.comments)}</td>
+                    <td style={{...tdS,textAlign:"right",fontWeight:600,color:eng>=50?"var(--grn)":eng>=20?"var(--ylw)":"var(--t3)"}}>{fn(eng)}</td>
+                    <td style={tdS}>{p.permalink?<a href={p.permalink} target="_blank" rel="noopener noreferrer" style={{color:"var(--acc)",textDecoration:"none",fontSize:11}}>View</a>:"—"}</td>
+                  </tr>;
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>}
+
+        <div style={cardS}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Social → Revenue Attribution (from Shopify)</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:12}}>
+            <MC l="Instagram Revenue" v={483} fmt="$" sub="331 sessions" />
+            <MC l="Facebook Revenue" v={278} fmt="$" sub="451 sessions" />
+            <MC l="Total Social Rev" v={761} fmt="$" sub="782 sessions" />
+            <MC l="IG Rev/Session" v={483/331} fmt="$" />
+            <MC l="FB Rev/Session" v={278/451} fmt="$" />
+          </div>
+          <div style={{fontSize:11,color:"var(--t3)",lineHeight:1.6}}>
+            Revenue attributed via Shopify referrer tracking. Instagram drives higher revenue per session ({"$" + (483/331).toFixed(2)}) vs Facebook ({"$" + (278/451).toFixed(2)}).
+          </div>
+        </div>
+
+        <div style={{display:"flex",gap:8,alignItems:"center",marginTop:8}}>
+          <button onClick={()=>{setSocialData(null);fetchSocial();}} style={{padding:"8px 16px",fontSize:12,borderRadius:8,cursor:"pointer",background:"var(--card)",color:"var(--t2)",border:"1px solid var(--bdr)"}}>Refresh Social Data</button>
+          {socialLoading&&<span style={{fontSize:12,color:"var(--t3)"}}>Loading...</span>}
+          {socialData?.pulledAt&&<span style={{fontSize:10,color:"var(--t3)",marginLeft:"auto"}}>Pulled: {new Date(socialData.pulledAt).toLocaleString("en-NZ",{timeZone:"Pacific/Auckland"})}</span>}
         </div>
       </>;
     })()}
