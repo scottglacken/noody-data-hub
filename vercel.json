@@ -9,6 +9,9 @@
     },
     "api/pull-google-ads.js": {
       "maxDuration": 30
+    },
+    "api/pull-klaviyo.js": {
+      "maxDuration": 30
     }
   }
 }
