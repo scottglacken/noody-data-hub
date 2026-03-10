@@ -168,16 +168,17 @@ export default async function handler(req, res) {
     // Build daily map
     var dayMap = {};
     for (var di = 0; di < dates.length; di++) {
-      dayMap[dates[di].split('T')[0]] = { date: dates[di].split('T')[0], emailRevenue: 0, emailOrders: 0, flowRevenue: 0, flowOrders: 0, campaignRevenue: 0, campaignOrders: 0 };
+      dayMap[dates[di].split('T')[0]] = { date: dates[di].split('T')[0], emailRevenue: 0, emailOrders: 0 };
     }
 
+    // Klaviyo's $attributed_channel dimension returns values like "$email_channel",
+    // "$sms_channel", etc. All email-attributed orders (flows + campaigns) appear
+    // under "$email_channel". We sum any channel containing "email" as email revenue.
     if (results) {
       for (var r = 0; r < results.length; r++) {
         var group = results[r];
         var channel = group.dimensions && group.dimensions[0] || 'unknown';
-        var isEmail = channel === 'email';
-        var isFlow = channel === 'flow';
-        var isCampaign = channel === 'campaign';
+        var isEmail = channel.indexOf('email') !== -1;
 
         for (var di2 = 0; di2 < dates.length; di2++) {
           var dateKey = dates[di2].split('T')[0];
@@ -185,12 +186,10 @@ export default async function handler(req, res) {
           var rev2 = group.measurements && group.measurements.sum_value ? group.measurements.sum_value[di2] || 0 : 0;
           var cnt2 = group.measurements && group.measurements.count ? group.measurements.count[di2] || 0 : 0;
 
-          if (isEmail || isFlow || isCampaign) {
+          if (isEmail) {
             dayMap[dateKey].emailRevenue += rev2;
             dayMap[dateKey].emailOrders += cnt2;
           }
-          if (isFlow) { dayMap[dateKey].flowRevenue += rev2; dayMap[dateKey].flowOrders += cnt2; }
-          if (isCampaign) { dayMap[dateKey].campaignRevenue += rev2; dayMap[dateKey].campaignOrders += cnt2; }
         }
       }
     }
@@ -201,17 +200,11 @@ export default async function handler(req, res) {
         date: d.date,
         emailRevenue: Math.round(d.emailRevenue * 100) / 100,
         emailOrders: d.emailOrders,
-        flowRevenue: Math.round(d.flowRevenue * 100) / 100,
-        flowOrders: d.flowOrders,
-        campaignRevenue: Math.round(d.campaignRevenue * 100) / 100,
-        campaignOrders: d.campaignOrders,
       };
     });
 
     var totalRev = daily.reduce(function(s, d) { return s + d.emailRevenue; }, 0);
     var totalOrd = daily.reduce(function(s, d) { return s + d.emailOrders; }, 0);
-    var flowRev = daily.reduce(function(s, d) { return s + d.flowRevenue; }, 0);
-    var campRev = daily.reduce(function(s, d) { return s + d.campaignRevenue; }, 0);
 
     return res.status(200).json({
       success: true,
@@ -219,8 +212,6 @@ export default async function handler(req, res) {
       dateRange: { start: sinceDate, end: untilDate },
       totalRevenue: Math.round(totalRev * 100) / 100,
       totalOrders: totalOrd,
-      flowRevenue: Math.round(flowRev * 100) / 100,
-      campaignRevenue: Math.round(campRev * 100) / 100,
       totalDays: daily.length,
       daily: daily,
       pulledAt: new Date().toISOString(),
