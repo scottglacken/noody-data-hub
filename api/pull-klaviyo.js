@@ -196,7 +196,7 @@ export default async function handler(req, res) {
           data: {
             type: 'flow-values-report',
             attributes: {
-              statistics: ['conversion_value', 'conversions', 'recipients', 'received', 'opened', 'clicked'],
+              statistics: ['conversion_value', 'conversions', 'unique_recipients', 'open_rate', 'click_rate', 'revenue_per_recipient'],
               timeframe: { start: sinceDate + 'T00:00:00Z', end: untilDate + 'T23:59:59Z' },
               conversion_metric_id: metricId,
             },
@@ -213,7 +213,7 @@ export default async function handler(req, res) {
             var stats = fr.statistics || {};
             var rev = stats.conversion_value || 0;
             var conv = stats.conversions || 0;
-            var recip = stats.recipients || 0;
+            var recip = stats.unique_recipients || 0;
             totalFlowRev += rev;
             return {
               id: fr.groupings && fr.groupings.flow_id || '',
@@ -222,12 +222,9 @@ export default async function handler(req, res) {
               revenue: Math.round(rev * 100) / 100,
               conversions: conv,
               recipients: recip,
-              received: stats.received || 0,
-              opened: stats.opened || 0,
-              clicked: stats.clicked || 0,
-              openRate: (stats.received || 0) > 0 ? Math.round((stats.opened || 0) / stats.received * 10000) / 100 : 0,
-              clickRate: (stats.received || 0) > 0 ? Math.round((stats.clicked || 0) / stats.received * 10000) / 100 : 0,
-              revenuePerRecipient: recip > 0 ? Math.round(rev / recip * 100) / 100 : 0,
+              openRate: Math.round((stats.open_rate || 0) * 10000) / 100,
+              clickRate: Math.round((stats.click_rate || 0) * 10000) / 100,
+              revenuePerRecipient: stats.revenue_per_recipient || (recip > 0 ? Math.round(rev / recip * 100) / 100 : 0),
             };
           });
           detail.flows.sort(function(a, b) { return b.revenue - a.revenue; });
@@ -245,7 +242,7 @@ export default async function handler(req, res) {
           data: {
             type: 'campaign-values-report',
             attributes: {
-              statistics: ['conversion_value', 'conversions', 'recipients', 'received', 'opened', 'clicked', 'bounced', 'unsubscribed', 'spam_complaints'],
+              statistics: ['conversion_value', 'conversions', 'unique_recipients', 'open_rate', 'click_rate', 'bounce_rate', 'unsubscribe_rate', 'revenue_per_recipient'],
               timeframe: { start: sinceDate + 'T00:00:00Z', end: untilDate + 'T23:59:59Z' },
               conversion_metric_id: metricId,
             },
@@ -262,7 +259,7 @@ export default async function handler(req, res) {
             var stats = cr.statistics || {};
             var rev = stats.conversion_value || 0;
             var conv = stats.conversions || 0;
-            var recip = stats.recipients || 0;
+            var recip = stats.unique_recipients || 0;
             totalCampRev += rev;
             return {
               id: cr.groupings && cr.groupings.campaign_id || '',
@@ -272,13 +269,10 @@ export default async function handler(req, res) {
               revenue: Math.round(rev * 100) / 100,
               conversions: conv,
               recipients: recip,
-              received: stats.received || 0,
-              opened: stats.opened || 0,
-              clicked: stats.clicked || 0,
-              bounced: stats.bounced || 0,
-              unsubscribed: stats.unsubscribed || 0,
-              openRate: (stats.received || 0) > 0 ? Math.round((stats.opened || 0) / stats.received * 10000) / 100 : 0,
-              clickRate: (stats.received || 0) > 0 ? Math.round((stats.clicked || 0) / stats.received * 10000) / 100 : 0,
+              openRate: Math.round((stats.open_rate || 0) * 10000) / 100,
+              clickRate: Math.round((stats.click_rate || 0) * 10000) / 100,
+              bounceRate: Math.round((stats.bounce_rate || 0) * 10000) / 100,
+              unsubRate: Math.round((stats.unsubscribe_rate || 0) * 10000) / 100,
             };
           });
           detail.campaigns.sort(function(a, b) { return b.revenue - a.revenue; });
