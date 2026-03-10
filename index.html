@@ -125,23 +125,39 @@ function Dashboard(){
     setMetaLoading(false);
   },[]);
 
+  // Live Klaviyo data (email revenue)
+  const [klavLive,setKlavLive]=useState(null);
+  const [klavLoading,setKlavLoading]=useState(false);
+  const fetchKlav=useCallback(async()=>{
+    setKlavLoading(true);
+    try{
+      const r=await fetch('/api/pull-klaviyo?days=400',{headers:{"x-api-key":"noody-eq-2026-datahub"}});
+      if(r.ok){const d=await r.json();if(d.daily)setKlavLive(d);}
+    }catch(e){console.error("Klaviyo:",e);}
+    setKlavLoading(false);
+  },[]);
+
   // Auto-fetch on first visit to relevant tabs
   useEffect(()=>{
     if((tab==="daily"||tab==="equation"||tab==="meta"||tab==="diagnose"||tab==="scale"||tab==="insights")&&!shopLive&&!shopLoading)fetchShop();
     if((tab==="daily"||tab==="meta"||tab==="insights")&&!metaLive&&!metaLoading)fetchMeta();
     if((tab==="equation"||tab==="diagnose"||tab==="scale"||tab==="insights")&&!xeroLive&&!xeroLoading)fetchXero(xeroMonths);
     if((tab==="gads"||tab==="insights")&&!gads&&!gadsLoading)fetchGads(gadsDays);
+    if((tab==="equation"||tab==="daily"||tab==="insights")&&!klavLive&&!klavLoading)fetchKlav();
   },[tab]);
 
-  // Merge hardcoded D with live Shopify+Meta data
+  // Merge hardcoded D with live Shopify+Meta+Klaviyo data
   const mergedD=useMemo(()=>{
-    if(!shopLive&&!metaLive)return D;
-    const shopMap={};const metaMap={};
+    if(!shopLive&&!metaLive&&!klavLive)return D;
+    const shopMap={};const metaMap={};const klavMap={};
     if(shopLive?.daily)shopLive.daily.forEach(d=>{shopMap[d.date]={r:d.revenue||0,o:d.orders||0,i:d.itemsSold||0,s:d.totalShipping||0};});
     if(metaLive?.daily)metaLive.daily.forEach(d=>{metaMap[d.date]={ms:d.metaSpend||0,mp:d.purchases||0,mv:d.purchaseValue||0};});
+    if(klavLive?.daily)klavLive.daily.forEach(d=>{klavMap[d.date]={e:d.emailRevenue||0};});
     const merged=D.map(row=>{
-      const sd=shopMap[row.d];const md=metaMap[row.d];
-      if(sd||md)return{...row,...(sd||{}),...(md||{})};
+      const sd=shopMap[row.d];const md=metaMap[row.d];const kd=klavMap[row.d];
+      const overrides={...(sd||{}),...(md||{})};
+      if(kd)overrides.e=kd.e; // Klaviyo email rev overrides hardcoded
+      if(sd||md||kd)return{...row,...overrides};
       return row;
     });
     const existDates=new Set(merged.map(r=>r.d));
@@ -149,14 +165,15 @@ function Dashboard(){
       shopLive.daily.forEach(d=>{
         if(!existDates.has(d.date)){
           const md=metaMap[d.date]||{ms:0,mp:0,mv:0};
-          merged.push({d:d.date,r:d.revenue||0,o:d.orders||0,i:d.itemsSold||0,s:d.totalShipping||0,e:0,...md});
+          const kd=klavMap[d.date]||{e:0};
+          merged.push({d:d.date,r:d.revenue||0,o:d.orders||0,i:d.itemsSold||0,s:d.totalShipping||0,e:kd.e,...md});
           existDates.add(d.date);
         }
       });
     }
     merged.sort((a,b)=>a.d.localeCompare(b.d));
     return merged;
-  },[shopLive,metaLive]);
+  },[shopLive,metaLive,klavLive]);
 
   // Live Xero P&L for Equation tab (falls back to hardcoded XERO)
   const liveXero=useMemo(()=>{
@@ -259,8 +276,8 @@ function Dashboard(){
       <input type="date" value={customFrom} onChange={e=>{setCustomFrom(e.target.value);}} style={{padding:"6px 8px",fontSize:12,borderRadius:6,background:"var(--card)",border:"1px solid var(--bdr)",color:"var(--t1)",fontFamily:"'JetBrains Mono',monospace"}}/>
       <span style={{fontSize:11,color:"var(--t3)"}}>→</span>
       <input type="date" value={customTo} onChange={e=>{setCustomTo(e.target.value);}} style={{padding:"6px 8px",fontSize:12,borderRadius:6,background:"var(--card)",border:"1px solid var(--bdr)",color:"var(--t1)",fontFamily:"'JetBrains Mono',monospace"}}/>
-      {(shopLoading||metaLoading||xeroLoading)&&<span style={{fontSize:12,color:"var(--t3)",marginLeft:8}}>⏳ Refreshing...</span>}
-      <span style={{fontSize:10,color:"var(--t3)",marginLeft:"auto"}}>{vis.length} days{agg?" · "+agg.startDate+" → "+agg.endDate:""} · {(shopLive?"Shopify ✓ ":"")+(metaLive?"Meta ✓ ":"")+(gads?"Google ✓ ":"")+(xeroLive?"Xero ✓":"")}</span>
+      {(shopLoading||metaLoading||xeroLoading||klavLoading)&&<span style={{fontSize:12,color:"var(--t3)",marginLeft:8}}>⏳ Refreshing...</span>}
+      <span style={{fontSize:10,color:"var(--t3)",marginLeft:"auto"}}>{vis.length} days{agg?" · "+agg.startDate+" → "+agg.endDate:""} · {(shopLive?"Shopify ✓ ":"")+(metaLive?"Meta ✓ ":"")+(klavLive?"Klaviyo ✓ ":"")+(gads?"Google ✓ ":"")+(xeroLive?"Xero ✓":"")}</span>
     </div>}
 
     <div style={{padding:"24px 28px",maxWidth:1400,margin:"0 auto"}}>
