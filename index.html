@@ -469,6 +469,11 @@ function Dashboard(){
       const estFcPct=estTotalRev>0?estFixed/estTotalRev*100:0;
       const estProfPct=estTotalRev>0?estProfit/estTotalRev*100:0;
       const ler=(estTotalRev-estVariable)/(XERO.wages/XERO.months*(days/30));
+      const contribMargin=estTotalRev>0?(estTotalRev-estVariable)/estTotalRev*100:0;
+      const contribMarginDTC=dtcRev>0?(dtcRev-dtcRev*varRatio)/dtcRev*100:0;
+      // LTGP:CAC estimate (LTV ~ 2x AOV for skincare, gross margin from contrib margin, CAC = ad spend / new customers)
+      const estLTV=aov*2;const estGrossMargin=contribMarginDTC/100;const estCAC=orders>0?metaSpend/orders:0;
+      const ltgpCac=estCAC>0?(estLTV*estGrossMargin)/estCAC:null;
 
       // Previous period
       const pDtcRev=p?p.tr:null;
@@ -613,11 +618,13 @@ function Dashboard(){
           {l:"Net Profit",v:estProfPct,b:BM.np,t:"> 10%",note:"Estimated from equation"},
           ...(emailPct!=null?[{l:"Email Rev %",v:emailPct,b:BM.em,t:"30\u201340%",note:f$(emailRev)+" email \u00F7 "+f$(dtcRev)+" DTC"}]:[]),
           {l:"LER",v:ler,b:{h:[2,100],w:[1.5,2]},t:"> $2.00",note:"Est. gross margin \u00F7 prorated wages",fmt:"$"},
+          {l:"Contribution Margin",v:contribMargin,b:{h:[40,100],w:[25,40]},t:"40\u201360%",note:"(Revenue \u2212 Variable) \u00F7 Revenue"},
           {l:"AOV",v:aov,b:{h:[70,500],w:[50,70]},t:"> $70",note:fn(orders)+" orders",fmt:"$"},
           {l:"Meta ROAS",v:roas||0,b:{h:[2.5,100],w:[1.5,2.5]},t:"> 2.5x",note:"Purchase value \u00F7 Meta spend",fmt:"x"},
+          ...(ltgpCac!=null?[{l:"LTGP:CAC",v:ltgpCac,b:{h:[3,100],w:[2,3]},t:"> 3:1",note:"(LTV \u00D7 GM) \u00F7 CAC \u2014 est. LTV=2\u00D7AOV",fmt:"x"}]:[]),
         ].map((m,i)=>{
           const s=gs(m.fmt==="$"||m.fmt==="x"?m.v:m.v,m.b);
-          return <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:i<8?"1px solid var(--bdr)":"none"}}>
+          return <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:i<10?"1px solid var(--bdr)":"none"}}>
             <div>
               <div style={{fontSize:12,color:"var(--t2)",fontWeight:500}}>{m.l}</div>
               <div style={{fontSize:9,color:"var(--t3)",marginTop:1}}>{m.note}</div>
@@ -1030,23 +1037,30 @@ function Dashboard(){
             <tbody>{cData.sort((a,b)=>(b.spend||0)-(a.spend||0)).map((c,i)=>{
               const fun=_funnel(c.campaign_name);
               const fb=_freqBench[fun]||_freqBench.TOF;
-              const fH=!c.frequency?"—":c.frequency<=fb.g?"🟢":c.frequency<=fb.w?"🟡":"🔴";
+              const fH=!c.frequency?"\u2014":c.frequency<=fb.g?"\uD83D\uDFE2":c.frequency<=fb.w?"\uD83D\uDFE1":"\uD83D\uDD34";
               const avgCpp=agg.cpp||30;
               const cppC=!c.cpp?"inherit":c.cpp<=avgCpp?"#10b981":c.cpp<=avgCpp*2?"#f59e0b":"#ef4444";
               const roasC=!c.roas?"inherit":c.roas>=3?"#10b981":c.roas>=2?"#f59e0b":"#ef4444";
               const freqC=!c.frequency?"inherit":c.frequency<=fb.g?"#10b981":c.frequency<=fb.w?"#f59e0b":"#ef4444";
               const funC=fun==="TOF"||fun==="ASC"?"#3b82f6":fun==="TOM"?"#a855f7":"#10b981";
+              // Overall traffic light: Green=scale, Yellow=monitor, Red=pause
+              var roasOk=c.roas&&c.roas>=TARGETS.metaROAS;
+              var cppOk=c.cpp&&c.cpp<=avgCpp*1.5;
+              var freqOk=c.frequency&&c.frequency<=fb.w;
+              var tlScore=(roasOk?1:0)+(cppOk?1:0)+(freqOk?1:0);
+              var tlLight=tlScore>=3?"\uD83D\uDFE2 Scale":tlScore>=2?"\uD83D\uDFE1 Monitor":c.purchases>0?"\uD83D\uDD34 Pause":"\u2014";
+              var tlColor=tlScore>=3?"#10b981":tlScore>=2?"#f59e0b":"#ef4444";
               return <tr key={i} style={{borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
                 <td style={{padding:"8px 6px",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={c.campaign_name}>{c.campaign_name}</td>
                 <td style={{padding:"8px 6px"}}><span style={{color:funC,fontWeight:600,fontSize:10}}>{fun}</span></td>
                 <td style={{padding:"8px 6px",color:"#a855f7"}}>${fn(Math.round(c.spend||0))}</td>
-                <td style={{padding:"8px 6px",color:cppC}}>{c.cpp?"$"+Math.round(c.cpp):"—"}</td>
+                <td style={{padding:"8px 6px",color:cppC}}>{c.cpp?"$"+Math.round(c.cpp):"\u2014"}</td>
                 <td style={{padding:"8px 6px"}}>{c.purchases||0}</td>
-                <td style={{padding:"8px 6px",color:roasC}}>{c.roas?(c.roas).toFixed(2)+"x":"—"}</td>
-                <td style={{padding:"8px 6px",color:freqC}}>{c.frequency?c.frequency.toFixed(2):"—"}</td>
-                <td style={{padding:"8px 6px",color:"var(--t2)"}}>{c.reach?fn(c.reach):"—"}</td>
-                <td style={{padding:"8px 6px",color:"var(--t2)"}}>{c.ctr?c.ctr.toFixed(2)+"%":"—"}</td>
-                <td style={{padding:"8px 6px",textAlign:"center"}}>{fH}</td>
+                <td style={{padding:"8px 6px",color:roasC}}>{c.roas?(c.roas).toFixed(2)+"x":"\u2014"}</td>
+                <td style={{padding:"8px 6px",color:freqC}}>{c.frequency?c.frequency.toFixed(2):"\u2014"}</td>
+                <td style={{padding:"8px 6px",color:"var(--t2)"}}>{c.reach?fn(c.reach):"\u2014"}</td>
+                <td style={{padding:"8px 6px",color:"var(--t2)"}}>{c.ctr?c.ctr.toFixed(2)+"%":"\u2014"}</td>
+                <td style={{padding:"8px 6px",textAlign:"center",fontSize:10,color:tlColor,fontWeight:600,whiteSpace:"nowrap"}}>{tlLight}</td>
               </tr>;
             })}</tbody>
           </table>
@@ -1161,29 +1175,58 @@ function Dashboard(){
       const annRev=Math.round(estTotalRev/(days/365));
       const annFixed=Math.round(XERO_FIXED);
 
-      let situation=1,sitLabel="PROFITABLE",sitColor="var(--grn)",sitIcon="🚀";
-      if(estProfPct<0){situation=5;sitLabel="UNPROFITABLE";sitColor="var(--red)";sitIcon="🚨";}
-      else if(estProfPct<5){situation=3;sitLabel="BREAKEVEN ZONE";sitColor="var(--ylw)";sitIcon="⚠️";}
-      else if(estProfPct<10||estDtcMer>45||estFcPct>25){situation=2;sitLabel="PROFITABLE — CONSTRAINED";sitColor="var(--ylw)";sitIcon="⚠️";}
-
-      const prescription=situation<=2?"SCALE — grow revenue to leverage fixed costs."
-        :situation===3?"Fix efficiency before scaling. Improve MER and email share."
-        :"Fix unit economics first. Cut losses or restructure costs.";
+      let situation=1,sitLabel="PROFITABLE",sitColor="var(--grn)",sitIcon="🚀",sitAction="",sitDetail="";
+      if(estProfPct<0){
+        situation=5;sitLabel="EDGE CASE";sitColor="var(--red)";sitIcon="🚨";
+        sitAction="Fix MER first, then Variable Costs, then Scale. Cannot scale first because marketing inefficiency compounds.";
+        sitDetail="Work in order: (1) Get marketing efficient \u2014 pause villain ads, improve RPV (2) Fix variable costs \u2014 renegotiate COGS, shipping (3) Only THEN scale.";
+      } else if(estVarPct>40){
+        situation=3;sitLabel="HIGH VARIABLE COSTS";sitColor="var(--ylw)";sitIcon="⚠️";
+        sitAction="Attack COGS, shipping, packaging directly. Variable costs travel with every order.";
+        sitDetail="VC at "+fp(estVarPct)+" exceeds 40% benchmark. Every order costs too much to fulfill. Renegotiate supplier terms, optimize packaging, increase AOV (spreads VC over larger orders). Do NOT scale until VC is under control.";
+      } else if(estDtcMer>35){
+        situation=4;sitLabel="HIGH MER";sitColor="var(--ylw)";sitIcon="⚠️";
+        sitAction="Diagnose: is it expensive ads (CPP too high) or poor conversion (RPV too low)?";
+        sitDetail="DTC MER at "+fp(estDtcMer)+" exceeds 35%. If CPP is high \u2192 fix creative, audiences, campaign structure. If RPV is low \u2192 fix conversion rate, AOV, email capture, website experience.";
+      } else if(estProfPct<10||estFcPct>20){
+        situation=2;sitLabel="HIGH FIXED COSTS";sitColor="var(--ylw)";sitIcon="⚠️";
+        sitAction="Scale to spread costs. Fixed costs don't change when you double revenue.";
+        sitDetail="FC at "+fp(estFcPct)+" "+(estFcPct>20?"exceeds":"near")+" the 20% benchmark. At $2M revenue, same FC drops to ~"+fp(XERO_FIXED/2000000*100)+". This is a scale problem, not a cost problem. Don't cut FC that enables growth.";
+      } else {
+        sitAction="SCALE. Increase ad spend. You have no problems. Scale.";
+        sitDetail="Equation is healthy. Profit above 10%, costs within benchmarks. Focus on growing revenue \u2014 run Scale Challenges, test new creative, expand geos.";
+      }
 
       return <>
-      <h2 style={{fontSize:20,fontWeight:700,margin:"0 0 14px"}}>Equation Evaluation — {days} Days</h2>
+      <h2 style={{fontSize:20,fontWeight:700,margin:"0 0 14px"}}>Equation Evaluation \u2014 {days} Days</h2>
 
       <div style={{background:"linear-gradient(135deg,"+sitColor+"14,"+sitColor+"06)",border:"1px solid "+sitColor+"4d",borderRadius:14,padding:20,marginBottom:14}}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
           <span style={{fontSize:26}}>{sitIcon}</span>
-          <div><div style={{fontSize:11,color:"var(--t2)"}}>SITUATION {situation}</div>
-          <div style={{fontSize:18,fontWeight:700,color:sitColor}}>{sitLabel} AT {fp(estProfPct)}</div></div>
+          <div><div style={{fontSize:11,color:"var(--t2)"}}>EE SITUATION {situation} OF 5</div>
+          <div style={{fontSize:18,fontWeight:700,color:sitColor}}>S{situation}: {sitLabel} AT {fp(estProfPct)}</div></div>
         </div>
-        <div style={{fontSize:12,color:"var(--t1)",lineHeight:1.6}}>
-          {estProfPct>=10?"The equation works. Profit is above the 10% benchmark. ":"Profit at "+fp(estProfPct)+" is "+(estProfPct<0?"negative":"below the 10% target")+". "}
-          Prescription: {prescription}
-          {estDtcMer>35&&" Critical caveat: DTC MER at "+fp(estDtcMer)+" needs attention."}
-        </div>
+        <div style={{fontSize:13,fontWeight:600,color:sitColor,marginBottom:6}}>{sitAction}</div>
+        <div style={{fontSize:12,color:"var(--t1)",lineHeight:1.6}}>{sitDetail}</div>
+      </div>
+
+      {/* Five Situations Quick Reference */}
+      <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:14}}>
+        <div style={{fontSize:11,color:"var(--t3)",marginBottom:10,textTransform:"uppercase"}}>EE Five Situations Framework</div>
+        {[
+          {s:1,l:"Profitable (>10% profit)",a:"SCALE. Increase ad spend. Grow revenue.",c:"var(--grn)"},
+          {s:2,l:"High Fixed Costs (FC >20%)",a:"Scale to spread. Fixed costs don't change when you double revenue.",c:"var(--ylw)"},
+          {s:3,l:"High Variable Costs (VC >40%)",a:"Fix margins. Variable costs travel with every order.",c:"var(--ylw)"},
+          {s:4,l:"High MER (>35%)",a:"Diagnose CPP vs RPV. Is it expensive ads or poor conversion?",c:"var(--ylw)"},
+          {s:5,l:"Edge / Unprofitable",a:"Fix MER \u2192 then VC \u2192 then scale. Marketing inefficiency compounds.",c:"var(--red)"},
+        ].map(r=><div key={r.s} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderBottom:r.s<5?"1px solid var(--bdr)":"none",opacity:r.s===situation?1:0.5}}>
+          <span style={{fontSize:14,fontWeight:700,color:r.s===situation?r.c:"var(--t3)",fontFamily:"'JetBrains Mono',monospace",minWidth:24}}>S{r.s}</span>
+          <div style={{flex:1}}>
+            <span style={{fontSize:12,color:r.s===situation?"var(--t1)":"var(--t3)",fontWeight:r.s===situation?600:400}}>{r.l}</span>
+            <span style={{fontSize:11,color:"var(--t3)",marginLeft:8}}>{r.a}</span>
+          </div>
+          {r.s===situation&&<span style={{fontSize:12}}>👈 YOU</span>}
+        </div>)}
       </div>
 
       <div style={{fontSize:12,fontWeight:700,color:situation<=2?"#f59e0b":"#ef4444",marginBottom:8}}>{estDtcMer>35||estFcPct>20?"⚠️ CONSTRAINTS IDENTIFIED":"✅ FUNDAMENTALS HEALTHY"}</div>
@@ -1554,11 +1597,38 @@ function Dashboard(){
 
         <AiSummary text={aiText} loading={aiLoad} label="Email Performance Analysis" />
 
+        {/* THREE PILLARS HEALTH */}
+        <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:14}}>
+          <div style={{fontSize:11,color:"var(--t3)",marginBottom:10,textTransform:"uppercase",letterSpacing:"0.05em"}}>Three Pillars of Email (EE Framework)</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+            {(()=>{
+              const formRate=deliv.formConvRate||0;
+              const growthOk=formRate>=3||(deliv.subscribed||0)>10;
+              const fiveFlows=["welcome","abandoned cart","browse abandon","post-purchase","order confirm"];
+              const liveFlowCount=flows.filter(f=>f.status==="live"&&fiveFlows.some(k=>f.name.toLowerCase().indexOf(k)!==-1)).length;
+              const flowsOk=liveFlowCount>=4;
+              const campCount=sentCamps.length;
+              const campTarget=Math.round(klavDetailDays/30*8);
+              const campaignsOk=campCount>=campTarget;
+              return [
+                {l:"GROWTH",sub:formRate>0?formRate.toFixed(1)+"% form rate":"Signup form",ok:growthOk,detail:formRate>0?(formRate>=3?"Above 3% target":"Below 3% target \u2014 optimize form"):"Check form rate in Klaviyo",icon:"\uD83C\uDF31"},
+                {l:"FLOWS",sub:liveFlowCount+"/5 key flows live",ok:flowsOk,detail:flowsOk?"All critical flows active":"Missing flows \u2014 check Welcome, Cart, Browse, Post-Purchase",icon:"\u2699\uFE0F"},
+                {l:"CAMPAIGNS",sub:campCount+" sent in "+klavDetailDays+"d",ok:campaignsOk,detail:campaignsOk?"Meeting 2-3/week cadence":"Target: "+campTarget+"+ campaigns in "+klavDetailDays+"d (2-3/week)",icon:"\uD83D\uDCE8"},
+              ].map((p,i)=><div key={i} style={{background:p.ok?"rgba(16,185,129,0.06)":"rgba(239,68,68,0.06)",border:"1px solid "+(p.ok?"rgba(16,185,129,0.2)":"rgba(239,68,68,0.2)"),borderRadius:12,padding:14,textAlign:"center"}}>
+                <div style={{fontSize:18,marginBottom:4}}>{p.icon}</div>
+                <div style={{fontSize:12,fontWeight:700,color:p.ok?"var(--grn)":"var(--red)"}}>{p.l}</div>
+                <div style={{fontSize:13,fontWeight:600,color:"var(--t1)",marginTop:4}}>{p.sub}</div>
+                <div style={{fontSize:10,color:"var(--t3)",marginTop:3}}>{p.detail}</div>
+              </div>);
+            })()}
+          </div>
+        </div>
+
         {/* A) EMAIL REVENUE OVERVIEW */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:14}}>
           <MC l="Email Revenue" v={emailRev} fmt="$" big />
-          <MC l="Email Rev %" v={emailPct} fmt="%" bm={{h:[30,100],w:[20,30]}} sub={"Target: 30-40%"} big />
-          <MC l="Email Orders" v={a.to>0?Math.round(emailRev/(dtcRev/a.to)):0} fmt="#" sub={"of "+fn(a.to)+" total"} />
+          <MC l="Email Rev %" v={emailPct} fmt="%" bm={{h:[30,100],w:[20,30]}} sub={"Target: 30% of total revenue"} big />
+          <MC l="Flow Rev %" v={flowPct} fmt="%" bm={{h:[60,100],w:[40,60]}} sub={"Target: 60%+ from flows"} />
           <MC l={"vs Prev "+a.d+"d"} v={emailChg} fmt="%" sub={prevEmailRev?"Was "+f$(prevEmailRev):""} bm={{h:[0,1000],w:[-10,0]}} />
         </div>
 
@@ -1597,9 +1667,10 @@ function Dashboard(){
           </div>
         </div>}
 
-        {/* B) FLOW PERFORMANCE */}
+        {/* B) FLOW PERFORMANCE with Rev/Recipient */}
         <div style={cardS}>
-          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Flow Performance</div>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:4}}>Flow Performance</div>
+          <div style={{fontSize:10,color:"var(--t3)",marginBottom:10}}>EE targets: Welcome $5+, Cart/Checkout $3+, Browse $2+, Post-Purchase $1+ per recipient</div>
           {klavDetailLoading&&!flows.length?<div style={{color:"var(--t3)",fontSize:13}}>Loading flows...</div>:
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse"}}>
@@ -1607,14 +1678,24 @@ function Dashboard(){
                 <th style={thS}>Flow</th>
                 <th style={thS}>Status</th>
                 <th style={{...thS,textAlign:"right"}}>Revenue</th>
-                <th style={{...thS,textAlign:"right"}}>Conversions</th>
-                <th style={{...thS,textAlign:"right"}}>Messages</th>
+                <th style={{...thS,textAlign:"right"}}>Recipients</th>
+                <th style={{...thS,textAlign:"right"}}>$/Recipient</th>
+                <th style={{...thS,textAlign:"right"}}>EE Target</th>
               </tr></thead>
               <tbody>
                 {flows.map((f,i)=>{
                   const isKey=keyFlowNames.some(k=>f.name.toLowerCase().indexOf(k.toLowerCase())!==-1);
                   const isLive=f.status==="live";
                   const shouldBeLive=isKey&&!isLive;
+                  const nm=f.name.toLowerCase();
+                  const recipients=f.conversions||0;
+                  const revPerRecip=recipients>0?f.revenue/recipients:0;
+                  var eeBench=null,benchLabel="";
+                  if(nm.indexOf("welcome")!==-1){eeBench=5;benchLabel="$5.00";}
+                  else if(nm.indexOf("cart")!==-1||nm.indexOf("checkout")!==-1){eeBench=3;benchLabel="$3.00";}
+                  else if(nm.indexOf("browse")!==-1){eeBench=2;benchLabel="$2.00";}
+                  else if(nm.indexOf("post")!==-1||nm.indexOf("order")!==-1){eeBench=1;benchLabel="$1.00";}
+                  var meetsBench=eeBench!=null&&revPerRecip>=eeBench;
                   return <tr key={i} style={{background:shouldBeLive?"rgba(239,68,68,0.06)":isKey?"rgba(79,110,247,0.04)":"transparent"}}>
                     <td style={{...tdS,fontFamily:"'DM Sans',sans-serif",fontWeight:isKey?600:400}}>
                       {f.name}
@@ -1622,8 +1703,9 @@ function Dashboard(){
                     </td>
                     <td style={tdS}><span style={{fontSize:11,padding:"2px 8px",borderRadius:6,background:isLive?"rgba(34,197,94,0.15)":f.status==="manual"?"rgba(245,158,11,0.15)":"rgba(107,114,128,0.15)",color:isLive?"var(--grn)":f.status==="manual"?"var(--ylw)":"var(--t3)"}}>{f.status}</span></td>
                     <td style={{...tdS,textAlign:"right",color:f.revenue>0?"var(--grn)":"var(--t3)"}}>{f$(f.revenue)}</td>
-                    <td style={{...tdS,textAlign:"right"}}>{fn(f.conversions)}</td>
-                    <td style={{...tdS,textAlign:"right"}}>{f.messages||"—"}</td>
+                    <td style={{...tdS,textAlign:"right"}}>{fn(recipients)}</td>
+                    <td style={{...tdS,textAlign:"right",color:eeBench!=null?(meetsBench?"var(--grn)":"var(--red)"):"var(--t2)",fontWeight:eeBench!=null?700:400}}>{recipients>0?"$"+revPerRecip.toFixed(2):"—"}</td>
+                    <td style={{...tdS,textAlign:"right",fontSize:10,color:"var(--t3)"}}>{benchLabel||"—"}{benchLabel&&(meetsBench?" ✅":" ❌")}</td>
                   </tr>;
                 })}
               </tbody>
@@ -1715,7 +1797,7 @@ function Dashboard(){
               <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,padding:14}}>
                 <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Form Conv Rate</div>
                 <div style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:deliv.formConvRate>=3?"var(--grn)":deliv.formConvRate>=1.5?"var(--ylw)":"var(--red)"}}>{deliv.formConvRate?deliv.formConvRate.toFixed(1)+"%":"—"}</div>
-                <div style={{fontSize:10,color:"var(--t3)",marginTop:2}}>Benchmark: 2-4%</div>
+                <div style={{fontSize:10,color:"var(--t3)",marginTop:2}}>EE target: 3%+ (best: 5-15%)</div>
               </div>
               <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,padding:14}}>
                 <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Active on Site</div>
@@ -1723,6 +1805,56 @@ function Dashboard(){
               </div>
             </div>
           </div>}
+
+          {/* Campaign Frequency Tracker */}
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:12,fontWeight:600,marginBottom:8,color:"var(--t2)"}}>Campaign Frequency ({klavDetailDays}d)</div>
+            {(()=>{
+              var campTarget=Math.round(klavDetailDays/7*2.5);
+              var campCount=sentCamps.length;
+              var campPct=campTarget>0?Math.min(campCount/campTarget*100,100):0;
+              var campOk=campCount>=campTarget;
+              return <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10}}>
+                <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,padding:14}}>
+                  <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Campaigns Sent</div>
+                  <div style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:campOk?"var(--grn)":"var(--red)"}}>{campCount}</div>
+                  <div style={{fontSize:10,color:"var(--t3)",marginTop:2}}>Target: {campTarget}+ ({klavDetailDays}d at 2-3/week)</div>
+                </div>
+                <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,padding:14}}>
+                  <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Per Week Avg</div>
+                  <div style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:(campCount/(klavDetailDays/7))>=2?"var(--grn)":"var(--red)"}}>{(campCount/(klavDetailDays/7)).toFixed(1)}</div>
+                  <div style={{fontSize:10,color:"var(--t3)",marginTop:2}}>EE minimum: 2-3 per week</div>
+                </div>
+                <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,padding:14}}>
+                  <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Campaign Revenue</div>
+                  <div style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:totalCampRev>0?"var(--grn)":"var(--t3)"}}>{f$(totalCampRev)}</div>
+                  <div style={{fontSize:10,color:"var(--t3)",marginTop:2}}>Rev per campaign: {campCount>0?f$(totalCampRev/campCount):"—"}</div>
+                </div>
+              </div>;
+            })()}
+          </div>
+
+          {/* List Health */}
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:12,fontWeight:600,marginBottom:8,color:"var(--t2)"}}>List Health</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10}}>
+              <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,padding:14}}>
+                <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Active Subscribers</div>
+                <div style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{fn(deliv.activeOnSite||deliv.subscribed||0)}</div>
+                <div style={{fontSize:10,color:"var(--t3)",marginTop:2}}>After list cleanup</div>
+              </div>
+              <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,padding:14}}>
+                <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>90d Engaged %</div>
+                <div style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:deliv.openRate>=44?"var(--grn)":"var(--ylw)"}}>{deliv.openRate?Math.min(Math.round(deliv.openRate*1.1),100)+"%":"—"}</div>
+                <div style={{fontSize:10,color:"var(--t3)",marginTop:2}}>Est. from open rate</div>
+              </div>
+              <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,padding:14}}>
+                <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Sunset Candidates</div>
+                <div style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"var(--ylw)"}}>{deliv.openRate?Math.round((100-deliv.openRate*1.1)/100*(deliv.activeOnSite||1870)):"\u2014"}</div>
+                <div style={{fontSize:10,color:"var(--t3)",marginTop:2}}>No engagement 180+ days</div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Reload button */}
@@ -2178,6 +2310,36 @@ function Dashboard(){
             <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em",marginTop:2}}>{p.l}</div>
           </div>)}
         </div>
+
+        {/* 6-WEEK GAME PLAN */}
+        {(()=>{
+          // Determine which week Noody should be in
+          var weekPhase="1-2",phaseLabel="CALIBRATE",phaseColor="#3b82f6",phaseDesc="Lock in data, verify tracking, identify situation and constraint.";
+          if(situation===1&&dtcMerVal<=35&&fcPct<=25){weekPhase="5-6";phaseLabel="SCALE TEST";phaseColor="#10b981";phaseDesc="Equation is profitable. Increase ad spend 15-20% on top performers, test new creative.";}
+          else if(npPct>=5){weekPhase="3-4";phaseLabel="QUICK WINS";phaseColor="#f59e0b";phaseDesc="Fix obvious gaps \u2014 activate flows, optimize form, increase campaign cadence, pause villain ads.";}
+          return <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:16}}>
+            <div style={{fontSize:11,color:"var(--t3)",marginBottom:10,textTransform:"uppercase"}}>EE 6-Week Game Plan \u2014 Where Is Noody?</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+              {[
+                {w:"1-2",l:"Calibrate",d:"Lock in data, verify tracking, set benchmarks",c:"#3b82f6"},
+                {w:"3-4",l:"Quick Wins",d:"Fix flows, form, campaign cadence, pause bad ads",c:"#f59e0b"},
+                {w:"5-6",l:"Scale Test",d:"Increase spend 15% if profitable, test new creative",c:"#10b981"},
+              ].map((phase,i)=>{
+                var isActive=phase.w===weekPhase;
+                return <div key={i} style={{background:isActive?phase.c+"14":"transparent",border:"1px solid "+(isActive?phase.c+"4d":"var(--bdr)"),borderRadius:10,padding:12,textAlign:"center",opacity:isActive?1:0.5}}>
+                  <div style={{fontSize:10,color:"var(--t3)"}}>WEEK {phase.w}</div>
+                  <div style={{fontSize:14,fontWeight:700,color:isActive?phase.c:"var(--t2)",marginTop:2}}>{phase.l}</div>
+                  <div style={{fontSize:10,color:"var(--t3)",marginTop:4}}>{phase.d}</div>
+                  {isActive&&<div style={{fontSize:10,fontWeight:600,color:phase.c,marginTop:6}}>👈 CURRENT PHASE</div>}
+                </div>;
+              })}
+            </div>
+            <div style={{marginTop:10,padding:12,background:phaseColor+"0a",border:"1px solid "+phaseColor+"33",borderRadius:8}}>
+              <div style={{fontSize:12,fontWeight:600,color:phaseColor}}>Week {weekPhase}: {phaseLabel}</div>
+              <div style={{fontSize:11,color:"var(--t2)",marginTop:4}}>{phaseDesc}</div>
+            </div>
+          </div>;
+        })()}
 
         {/* Insight cards */}
         {insights.map((ins,idx)=><div key={idx} style={{
