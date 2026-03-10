@@ -1699,14 +1699,11 @@ function Dashboard(){
         {/* A) KEY METRICS */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:14}}>
           <MC l="IG Followers" v={followers} fmt="#" big sub={ig.followersEstimated?"Estimated from post engagement":""} />
-          <MC l="IG Avg Daily Reach" v={avgDailyReach} fmt="#" sub={ig.reach?"Total: "+fn(ig.reach):""} />
+          <MC l="IG Total Reach (incl. paid)" v={ig.reach||0} fmt="#" sub={avgDailyReach?"Avg daily: "+fn(avgDailyReach):""} />
           <MC l="IG Profile Views" v={ig.profileViews||0} fmt="#" />
           <MC l="IG Engaged Accounts" v={ig.accountsEngaged||0} fmt="#" />
           <MC l="IG Interactions" v={totalEng} fmt="#" />
-          <MC l="FB Impressions (30d)" v={fb.impressions||0} fmt="#" big />
-          <MC l="FB Engagements" v={fb.engagedUsers||0} fmt="#" />
-          <MC l="FB Page Views" v={fb.pageViews||0} fmt="#" />
-          <MC l="FB New Fans" v={fb.newFans||0} fmt="#" />
+          <MC l="FB Page Likes" v={fb.pageLikes||0} fmt="#" big />
         </div>
 
         {ig.error&&<div style={{fontSize:12,color:"var(--ylw)",marginBottom:8}}>IG: {ig.error}</div>}
@@ -1718,10 +1715,7 @@ function Dashboard(){
           <div style={{display:"grid",gap:8}}>
             {[
               {l:"IG Engagement Rate",actual:igEngRate,target:"3–6%",status:igEngRate>=3?"h":igEngRate>=2?"w":"c"},
-              {l:"IG Reach Rate (daily)",actual:igReachRate,target:"20–40% of followers",status:igReachRate>=20?"h":igReachRate>=10?"w":"c"},
               {l:"IG Profile Visit Rate",actual:igProfileRate,target:"2–5% of reach",status:igProfileRate>=2?"h":igProfileRate>=1?"w":"c"},
-              {l:"FB Engagement Rate",actual:fbEngRate,target:"1–3%",status:fbEngRate>=1?"h":fbEngRate>=0.5?"w":"c"},
-              {l:"FB Organic Reach Rate",actual:fbReachRate,target:"5–15% of likes/day",status:fbReachRate>=5?"h":fbReachRate>=2?"w":"c"},
               {l:"IG Rev/Session",actual:igRps,target:"$0.50–$2.00",status:igRps>=0.5?"h":igRps>=0.25?"w":"c",fmt:"$"},
               {l:"FB Rev/Session",actual:fbRps,target:"$0.50–$2.00",status:fbRps>=0.5?"h":fbRps>=0.25?"w":"c",fmt:"$"},
               {l:"Social % of DTC Rev",actual:socialRevPct,target:"3–8%",status:socialRevPct>=3?"h":socialRevPct>=1?"w":"c"},

@@ -48,11 +48,9 @@ export default async function handler(req, res) {
         '?fields=fan_count,name&access_token=' + (pageToken || token);
 
       // Step 3: Build API URLs
-      // FB Page insights — requires page token; use only universally supported metrics
-      var fbUrl = pageToken ? ('https://graph.facebook.com/v19.0/' + pageId + '/insights' +
-        '?metric=page_impressions,page_post_engagements' +
-        '&period=day&since=' + sinceDate + '&until=' + untilDate +
-        '&access_token=' + pageToken) : null;
+      // FB Page insights — skip entirely; page_impressions/page_post_engagements
+      // return (#100) errors on many token configurations. We get fan_count from fbPageUrl above.
+      var fbUrl = null;
 
       // IG daily metrics (period=day) — these support period=day natively
       var igDailyUrl = 'https://graph.facebook.com/v19.0/' + igId + '/insights' +
@@ -73,7 +71,7 @@ export default async function handler(req, res) {
         '&limit=20&access_token=' + token;
 
       var fetches = [
-        fbUrl ? fetch(fbUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }) : Promise.resolve({ _error: 'No page token. Grant pages_read_engagement permission.' }),
+        fbUrl ? fetch(fbUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }) : Promise.resolve({ _skipped: true }),
         fetch(igDailyUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }),
         fetch(igTotalUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }),
         fetch(igMediaUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }),
@@ -93,10 +91,12 @@ export default async function handler(req, res) {
         facebook.pageLikes = fbPageInfo.fan_count || 0;
       }
 
-      // Parse Facebook Page insights (page_impressions + page_post_engagements only)
-      if (fbData._error || fbData.error) {
+      // Parse Facebook Page insights (if available)
+      if (fbData._skipped) {
+        // FB insights skipped — fan_count from page info is sufficient
+      } else if (fbData._error || fbData.error) {
         facebook.error = fbData._error || (fbData.error ? fbData.error.message : null) ||
-          'Facebook Page insights failed. Ensure the token has pages_read_engagement permission.';
+          'Facebook Page insights failed.';
       } else {
         var fbMetrics = fbData.data || [];
         var impressionsMetric = fbMetrics.find(function(m) { return m.name === 'page_impressions'; });
@@ -150,39 +150,30 @@ export default async function handler(req, res) {
       }
 
       // B) Total value metrics (profile_views, accounts_engaged, total_interactions)
+      // These return a single total_value object per metric, not daily values
       var igTotalError = null;
       if (igTotalInsights._error || igTotalInsights.error) {
         igTotalError = igTotalInsights._error || (igTotalInsights.error ? igTotalInsights.error.message : 'IG total insights failed');
-        // Include debug info
         instagram._totalValueDebug = igTotalInsights.error || igTotalInsights._error || 'unknown';
       } else {
         var igTotalMetrics = igTotalInsights.data || [];
-        var igProfileViews = igTotalMetrics.find(function(m) { return m.name === 'profile_views'; });
-        var igEngaged = igTotalMetrics.find(function(m) { return m.name === 'accounts_engaged'; });
-        var igInteractions = igTotalMetrics.find(function(m) { return m.name === 'total_interactions'; });
-
-        var igProfileValues = igProfileViews ? (igProfileViews.values || []) : [];
-        var igEngagedValues = igEngaged ? (igEngaged.values || []) : [];
-        var igInteractionValues = igInteractions ? (igInteractions.values || []) : [];
-
-        instagram.profileViews = igProfileValues.reduce(function(s, v) { return s + (v.value || 0); }, 0);
-        instagram.accountsEngaged = igEngagedValues.reduce(function(s, v) { return s + (v.value || 0); }, 0);
-        instagram.totalInteractions = igInteractionValues.reduce(function(s, v) { return s + (v.value || 0); }, 0);
-
-        // Merge total_value daily data into existing daily array
-        var dailyMap = {};
-        instagram.daily.forEach(function(row) { dailyMap[row.date] = row; });
-        igProfileValues.forEach(function(v) {
-          var d = v.end_time ? v.end_time.split('T')[0] : '';
-          if (d && dailyMap[d]) dailyMap[d].profileViews = v.value || 0;
+        // Debug: include raw metric names found
+        instagram._totalValueMetrics = igTotalMetrics.map(function(m) { return m.name; });
+        instagram._totalValueRaw = igTotalMetrics.map(function(m) {
+          return { name: m.name, total_value: m.total_value, values: (m.values || []).slice(0, 2) };
         });
-        igEngagedValues.forEach(function(v) {
-          var d = v.end_time ? v.end_time.split('T')[0] : '';
-          if (d && dailyMap[d]) dailyMap[d].engaged = v.value || 0;
-        });
-        igInteractionValues.forEach(function(v) {
-          var d = v.end_time ? v.end_time.split('T')[0] : '';
-          if (d && dailyMap[d]) dailyMap[d].interactions = v.value || 0;
+
+        igTotalMetrics.forEach(function(m) {
+          // total_value metrics may return {total_value: {value: N}} OR {values: [{value: N}]}
+          var val = 0;
+          if (m.total_value && typeof m.total_value.value === 'number') {
+            val = m.total_value.value;
+          } else if (m.values && m.values.length > 0) {
+            val = m.values.reduce(function(s, v) { return s + (v.value || 0); }, 0);
+          }
+          if (m.name === 'profile_views') instagram.profileViews = val;
+          else if (m.name === 'accounts_engaged') instagram.accountsEngaged = val;
+          else if (m.name === 'total_interactions') instagram.totalInteractions = val;
         });
       }
 
