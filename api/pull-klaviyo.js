@@ -321,18 +321,24 @@ export default async function handler(req, res) {
           'Unsubscribed from Email Marketing', 'Unsubscribed from List', 'Marked Email as Spam',
           'Dropped Email', 'Subscribed to Email Marketing', 'Viewed Form', 'Submitted Form',
           'Active on Site'];
+        // Build parallel queries for all found metrics
+        var metricQueries = [];
         for (var mn = 0; mn < metricNames.length; mn++) {
           var metricObj = allMetrics.find(function(m) { return m.attributes && m.attributes.name === metricNames[mn]; });
-          if (!metricObj) continue;
-          var dAgg = await queryAggregate(metricObj.id, null);
-          if (dAgg && dAgg.data) {
-            var total = 0;
-            for (var dk = 0; dk < dAgg.data.length; dk++) {
-              total += arrSum(dAgg.data[dk].measurements && dAgg.data[dk].measurements.count);
-            }
-            delivMetrics[metricNames[mn]] = total;
-          }
+          if (metricObj) metricQueries.push({ name: metricNames[mn], id: metricObj.id });
         }
+        var delivResults = await Promise.all(metricQueries.map(function(mq) {
+          return queryAggregate(mq.id, null).then(function(agg) { return { name: mq.name, agg: agg }; }).catch(function() { return { name: mq.name, agg: null }; });
+        }));
+        delivResults.forEach(function(dr) {
+          if (dr.agg && dr.agg.data) {
+            var total = 0;
+            for (var dk = 0; dk < dr.agg.data.length; dk++) {
+              total += arrSum(dr.agg.data[dk].measurements && dr.agg.data[dk].measurements.count);
+            }
+            delivMetrics[dr.name] = total;
+          }
+        });
 
         var received = delivMetrics['Received Email'] || 0;
         var unsubTotal = (delivMetrics['Unsubscribed from Email Marketing'] || 0) + (delivMetrics['Unsubscribed from List'] || 0);
