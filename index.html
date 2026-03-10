@@ -379,6 +379,16 @@ function Dashboard(){
     }catch(e){console.error("Clarity:",e);}
     setClarityLoading(false);
   },[]);
+  const [gscData,setGscData]=useState(null);
+  const [gscLoading,setGscLoading]=useState(false);
+  const fetchGsc=useCallback(async(d)=>{
+    setGscLoading(true);
+    try{
+      const r=await fetch('/api/pull-google-ads?type=gsc&days='+(d||30),{headers:{"x-api-key":"noody-eq-2026-datahub"}});
+      if(r.ok){const data=await r.json();setGscData(data);}else{const err=await r.json().catch(()=>({}));setGscData({error:true,status:r.status,message:err.error||'GSC fetch failed'});}
+    }catch(e){console.error("GSC:",e);setGscData({error:true,message:e.message});}
+    setGscLoading(false);
+  },[]);
 
   // Klaviyo detail data (flows, campaigns, deliverability)
   const [klavDetail,setKlavDetail]=useState(null);
@@ -407,6 +417,7 @@ function Dashboard(){
     if(tab==="website"&&!webData&&!webLoading)fetchWebData(range);
     if(tab==="website"&&!webGa4&&!webGa4Loading)fetchWebGa4(range);
     if(tab==="website"&&!clarityData&&!clarityLoading)fetchClarity(range);
+    if(tab==="website"&&!gscData&&!gscLoading)fetchGsc(range);
   },[tab]);
 
   // Merge hardcoded D with live Shopify+Meta+Klaviyo+GA4 data
@@ -2181,7 +2192,8 @@ function Dashboard(){
           "TRAFFIC SOURCES:\n"+_trafficLine+"\n\n"+
           "DEVICE BREAKDOWN:\n"+_deviceLine+"\n\n"+
           (clarityData&&clarityData.metrics?"UX HEALTH (Microsoft Clarity):\n- Rage Click Rate: "+clarityData.metrics.rageClickRate+"% (benchmark: <2% healthy)\n- Dead Click Rate: "+clarityData.metrics.deadClickRate+"% (benchmark: <5% healthy)\n- Scroll Depth: "+clarityData.metrics.avgScrollDepth+"% (benchmark: >50%)\n- Quick-back Rate: "+clarityData.metrics.quickbackRate+"% (benchmark: <15%)\n- Avg Engagement Time: "+clarityData.metrics.avgEngagementTime+"s\n- Pages/Session: "+clarityData.metrics.pagesPerSession+"\n\n":"")+
-          "Analyse using the RPV = CR x AOV framework. Compare against Conversion Catalyst benchmarks (594 brands). Identify whether CR or AOV is the bigger lever for improvement. Give 4-5 specific, actionable recommendations with numbers."+(clarityData&&clarityData.metrics?" Include UX health insights from Clarity data — flag any friction issues.":"");
+          (gscData&&!gscData.error&&gscData.topQueries?"ORGANIC SEARCH (Google Search Console):\n- Total Clicks: "+fn(gscData.summary.totalClicks)+" · Impressions: "+fn(gscData.summary.totalImpressions)+" · Avg CTR: "+gscData.summary.avgCTR.toFixed(1)+"% · Avg Position: "+gscData.summary.avgPosition.toFixed(1)+"\n- Top keywords: "+gscData.topQueries.slice(0,8).map(function(q){return q.query+" (pos "+q.position.toFixed(1)+", "+q.clicks+" clicks, "+q.ctr.toFixed(1)+"% CTR)";}).join("; ")+"\n- Page 1 keywords (pos <10): "+gscData.topQueries.filter(function(q){return q.position<10;}).length+" of "+gscData.topQueries.length+"\n\n":"")+
+          "Analyse using the RPV = CR x AOV framework. Compare against Conversion Catalyst benchmarks (594 brands). Identify whether CR or AOV is the bigger lever for improvement. Give 4-5 specific, actionable recommendations with numbers."+(clarityData&&clarityData.metrics?" Include UX health insights from Clarity data — flag any friction issues.":"")+(gscData&&!gscData.error&&gscData.topQueries?" Include SEO insights — identify keyword opportunities, branded vs non-branded search health, and any pages with high impressions but low CTR.":"");
         setTimeout(()=>fetchTabAi("website",prompt,["website","shopify"]),0);
       }
 
@@ -2190,7 +2202,8 @@ function Dashboard(){
         <div style={{fontSize:12,color:"var(--t3)",marginBottom:16}}>
           {_days}-day view · {wd?<span style={{fontSize:10,background:"rgba(21,128,61,0.08)",color:"var(--grn)",padding:"2px 6px",borderRadius:4,marginRight:4}}>SHOPIFY</span>:null}
           {ga?<span style={{fontSize:10,background:"rgba(26,86,219,0.08)",color:"#1a56db",padding:"2px 6px",borderRadius:4,marginRight:4}}>GA4</span>:null}
-          {clarityData&&!clarityData.error?<span style={{fontSize:10,background:"rgba(124,58,237,0.08)",color:"#7c3aed",padding:"2px 6px",borderRadius:4}}>CLARITY</span>:null}
+          {clarityData&&!clarityData.error?<span style={{fontSize:10,background:"rgba(124,58,237,0.08)",color:"#7c3aed",padding:"2px 6px",borderRadius:4,marginRight:4}}>CLARITY</span>:null}
+          {gscData&&!gscData.error?<span style={{fontSize:10,background:"rgba(234,88,12,0.08)",color:"#ea580c",padding:"2px 6px",borderRadius:4}}>SEARCH CONSOLE</span>:null}
         </div>
 
         {loading&&<div style={{...cardS,textAlign:"center",color:"var(--t3)",fontSize:13}}>Loading website data...</div>}
@@ -2278,6 +2291,94 @@ function Dashboard(){
             </table>
           </div>
         </div>}
+
+        {/* Section 5b: Organic Search Performance (GSC) */}
+        {gscLoading&&<div style={{...cardS,textAlign:"center",color:"var(--t3)",fontSize:13}}>Loading Search Console data...</div>}
+        {gscData&&gscData.error&&gscData.status===403&&<div style={{...cardS,borderColor:"var(--ylw)",background:"rgba(234,179,8,0.06)"}}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>Organic Search — Scope Required</div>
+          <div style={{fontSize:12,color:"var(--t2)"}}>{gscData.message}</div>
+        </div>}
+        {gscData&&gscData.error&&gscData.status!==403&&<div style={{...cardS,borderColor:"var(--ylw)",background:"rgba(234,179,8,0.06)"}}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>Organic Search — Error</div>
+          <div style={{fontSize:12,color:"var(--t2)"}}>{gscData.message||"Failed to load Search Console data"}</div>
+        </div>}
+        {gscData&&!gscData.error&&(()=>{
+          const gs=gscData.summary||{};
+          const tq=gscData.topQueries||[];
+          const tp=gscData.topPages||[];
+          const posColor=function(p){return p<=3?"var(--grn)":p<=10?"var(--ylw)":"var(--red)";};
+          const ctrColor=function(c){return c>=5?"var(--grn)":c>=3?"var(--ylw)":c>0?"var(--red)":"var(--t3)";};
+          const stripDomain=function(u){try{return new URL(u).pathname;}catch(e){return u;}};
+          return <div style={cardS}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div style={{fontSize:13,fontWeight:600}}>Organic Search Performance <span style={{fontSize:10,background:"rgba(234,88,12,0.08)",color:"#ea580c",padding:"2px 6px",borderRadius:4,marginLeft:6}}>SEARCH CONSOLE</span></div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+              {[
+                {l:"Organic Clicks",v:fn(gs.totalClicks),color:"var(--t1)"},
+                {l:"Impressions",v:fn(gs.totalImpressions),color:"var(--t1)"},
+                {l:"Avg CTR",v:gs.avgCTR.toFixed(1)+"%",color:ctrColor(gs.avgCTR)},
+                {l:"Avg Position",v:gs.avgPosition.toFixed(1),color:posColor(gs.avgPosition)},
+              ].map(function(m,i){return <div key={i} style={{textAlign:"center",padding:10,background:"rgba(0,0,0,0.02)",borderRadius:8}}>
+                <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:4}}>{m.l}</div>
+                <div style={{fontSize:18,fontWeight:700,color:m.color,fontFamily:"'JetBrains Mono',monospace"}}>{m.v}</div>
+              </div>;})}
+            </div>
+            {tq.length>0&&<div style={{marginBottom:16}}>
+              <div style={{fontSize:12,fontWeight:600,marginBottom:8}}>Top Keywords</div>
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                  <thead><tr>
+                    <th style={thS}>Keyword</th>
+                    <th style={{...thS,textAlign:"right"}}>Clicks</th>
+                    <th style={{...thS,textAlign:"right"}}>Impressions</th>
+                    <th style={{...thS,textAlign:"right"}}>CTR</th>
+                    <th style={{...thS,textAlign:"right"}}>Position</th>
+                  </tr></thead>
+                  <tbody>
+                    {tq.map(function(q,i){
+                      var pCol=posColor(q.position);
+                      var rowBg=q.position<=10?"rgba(21,128,61,0.04)":q.position<=20?"rgba(234,179,8,0.04)":"transparent";
+                      return <tr key={i} style={{background:rowBg}}>
+                        <td style={tdS}>{q.query}</td>
+                        <td style={{...tdS,textAlign:"right"}}>{fn(q.clicks)}</td>
+                        <td style={{...tdS,textAlign:"right"}}>{fn(q.impressions)}</td>
+                        <td style={{...tdS,textAlign:"right",color:ctrColor(q.ctr)}}>{q.ctr.toFixed(1)}%</td>
+                        <td style={{...tdS,textAlign:"right",color:pCol,fontWeight:q.position<=10?600:400}}>{q.position.toFixed(1)}</td>
+                      </tr>;
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{fontSize:10,color:"var(--t3)",marginTop:6,fontStyle:"italic"}}>Keywords at position 8-12 are the biggest SEO opportunity — small improvements push them to page 1</div>
+            </div>}
+            {tp.length>0&&<div>
+              <div style={{fontSize:12,fontWeight:600,marginBottom:8}}>Top Pages (Organic)</div>
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                  <thead><tr>
+                    <th style={thS}>Page</th>
+                    <th style={{...thS,textAlign:"right"}}>Clicks</th>
+                    <th style={{...thS,textAlign:"right"}}>Impressions</th>
+                    <th style={{...thS,textAlign:"right"}}>CTR</th>
+                    <th style={{...thS,textAlign:"right"}}>Avg Position</th>
+                  </tr></thead>
+                  <tbody>
+                    {tp.map(function(p,i){
+                      return <tr key={i}>
+                        <td style={{...tdS,maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={p.page}>{stripDomain(p.page)}</td>
+                        <td style={{...tdS,textAlign:"right"}}>{fn(p.clicks)}</td>
+                        <td style={{...tdS,textAlign:"right"}}>{fn(p.impressions)}</td>
+                        <td style={{...tdS,textAlign:"right",color:ctrColor(p.ctr)}}>{p.ctr.toFixed(1)}%</td>
+                        <td style={{...tdS,textAlign:"right",color:posColor(p.position)}}>{p.position.toFixed(1)}</td>
+                      </tr>;
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>}
+          </div>;
+        })()}
 
         {/* Section 6: Device Performance */}
         {ga&&ga.devices&&ga.devices.length>0&&<div style={cardS}>
@@ -2431,6 +2532,7 @@ function Dashboard(){
         <div style={{fontSize:10,color:"var(--t3)",textAlign:"right",marginTop:8}}>
           {wd&&<span>Shopify: {wd.dateRange?.start} → {wd.dateRange?.end} · </span>}
           {ga&&<span>GA4: {ga.dateRange?.start} → {ga.dateRange?.end} · </span>}
+          {gscData&&!gscData.error&&<span>GSC: {gscData.dateRange?.start} → {gscData.dateRange?.end} · </span>}
           {(wd||ga)&&<span>Pulled: {(wd?.pulledAt||ga?.pulledAt)?new Date(wd?.pulledAt||ga?.pulledAt).toLocaleString("en-NZ",{timeZone:"Pacific/Auckland"}):"—"}</span>}
         </div>
       </>;

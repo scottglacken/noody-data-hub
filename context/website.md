@@ -95,3 +95,25 @@ For Noody at current CR 3.3% and AOV $90:
 3. Set free shipping at ~$100 (just above $90 AOV)
 4. Cross-sell on PDP and in cart
 5. Maintain CR through continued UX optimization
+
+## SEO / Search Console Benchmarks
+
+### Organic CTR by Position
+| Position | Expected CTR | Notes |
+|----------|-------------|-------|
+| #1 | ~28% | Dominant — protect at all costs |
+| #2 | ~15% | Strong — push for #1 with content improvements |
+| #3 | ~11% | Good — optimize title/meta for CTR |
+| #4-5 | 6-8% | Decent — on-page SEO improvements needed |
+| #6-10 | 2-4% | Page 1 but low CTR — title/meta rewrite opportunity |
+| #11-20 | <2% | Page 2 — biggest SEO opportunity zone |
+
+### SEO Strategy for DTC Skincare
+- **Branded search** (noody, noody skincare) should dominate top queries — if not, brand awareness problem
+- **Non-branded search** (eczema cream nz, baby skincare nz) = new customer acquisition channel
+- **Position 8-12 keywords** are the biggest opportunity — small improvements push them to page 1
+- Pages with **high impressions but low CTR** = title/meta description optimization opportunity
+- Pages with **good position but low impressions** = low search volume, consider content expansion
+- Target: get top 5 non-branded keywords to position <5
+- Organic search should drive 15-30% of total sessions for a healthy DTC brand
+- Organic visitors convert 2-3x better than paid social (higher intent)

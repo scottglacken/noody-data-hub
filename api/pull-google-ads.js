@@ -288,6 +288,99 @@ async function handleGA4(req, res, accessToken, clientId) {
   });
 }
 
+async function handleGSC(req, res, accessToken, clientId) {
+  const siteUrl = process.env.SEARCH_CONSOLE_SITE_URL;
+  if (!siteUrl) {
+    return res.status(500).json({ error: 'Missing SEARCH_CONSOLE_SITE_URL env var' });
+  }
+
+  const days = parseInt(req.query.days) || 30;
+  const startDate = new Date(Date.now() - days * 86400000).toISOString().split('T')[0];
+  const endDate = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const encodedUrl = encodeURIComponent(siteUrl);
+  const apiUrl = `https://www.googleapis.com/webmasters/v3/sites/${encodedUrl}/searchAnalytics/query`;
+  const headers = { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' };
+  const base = { startDate, endDate, dataState: 'all' };
+
+  const [queryRes, pageRes, mapRes] = await Promise.all([
+    fetch(apiUrl, { method: 'POST', headers, body: JSON.stringify({ ...base, dimensions: ['query'], rowLimit: 20 }) }),
+    fetch(apiUrl, { method: 'POST', headers, body: JSON.stringify({ ...base, dimensions: ['page'], rowLimit: 20 }) }),
+    fetch(apiUrl, { method: 'POST', headers, body: JSON.stringify({ ...base, dimensions: ['query', 'page'], rowLimit: 50 }) }),
+  ]);
+
+  // Check for 403 (missing Search Console scope)
+  for (const r of [queryRes, pageRes, mapRes]) {
+    if (r.status === 403) {
+      const errBody = await r.json().catch(() => ({}));
+      const reAuthUrl = 'https://accounts.google.com/o/oauth2/v2/auth?client_id=' + clientId +
+        '&redirect_uri=https://noody-data-hub.vercel.app/api/auth/google/callback' +
+        '&response_type=code&scope=https://www.googleapis.com/auth/webmasters.readonly%20https://www.googleapis.com/auth/analytics.readonly%20https://www.googleapis.com/auth/adwords' +
+        '&access_type=offline&prompt=consent';
+      return res.status(403).json({
+        error: 'Search Console requires webmasters.readonly scope. Re-authorize: ' + reAuthUrl,
+        detail: errBody.error?.message || 'Forbidden',
+      });
+    }
+  }
+
+  for (const [label, r] of [['queries', queryRes], ['pages', pageRes], ['queryPageMap', mapRes]]) {
+    if (!r.ok) {
+      const errText = await r.text();
+      return res.status(r.status).json({ error: `GSC ${label} failed: ${r.status}`, detail: errText.slice(0, 500) });
+    }
+  }
+
+  const [queryData, pageData, mapData] = await Promise.all([queryRes.json(), pageRes.json(), mapRes.json()]);
+
+  const parseRows = (rows, dimCount) => (rows || []).map(r => {
+    const obj = { clicks: r.clicks, impressions: r.impressions, ctr: Math.round(r.ctr * 10000) / 100, position: Math.round(r.position * 10) / 10 };
+    if (dimCount === 1) obj.query = r.keys[0];
+    if (dimCount === 2) { obj.query = r.keys[0]; obj.page = r.keys[1]; }
+    return obj;
+  });
+
+  const topQueries = parseRows(queryData.rows, 1);
+  // For pages, key is a URL — strip domain for cleaner display
+  const topPages = (pageData.rows || []).map(r => ({
+    page: r.keys[0],
+    clicks: r.clicks, impressions: r.impressions,
+    ctr: Math.round(r.ctr * 10000) / 100,
+    position: Math.round(r.position * 10) / 10,
+  }));
+  const queryPageMap = (mapData.rows || []).map(r => ({
+    query: r.keys[0], page: r.keys[1],
+    clicks: r.clicks, impressions: r.impressions,
+    ctr: Math.round(r.ctr * 10000) / 100,
+    position: Math.round(r.position * 10) / 10,
+  }));
+
+  // Summary from query-level data (most complete)
+  let totalClicks = 0, totalImpressions = 0, totalCtrWeighted = 0, totalPosWeighted = 0;
+  topQueries.forEach(q => { totalClicks += q.clicks; totalImpressions += q.impressions; });
+  // Use the raw response totals if available (covers all queries, not just top 20)
+  if (queryData.rows && queryData.rows.length > 0) {
+    totalClicks = queryData.rows.reduce((s, r) => s + r.clicks, 0);
+    totalImpressions = queryData.rows.reduce((s, r) => s + r.impressions, 0);
+  }
+
+  return res.status(200).json({
+    success: true,
+    source: 'gsc',
+    siteUrl,
+    dateRange: { start: startDate, end: endDate },
+    summary: {
+      totalClicks,
+      totalImpressions,
+      avgCTR: totalImpressions > 0 ? Math.round((totalClicks / totalImpressions) * 10000) / 100 : 0,
+      avgPosition: topQueries.length > 0 ? Math.round(topQueries.reduce((s, q) => s + q.position, 0) / topQueries.length * 10) / 10 : 0,
+    },
+    topQueries,
+    topPages,
+    queryPageMap,
+    pulledAt: new Date().toISOString(),
+  });
+}
+
 export default async function handler(req, res) {
   // ── CORS ──
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -325,6 +418,29 @@ export default async function handler(req, res) {
       return handleGA4(req, res, tokenData.access_token, clientId);
     } catch (err) {
       return res.status(500).json({ error: 'GA4 pull failed', detail: err.message });
+    }
+  }
+
+  // For GSC, we only need OAuth credentials (not Ads-specific ones)
+  if (req.query.type === 'gsc') {
+    if (!clientId || !clientSecret || !refreshToken) {
+      return res.status(500).json({
+        error: 'Missing env vars',
+        missing: [!clientId && 'GOOGLE_ADS_CLIENT_ID', !clientSecret && 'GOOGLE_ADS_CLIENT_SECRET', !refreshToken && 'GOOGLE_ADS_REFRESH_TOKEN'].filter(Boolean),
+      });
+    }
+    try {
+      const tokenData = await getAccessToken(clientId, clientSecret, refreshToken);
+      if (tokenData.error) {
+        return res.status(401).json({
+          error: 'Failed to refresh access token',
+          detail: tokenData.error_description || tokenData.error,
+          fix: 'Visit /api/auth/google to re-authorize.',
+        });
+      }
+      return handleGSC(req, res, tokenData.access_token, clientId);
+    } catch (err) {
+      return res.status(500).json({ error: 'GSC pull failed', detail: err.message });
     }
   }
 
