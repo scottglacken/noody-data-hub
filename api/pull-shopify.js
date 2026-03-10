@@ -173,12 +173,18 @@ export default async function handler(req, res) {
       var productMap = {};
       var wDayMap = {};
 
-      for (var wi = 0; wi < validOrders.length; wi++) {
-        var wo = validOrders[wi];
+      // Build customer order count map — first occurrence in dataset = new, subsequent = returning
+      // Sort orders by created_at to process chronologically
+      var sortedOrders = validOrders.slice().sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+      var customerSeen = {};
+
+      for (var wi = 0; wi < sortedOrders.length; wi++) {
+        var wo = sortedOrders[wi];
         var woPrice = parseFloat(wo.total_price) || 0;
         var woDisc = parseFloat(wo.total_discounts) || 0;
-        var woOrdCount = wo.customer && wo.customer.orders_count != null ? parseInt(wo.customer.orders_count) : -1;
-        var woIsNew = woOrdCount <= 1;
+        var custId = wo.customer ? wo.customer.id : 'guest_' + wo.id;
+        var woIsNew = !customerSeen[custId];
+        customerSeen[custId] = true;
 
         wTotalRev += woPrice;
 
@@ -282,15 +288,16 @@ export default async function handler(req, res) {
           new: { orders: wNewOrders, revenue: Math.round(wNewRev * 100) / 100, aov: wNewOrders > 0 ? Math.round((wNewRev / wNewOrders) * 100) / 100 : 0 },
           returning: { orders: wRetOrders, revenue: Math.round(wRetRev * 100) / 100, aov: wRetOrders > 0 ? Math.round((wRetRev / wRetOrders) * 100) / 100 : 0 }
         },
-        daily: wDaily,
-        _debug: validOrders.slice(0, 3).map(function(o) { return { id: o.id, hasCustomer: !!o.customer, ordersCount: o.customer ? o.customer.orders_count : 'no_customer', keys: o.customer ? Object.keys(o.customer).slice(0, 10) : [] }; })
+        daily: wDaily
       });
     }
 
-    // Bucket into daily (NZST)
+    // Bucket into daily (NZST) — use first-seen-in-dataset for new/returning
     var dayMap = {};
-    for (var i = 0; i < validOrders.length; i++) {
-      var order = validOrders[i];
+    var dailyCustSeen = {};
+    var dailySorted = validOrders.slice().sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+    for (var i = 0; i < dailySorted.length; i++) {
+      var order = dailySorted[i];
       var created = new Date(order.created_at);
       var nzDate = new Date(created.getTime() + 13 * 3600000);
       var date = nzDate.toISOString().split('T')[0];
@@ -305,8 +312,8 @@ export default async function handler(req, res) {
       d.totalDiscounts += parseFloat(order.total_discounts) || 0;
       var shipAmt = order.total_shipping_price_set && order.total_shipping_price_set.shop_money ? order.total_shipping_price_set.shop_money.amount : 0;
       d.totalShipping += parseFloat(shipAmt);
-      var ordCount2 = order.customer && order.customer.orders_count != null ? parseInt(order.customer.orders_count) : -1;
-      if (ordCount2 <= 1) d.newCustomers += 1;
+      var dailyCustId = order.customer ? order.customer.id : 'guest_' + order.id;
+      if (!dailyCustSeen[dailyCustId]) { d.newCustomers += 1; dailyCustSeen[dailyCustId] = true; }
       else d.returningCustomers += 1;
       if (order.line_items) {
         for (var j = 0; j < order.line_items.length; j++) {
