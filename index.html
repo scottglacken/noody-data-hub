@@ -214,13 +214,27 @@ function Dashboard(){
     setKlavLoading(false);
   },[]);
 
+  // Klaviyo detail data (flows, campaigns, deliverability)
+  const [klavDetail,setKlavDetail]=useState(null);
+  const [klavDetailLoading,setKlavDetailLoading]=useState(false);
+  const [klavDetailDays,setKlavDetailDays]=useState(30);
+  const fetchKlavDetail=useCallback(async(d)=>{
+    setKlavDetailLoading(true);
+    try{
+      const r=await fetch('/api/pull-klaviyo?detail=true&days='+(d||30),{headers:{"x-api-key":"noody-eq-2026-datahub"}});
+      if(r.ok){const data=await r.json();if(data.success)setKlavDetail(data);}
+    }catch(e){console.error("Klaviyo detail:",e);}
+    setKlavDetailLoading(false);
+  },[]);
+
   // Auto-fetch on first visit to relevant tabs
   useEffect(()=>{
     if((tab==="daily"||tab==="equation"||tab==="meta"||tab==="diagnose"||tab==="scale"||tab==="insights")&&!shopLive&&!shopLoading)fetchShop();
     if((tab==="daily"||tab==="meta"||tab==="insights")&&!metaLive&&!metaLoading)fetchMeta();
     if((tab==="equation"||tab==="diagnose"||tab==="scale"||tab==="insights")&&!xeroLive&&!xeroLoading)fetchXero(xeroMonths);
     if((tab==="gads"||tab==="insights")&&!gads&&!gadsLoading)fetchGads(gadsDays);
-    if((tab==="equation"||tab==="daily"||tab==="insights")&&!klavLive&&!klavLoading)fetchKlav();
+    if((tab==="equation"||tab==="daily"||tab==="insights"||tab==="klaviyo")&&!klavLive&&!klavLoading)fetchKlav();
+    if(tab==="klaviyo"&&!klavDetail&&!klavDetailLoading)fetchKlavDetail(klavDetailDays);
     if((tab==="equation"||tab==="daily")&&!ga4&&!ga4Loading)fetchGa4();
   },[tab]);
 
@@ -356,18 +370,19 @@ function Dashboard(){
         <Tab a={tab==="scale"} onClick={()=>setTab("scale")} icon="🚀">Scale Model</Tab>
         <Tab a={tab==="gads"} onClick={()=>setTab("gads")} icon="🎯">Google Ads</Tab>
         <Tab a={tab==="xero"} onClick={()=>setTab("xero")} icon="📋">Xero P&L</Tab>
+        <Tab a={tab==="klaviyo"} onClick={()=>setTab("klaviyo")} icon="📧">Klaviyo</Tab>
         <Tab a={tab==="insights"} onClick={()=>setTab("insights")} icon="✦" accent="#7c3aed">Insights</Tab>
       </div>
       <button onClick={toggleTheme} style={{padding:"10px",background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,cursor:"pointer",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",width:44,height:44,transition:"all .2s",color:"var(--t2)",flexShrink:0}} title={theme==="dark"?"Light mode":"Dark mode"}>{theme==="dark"?"☀️":"🌙"}</button>
     </div>
 
-    {(tab==="equation"||tab==="daily"||tab==="meta"||tab==="insights"||tab==="diagnose"||tab==="scale")&&<div style={{padding:"6px 20px",display:"flex",gap:3,alignItems:"center",flexWrap:"wrap"}}>
+    {(tab==="equation"||tab==="daily"||tab==="meta"||tab==="insights"||tab==="diagnose"||tab==="scale"||tab==="klaviyo")&&<div style={{padding:"6px 20px",display:"flex",gap:3,alignItems:"center",flexWrap:"wrap"}}>
       {[7,14,30,90,180,365].map(r=><button key={r} onClick={()=>{setRange(r);setCustomFrom("");setCustomTo("");}} style={{padding:"8px 16px",fontSize:13,borderRadius:8,minHeight:36,cursor:"pointer",background:!customFrom&&range===r?"var(--acc)":"var(--card)",color:!customFrom&&range===r?"#fff":"var(--t2)",border:!customFrom&&range===r?"1px solid var(--acc)":"1px solid var(--bdr)"}}>{r}d</button>)}
       <span style={{fontSize:11,color:"var(--t3)",margin:"0 4px"}}>or</span>
       <input type="date" value={customFrom} onChange={e=>{setCustomFrom(e.target.value);}} style={{padding:"6px 8px",fontSize:12,borderRadius:6,background:"var(--card)",border:"1px solid var(--bdr)",color:"var(--t1)",fontFamily:"'JetBrains Mono',monospace"}}/>
       <span style={{fontSize:11,color:"var(--t3)"}}>→</span>
       <input type="date" value={customTo} onChange={e=>{setCustomTo(e.target.value);}} style={{padding:"6px 8px",fontSize:12,borderRadius:6,background:"var(--card)",border:"1px solid var(--bdr)",color:"var(--t1)",fontFamily:"'JetBrains Mono',monospace"}}/>
-      {(shopLoading||metaLoading||xeroLoading||klavLoading)&&<span style={{fontSize:12,color:"var(--t3)",marginLeft:8}}>⏳ Refreshing...</span>}
+      {(shopLoading||metaLoading||xeroLoading||klavLoading||klavDetailLoading)&&<span style={{fontSize:12,color:"var(--t3)",marginLeft:8}}>⏳ Refreshing...</span>}
       <span style={{fontSize:10,color:"var(--t3)",marginLeft:"auto"}}>{vis.length} days{agg?" · "+agg.startDate+" → "+agg.endDate:""} · {(shopLive?"Shopify ✓ ":"")+(metaLive?"Meta ✓ ":"")+(klavLive?"Klaviyo ✓ ":"")+(gads?"Google ✓ ":"")+(xeroLive?"Xero ✓":"")}</span>
     </div>}
 
@@ -1278,6 +1293,240 @@ function Dashboard(){
         </div>
       </>}
     </>;
+    })()}
+
+    {tab==="klaviyo"&&(()=>{
+      if(!agg)return <div style={{padding:40,textAlign:"center",color:"var(--t3)"}}>Loading data...</div>;
+      const a=agg;const p=prevAgg;
+      const emailRev=a.te;const dtcRev=a.tr;
+      const emailPct=dtcRev>0?(emailRev/dtcRev)*100:0;
+      const prevEmailRev=p?p.te:null;
+      const prevEmailPct=p&&p.tr>0?(p.te/p.tr)*100:null;
+      const emailChg=prevEmailRev&&prevEmailRev>0?((emailRev-prevEmailRev)/prevEmailRev)*100:null;
+
+      // Chart data from vis
+      const emailChart=vis.map(d=>({d:d.d.slice(5),rev:Math.round(d.e),orders:d.o}));
+
+      // Detail data
+      const det=klavDetail?.detail||{};
+      const flows=det.flows||[];
+      const camps=det.campaigns||[];
+      const deliv=det.deliverability||{};
+      const lists=det.lists||[];
+      const totalFlowRev=det.totalFlowRevenue||0;
+      const totalCampRev=det.totalCampaignRevenue||0;
+      const flowPct=(totalFlowRev+totalCampRev)>0?(totalFlowRev/(totalFlowRev+totalCampRev))*100:50;
+
+      // Deliverability benchmarks (industry medians)
+      const benchmarks={openRate:44,clickRate:0.86,bounceRate:0.43,unsubRate:0.29,spamRate:0.02};
+      const rateColor=(val,bench,higherBetter)=>{
+        if(!val)return "var(--t3)";
+        if(higherBetter) return val>=bench*1.3?"var(--grn)":val>=bench*0.8?"var(--ylw)":"var(--red)";
+        return val<=bench*0.7?"var(--grn)":val<=bench*1.3?"var(--ylw)":"var(--red)";
+      };
+      const rateLabel=(val,bench,higherBetter)=>{
+        if(!val)return "";
+        if(higherBetter) return val>=bench*1.3?"Excellent":val>=bench*0.8?"Good":"Needs Work";
+        return val<=bench*0.7?"Excellent":val<=bench*1.3?"Acceptable":"Needs Work";
+      };
+
+      // AI summary
+      const aiKey="klaviyo_"+rangeKey;
+      const aiText=tabAi[aiKey];
+      const aiLoad=tabAiLoading.klaviyo;
+      if(!aiText&&!aiLoad&&klavDetail){
+        const flowSummary=flows.filter(f=>f.revenue>0).map(f=>f.name+": $"+f.revenue+" ("+f.conversions+" conv, "+f.recipients+" recip)").join("; ");
+        const delivSummary="Open "+deliv.openRate+"%, Click "+deliv.clickRate+"%, Bounce "+deliv.bounceRate+"%, Unsub "+deliv.unsubRate+"%, Spam "+deliv.spamRate+"%";
+        const prompt="Analyse this Klaviyo email performance for Noody Skincare (NZ eczema/baby skincare DTC brand). "+a.d+" day period: Email attributed revenue $"+Math.round(emailRev)+" ("+emailPct.toFixed(1)+"% of DTC $"+Math.round(dtcRev)+"). Flow revenue: $"+Math.round(totalFlowRev)+". Campaign revenue: $"+Math.round(totalCampRev)+". Top flows: "+flowSummary+". Deliverability: "+delivSummary+" (benchmarks: Open 44%, Click 0.86%, Bounce 0.43%, Unsub 0.29%). Lists: "+lists.length+" lists. Give 3-4 specific actionable insights with numbers.";
+        fetchTabAi("klaviyo",prompt,["klaviyo"]);
+      }
+
+      // Key flows to highlight
+      const keyFlowNames=["Welcome Series","Abandoned Cart","Browse Abandonment","Post-Purchase","Order Confirmation"];
+      const highlightFlows=flows.filter(f=>{
+        const nm=f.name.toLowerCase();
+        return keyFlowNames.some(k=>nm.indexOf(k.toLowerCase())!==-1);
+      });
+
+      // Sent campaigns only
+      const sentCamps=camps.filter(c=>c.status==="Sent"||c.status==="sent");
+
+      const cardS={background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:12,padding:16,marginBottom:14};
+      const thS={fontSize:11,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",padding:"8px 10px",textAlign:"left",borderBottom:"1px solid var(--bdr)"};
+      const tdS={fontSize:13,padding:"8px 10px",borderBottom:"1px solid var(--bdr)",fontFamily:"'JetBrains Mono',monospace"};
+
+      return <>
+        <div style={{fontSize:20,fontWeight:700,marginBottom:16}}>Klaviyo Email Performance</div>
+
+        <AiSummary text={aiText} loading={aiLoad} label="Email Performance Analysis" />
+
+        {/* A) EMAIL REVENUE OVERVIEW */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:14}}>
+          <MC l="Email Revenue" v={emailRev} fmt="$" big />
+          <MC l="Email Rev %" v={emailPct} fmt="%" bm={{h:[30,100],w:[20,30]}} sub={"Target: 30-40%"} big />
+          <MC l="Email Orders" v={a.to>0?Math.round(emailRev/(dtcRev/a.to)):0} fmt="#" sub={"of "+fn(a.to)+" total"} />
+          <MC l={"vs Prev "+a.d+"d"} v={emailChg} fmt="%" sub={prevEmailRev?"Was "+f$(prevEmailRev):""} bm={{h:[0,1000],w:[-10,0]}} />
+        </div>
+
+        {/* Revenue trend chart */}
+        <div style={cardS}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Daily Email Revenue</div>
+          <ResponsiveContainer width="100%" height={220}>
+            <ComposedChart data={emailChart}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--grid)" />
+              <XAxis dataKey="d" tick={{fill:"var(--t3)",fontSize:10}} interval={Math.max(0,Math.floor(emailChart.length/12)-1)} />
+              <YAxis tick={{fill:"var(--t3)",fontSize:10}} tickFormatter={v=>"$"+Math.round(v)} />
+              <Tooltip contentStyle={{background:"var(--tipbg)",border:"1px solid var(--tipbdr)",borderRadius:8,fontSize:12}} formatter={(v,n)=>[f$(v),n==="rev"?"Email Rev":"Orders"]} />
+              <Area type="monotone" dataKey="rev" fill="rgba(79,110,247,0.1)" stroke="var(--acc)" strokeWidth={2} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Flow vs Campaign revenue split */}
+        {(totalFlowRev>0||totalCampRev>0)&&<div style={cardS}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Revenue Split: Flows vs Campaigns</div>
+          <div style={{display:"flex",gap:20,alignItems:"center"}}>
+            <div style={{flex:1}}>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:4}}>
+                <span style={{color:"var(--acc)"}}>Flows: {f$(totalFlowRev)}</span>
+                <span style={{color:"#7c3aed"}}>Campaigns: {f$(totalCampRev)}</span>
+              </div>
+              <div style={{height:8,background:"var(--bdr)",borderRadius:4,overflow:"hidden",display:"flex"}}>
+                <div style={{width:flowPct+"%",background:"var(--acc)",borderRadius:"4px 0 0 4px"}} />
+                <div style={{flex:1,background:"#7c3aed",borderRadius:"0 4px 4px 0"}} />
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"var(--t3)",marginTop:3}}>
+                <span>{flowPct.toFixed(0)}%</span>
+                <span>{(100-flowPct).toFixed(0)}%</span>
+              </div>
+            </div>
+          </div>
+        </div>}
+
+        {/* B) FLOW PERFORMANCE */}
+        <div style={cardS}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Flow Performance</div>
+          {klavDetailLoading&&!flows.length?<div style={{color:"var(--t3)",fontSize:13}}>Loading flows...</div>:
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse"}}>
+              <thead><tr>
+                <th style={thS}>Flow</th>
+                <th style={thS}>Status</th>
+                <th style={{...thS,textAlign:"right"}}>Revenue</th>
+                <th style={{...thS,textAlign:"right"}}>Conversions</th>
+                <th style={{...thS,textAlign:"right"}}>Recipients</th>
+                <th style={{...thS,textAlign:"right"}}>$/Recipient</th>
+              </tr></thead>
+              <tbody>
+                {flows.map((f,i)=>{
+                  const isKey=keyFlowNames.some(k=>f.name.toLowerCase().indexOf(k.toLowerCase())!==-1);
+                  const isLive=f.status==="live";
+                  const shouldBeLive=isKey&&!isLive;
+                  return <tr key={i} style={{background:shouldBeLive?"rgba(239,68,68,0.06)":isKey?"rgba(79,110,247,0.04)":"transparent"}}>
+                    <td style={{...tdS,fontFamily:"'DM Sans',sans-serif",fontWeight:isKey?600:400}}>
+                      {f.name}
+                      {shouldBeLive&&<span style={{fontSize:10,color:"var(--red)",marginLeft:6}}>Should be LIVE</span>}
+                    </td>
+                    <td style={tdS}><span style={{fontSize:11,padding:"2px 8px",borderRadius:6,background:isLive?"rgba(34,197,94,0.15)":f.status==="manual"?"rgba(245,158,11,0.15)":"rgba(107,114,128,0.15)",color:isLive?"var(--grn)":f.status==="manual"?"var(--ylw)":"var(--t3)"}}>{f.status}</span></td>
+                    <td style={{...tdS,textAlign:"right",color:f.revenue>0?"var(--grn)":"var(--t3)"}}>{f$(f.revenue)}</td>
+                    <td style={{...tdS,textAlign:"right"}}>{fn(f.conversions)}</td>
+                    <td style={{...tdS,textAlign:"right"}}>{fn(f.recipients)}</td>
+                    <td style={{...tdS,textAlign:"right"}}>{f.revenuePerRecipient?"$"+f.revenuePerRecipient.toFixed(2):"—"}</td>
+                  </tr>;
+                })}
+              </tbody>
+            </table>
+          </div>}
+        </div>
+
+        {/* C) CAMPAIGN PERFORMANCE */}
+        <div style={cardS}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Recent Campaigns</div>
+          {klavDetailLoading&&!sentCamps.length?<div style={{color:"var(--t3)",fontSize:13}}>Loading campaigns...</div>:
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse"}}>
+              <thead><tr>
+                <th style={thS}>Campaign</th>
+                <th style={thS}>Send Date</th>
+                <th style={{...thS,textAlign:"right"}}>Revenue</th>
+                <th style={{...thS,textAlign:"right"}}>Conversions</th>
+                <th style={{...thS,textAlign:"right"}}>Recipients</th>
+              </tr></thead>
+              <tbody>
+                {sentCamps.slice(0,20).map((c,i)=>{
+                  const sendDate=c.sendTime?new Date(c.sendTime).toLocaleDateString("en-NZ",{timeZone:"Pacific/Auckland",day:"numeric",month:"short"}):"—";
+                  return <tr key={i}>
+                    <td style={{...tdS,fontFamily:"'DM Sans',sans-serif"}}>{c.name}</td>
+                    <td style={tdS}>{sendDate}</td>
+                    <td style={{...tdS,textAlign:"right",color:c.revenue>0?"var(--grn)":"var(--t3)"}}>{f$(c.revenue)}</td>
+                    <td style={{...tdS,textAlign:"right"}}>{fn(c.conversions)}</td>
+                    <td style={{...tdS,textAlign:"right"}}>{fn(c.recipients)}</td>
+                  </tr>;
+                })}
+                {!sentCamps.length&&<tr><td colSpan={5} style={{...tdS,textAlign:"center",color:"var(--t3)"}}>No sent campaigns found</td></tr>}
+              </tbody>
+            </table>
+          </div>}
+        </div>
+
+        {/* D) DELIVERABILITY & LIST HEALTH */}
+        <div style={cardS}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:14}}>Deliverability & List Health</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10,marginBottom:16}}>
+            {[
+              {l:"Open Rate",v:deliv.openRate,b:benchmarks.openRate,h:true},
+              {l:"Click Rate",v:deliv.clickRate,b:benchmarks.clickRate,h:true},
+              {l:"Bounce Rate",v:deliv.bounceRate,b:benchmarks.bounceRate,h:false},
+              {l:"Unsub Rate",v:deliv.unsubRate,b:benchmarks.unsubRate,h:false},
+              {l:"Spam Rate",v:deliv.spamRate,b:benchmarks.spamRate,h:false},
+            ].map((m,i)=>{
+              const col=rateColor(m.v,m.b,m.h);
+              const label=rateLabel(m.v,m.b,m.h);
+              return <div key={i} style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,padding:14}}>
+                <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:6}}>{m.l}</div>
+                <div style={{fontSize:24,fontWeight:700,color:col,fontFamily:"'JetBrains Mono',monospace"}}>{m.v!=null?m.v.toFixed(2)+"%":"—"}</div>
+                <div style={{fontSize:10,color:"var(--t3)",marginTop:2}}>Benchmark: {m.b}% · <span style={{color:col}}>{label}</span></div>
+              </div>;
+            })}
+          </div>
+
+          {/* Emails sent volume */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginBottom:14}}>
+            <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,padding:14}}>
+              <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Emails Sent</div>
+              <div style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{fn(deliv.received||0)}</div>
+            </div>
+            <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,padding:14}}>
+              <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Emails Opened</div>
+              <div style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{fn(deliv.opened||0)}</div>
+            </div>
+            <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,padding:14}}>
+              <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Clicks</div>
+              <div style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{fn(deliv.clicked||0)}</div>
+            </div>
+            <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,padding:14}}>
+              <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>New Subscribers</div>
+              <div style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{fn(deliv.subscribed||0)}</div>
+            </div>
+          </div>
+
+          {/* Lists */}
+          <div style={{fontSize:12,fontWeight:600,marginBottom:8,color:"var(--t2)"}}>Lists & Segments ({lists.length})</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8}}>
+            {lists.map((l,i)=><div key={i} style={{fontSize:12,padding:"8px 12px",background:"rgba(79,110,247,0.04)",border:"1px solid var(--bdr)",borderRadius:8}}>
+              <span style={{fontWeight:500}}>{l.name}</span>
+              <span style={{fontSize:10,color:"var(--t3)",marginLeft:6}}>updated {l.updated||"—"}</span>
+            </div>)}
+          </div>
+        </div>
+
+        {/* Reload button */}
+        <div style={{display:"flex",gap:8,alignItems:"center",marginTop:8}}>
+          {[30,60,90,180].map(d=><button key={d} onClick={()=>{setKlavDetailDays(d);setKlavDetail(null);fetchKlavDetail(d);}} style={{padding:"6px 14px",fontSize:12,borderRadius:8,cursor:"pointer",background:klavDetailDays===d?"var(--acc)":"var(--card)",color:klavDetailDays===d?"#fff":"var(--t2)",border:klavDetailDays===d?"1px solid var(--acc)":"1px solid var(--bdr)"}}>{d}d detail</button>)}
+          {klavDetailLoading&&<span style={{fontSize:12,color:"var(--t3)"}}>Loading detail data...</span>}
+          {klavDetail&&<span style={{fontSize:10,color:"var(--t3)",marginLeft:"auto"}}>Detail: {klavDetail.dateRange?.start} → {klavDetail.dateRange?.end} · Pulled: {klavDetail.pulledAt?new Date(klavDetail.pulledAt).toLocaleString("en-NZ",{timeZone:"Pacific/Auckland"}):"—"}</span>}
+        </div>
+      </>;
     })()}
 
     {tab==="insights"&&(()=>{
