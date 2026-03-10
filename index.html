@@ -1062,6 +1062,10 @@ function Dashboard(){
       const fcMonthly=Math.round(fixedMonthly);
       const estAt140=annRevEst*1.4;
 
+      // Pre-format $ values for use in template literals (f$ contains $ which breaks backtick strings)
+      const _estWH=f$(estWH),_dtcRev=f$(dtcRev),_metaSpend=f$(metaSpend),_fcMo=f$(fcMonthly),_estAt140=f$(estAt140);
+      const _gSpend=gads?f$(gads.summary.totalSpend):"";const _gRoas=gads?gads.summary.roas:"";
+
       // Determine situation
       let situation=1;
       if(npPct<0)situation=5;
@@ -1069,59 +1073,59 @@ function Dashboard(){
       else if(npPct<10||dtcMerVal>45||fcPct>25)situation=2;
 
       const insights=[
-        {type:dtcMerVal>35?"critical":"opportunity",icon:dtcMerVal>35?"🚨":"✅",title:`DTC-Only MER at ${dtcMerVal.toFixed(1)}% — ${dtcMerVal>35?"Above":"Within"} 35% Benchmark`,
-         body:`Blended MER looks ${merPct<35?"manageable":"elevated"} at <strong>${merPct.toFixed(1)}%</strong> because wholesale (est. ${f$(estWH)}, ${whPct}% of revenue) carries zero ad spend. Isolating DTC revenue (${f$(dtcRev)}) against ad spend (${f$(metaSpend)}), your true MER is <strong style="color:${dtcMerVal>35?"var(--red)":"var(--grn)}">${dtcMerVal.toFixed(1)}%</strong>. For every $1 of DTC revenue, you spend $${(dtcMerVal/100).toFixed(2)} on marketing. The EE benchmark is $0.35.${dtcMerVal>35?" Either dramatically improve ad efficiency, grow email share to 30%+, or reframe DTC as an acquisition channel that feeds wholesale.":""}`,
+        {type:dtcMerVal>35?"critical":"opportunity",icon:dtcMerVal>35?"🚨":"✅",title:"DTC-Only MER at "+dtcMerVal.toFixed(1)+"% — "+(dtcMerVal>35?"Above":"Within")+" 35% Benchmark",
+         body:"Blended MER looks "+(merPct<35?"manageable":"elevated")+" at <strong>"+merPct.toFixed(1)+"%</strong> because wholesale (est. "+_estWH+", "+whPct+"% of revenue) carries zero ad spend. Isolating DTC revenue ("+_dtcRev+") against ad spend ("+_metaSpend+"), your true MER is <strong style=\"color:"+(dtcMerVal>35?"var(--red)":"var(--grn)")+"\">"+dtcMerVal.toFixed(1)+"%</strong>. For every $1 of DTC revenue, you spend $"+(dtcMerVal/100).toFixed(2)+" on marketing. The EE benchmark is $0.35."+(dtcMerVal>35?" Either dramatically improve ad efficiency, grow email share to 30%+, or reframe DTC as an acquisition channel that feeds wholesale.":""),
          actions:[
            {week:"Week 1–2",text:"Audit Meta campaigns — pause anything below 1.5x ROAS. Reallocate to top 3 performers."},
            {week:"Week 3–4",text:"Launch email revenue push — get from "+emailAvg+"% floor to 30%+ consistent via automated flows."},
          ]},
 
-        {type:emailAvg>=30?"opportunity":"warning",icon:"📧",title:`Email Revenue ${emailMin>0?emailMin+"–":""}${emailMax}% — ${emailAvg>=30?"Healthy":"Needs to Lock in at 30–40%"}`,
-         body:`Email is your highest-margin channel (LER $${ler.toFixed(2)}${ler>=2?", well above $2.00 benchmark":""}), but ${emailMax-emailMin>15?"wild swings between "+emailMin+"% and "+emailMax+"% of revenue indicate reliance on campaign blasts rather than automated flows":"range of "+emailMin+"–"+emailMax+"% needs tightening"}. At ${emailMax}%, your DTC economics work beautifully. At ${emailMin}%, MER blows out because ads carry more weight. <strong>The fix isn't more campaigns — it's better flows.</strong> Automated flows (welcome, post-purchase, winback, browse abandonment) provide a stable floor.`,
+        {type:emailAvg>=30?"opportunity":"warning",icon:"📧",title:"Email Revenue "+(emailMin>0?emailMin+"–":"")+emailMax+"% — "+(emailAvg>=30?"Healthy":"Needs to Lock in at 30–40%"),
+         body:"Email is your highest-margin channel (LER $"+ler.toFixed(2)+(ler>=2?", well above $2.00 benchmark":"")+"), but "+(emailMax-emailMin>15?"wild swings between "+emailMin+"% and "+emailMax+"% of revenue indicate reliance on campaign blasts rather than automated flows":"range of "+emailMin+"–"+emailMax+"% needs tightening")+". At "+emailMax+"%, your DTC economics work beautifully. At "+emailMin+"%, MER blows out because ads carry more weight. <strong>The fix isn't more campaigns — it's better flows.</strong> Automated flows (welcome, post-purchase, winback, browse abandonment) provide a stable floor.",
          actions:[
            {week:"Week 1",text:"Audit Klaviyo flows — ensure Welcome, Browse Abandonment, Post-Purchase, and Winback are all live and optimized."},
            {week:"Week 2",text:"Track flow vs campaign revenue separately. Target: 60% of email revenue from flows."},
            {week:"Week 3–4",text:"Build educational nurture sequence (skin quiz → product rec → social proof) to increase subscriber-to-buyer rate."},
          ]},
 
-        {type:fcPct>20?"warning":"opportunity",icon:"🏗️",title:`Fixed Costs at ${fcPct.toFixed(1)}% — ${fcPct<=20?"Within 20% Benchmark":"Above 20% Benchmark, But Don't Cut"}`,
-         body:`At <strong>${fcPct.toFixed(1)}%</strong> of est. revenue, fixed costs are ${fcPct<=20?"within benchmark":"above the 20% target"}. ${npPct>=5?"In Situation "+situation+", this is a <strong>scale problem, not a cost problem</strong>. ":""}Your fixed costs (~${f$(fcMonthly)}/mo) include wages, software, rent, and consulting that won't grow proportionally with revenue. If you increase revenue by 40% to ${f$(estAt140)}, fixed cost ratio drops to ~${(fcPct/1.4).toFixed(1)}%. <strong>The lever is revenue growth, not cost cutting.</strong>`,
+        {type:fcPct>20?"warning":"opportunity",icon:"🏗️",title:"Fixed Costs at "+fcPct.toFixed(1)+"% — "+(fcPct<=20?"Within 20% Benchmark":"Above 20% Benchmark, But Don't Cut"),
+         body:"At <strong>"+fcPct.toFixed(1)+"%</strong> of est. revenue, fixed costs are "+(fcPct<=20?"within benchmark":"above the 20% target")+". "+(npPct>=5?"In Situation "+situation+", this is a <strong>scale problem, not a cost problem</strong>. ":"")+"Your fixed costs (~"+_fcMo+"/mo) include wages, software, rent, and consulting that won't grow proportionally with revenue. If you increase revenue by 40% to "+_estAt140+", fixed cost ratio drops to ~"+(fcPct/1.4).toFixed(1)+"%. <strong>The lever is revenue growth, not cost cutting.</strong>",
          actions:[
            {week:"This Month",text:"Resist cutting staff or tools. Set 90-day revenue target of +20% from baseline."},
            {week:"Ongoing",text:"Track fixed costs as absolute $ monthly. Only flag if they increase without corresponding revenue growth."},
          ]},
 
-        {type:metaROAS>=2.5?"opportunity":"warning",icon:"📊",title:`Meta is ${metaPctBudget}% of Ad Budget at ${metaROAS?metaROAS.toFixed(2):"—"}x ROAS — ${metaPctBudget>=80?"Diversification Risk":"Monitor"}`,
-         body:`With <strong>${f$(metaSpend)}</strong> on Meta in this ${days}d window (${metaPctBudget}% of ad spend), ${metaPctBudget>=80?"you have platform concentration risk":"monitor channel mix"}. At ${metaROAS?metaROAS.toFixed(2):"—"}x ROAS, the channel is ${metaROAS>=2?"performing adequately":"underperforming"} — test diversification into Google Shopping${gads?" (currently "+f$(gads.summary.totalSpend)+" at "+gads.summary.roas+"x ROAS)":""}, TikTok, and organic/SEO as insurance.`+(bestMonth?` Best performing month was <strong>${bestMonth.month}</strong> at ${bestMonth.roas}x ROAS.`:""),
+        {type:metaROAS>=2.5?"opportunity":"warning",icon:"📊",title:"Meta is "+metaPctBudget+"% of Ad Budget at "+(metaROAS?metaROAS.toFixed(2):"—")+"x ROAS — "+(metaPctBudget>=80?"Diversification Risk":"Monitor"),
+         body:"With <strong>"+_metaSpend+"</strong> on Meta in this "+days+"d window ("+metaPctBudget+"% of ad spend), "+(metaPctBudget>=80?"you have platform concentration risk":"monitor channel mix")+". At "+(metaROAS?metaROAS.toFixed(2):"—")+"x ROAS, the channel is "+(metaROAS>=2?"performing adequately":"underperforming")+" — test diversification into Google Shopping"+(gads?" (currently "+_gSpend+" at "+_gRoas+"x ROAS)":"")+", TikTok, and organic/SEO as insurance."+(bestMonth?" Best performing month was <strong>"+bestMonth.month+"</strong> at "+bestMonth.roas+"x ROAS.":""),
          actions:[
            {week:"Week 1–2",text:"Increase Google Shopping budget — test Performance Max with product feed optimization."},
            {week:"Week 3–4",text:"Launch 2 TikTok creative tests ($50/day) — repurpose top Meta UGC."},
            {week:"Month 2",text:"Target channel mix: 70% Meta / 20% Google / 10% TikTok within 6 months."},
          ]},
 
-        {type:"opportunity",icon:"💰",title:`AOV at $${Math.round(currentAOV)} — Each $10 Lift Drops DTC MER by ~${Math.round(dtcMerVal - (dtcMerVal*currentAOV/(currentAOV+10)))} Points`,
-         body:`AOV is the most powerful lever for improving MER without changing ad spend. Increasing from $${Math.round(currentAOV)} to $${Math.round(currentAOV)+15} through bundles and upsells means each order generates more revenue at the same CPA, pulling DTC MER toward <strong>${(dtcMerVal*currentAOV/(currentAOV+15)).toFixed(1)}%</strong>.`,
+        {type:"opportunity",icon:"💰",title:"AOV at $"+Math.round(currentAOV)+" — Each $10 Lift Drops DTC MER by ~"+Math.round(dtcMerVal-(dtcMerVal*currentAOV/(currentAOV+10)))+" Points",
+         body:"AOV is the most powerful lever for improving MER without changing ad spend. Increasing from $"+Math.round(currentAOV)+" to $"+(Math.round(currentAOV)+15)+" through bundles and upsells means each order generates more revenue at the same CPA, pulling DTC MER toward <strong>"+(dtcMerVal*currentAOV/(currentAOV+15)).toFixed(1)+"%</strong>.",
          actions:[
            {week:"Week 1",text:"Implement cart upsell — 'Add Bedtime Bestie' or 'Complete the Bundle' with small incentive."},
            {week:"Week 2",text:"Create Complete Care Bundle at $89 (Calm Balm + Lotion Potion + Soft Suds) on PDP and homepage."},
            {week:"Week 3",text:"Test free shipping threshold at $"+(Math.round(currentAOV/5)*5+10)+" to incentivize larger carts."},
          ]},
 
-        {type:"info",icon:"🏪",title:`Wholesale (${whPct}%) vs DTC (${dtcPct}%) — Strategic Implications`,
-         body:`Channel mix (Xero ratio): wholesale at <strong>${whPct}%</strong> vs DTC at <strong>${dtcPct}%</strong> vs international at <strong>${intlPct}%</strong>. This ${whPct>dtcPct?"is unusual for a brand investing "+f$(metaSpend)+" in digital ads":"reflects your channel strategy"}. Key question: <strong>does retail drive its own demand, or does DTC marketing create awareness that converts at Farmers?</strong> If the latter, DTC ad spend is partially subsidising wholesale — making true DTC MER even worse.`,
+        {type:"info",icon:"🏪",title:"Wholesale ("+whPct+"%) vs DTC ("+dtcPct+"%) — Strategic Implications",
+         body:"Channel mix (Xero ratio): wholesale at <strong>"+whPct+"%</strong> vs DTC at <strong>"+dtcPct+"%</strong> vs international at <strong>"+intlPct+"%</strong>. This "+(whPct>dtcPct?"is unusual for a brand investing "+_metaSpend+" in digital ads":"reflects your channel strategy")+". Key question: <strong>does retail drive its own demand, or does DTC marketing create awareness that converts at Farmers?</strong> If the latter, DTC ad spend is partially subsidising wholesale — making true DTC MER even worse.",
          actions:[
            {week:"Week 1",text:"Survey 50 recent Farmers customers: 'How did you first hear about Noody?' — quantify DTC→Retail halo."},
            {week:"Week 2",text:"Geographic test: pause Meta in one region for 2 weeks, track if Farmers sales there decline."},
          ]},
 
-        {type:vcPct<=40?"opportunity":"warning",icon:vcPct<=40?"✅":"⚠️",title:`Variable Costs at ${vcPct.toFixed(1)}% — ${vcPct<=40?"Healthy, Room to Fine-Tune":"Above 40% Benchmark"}`,
-         body:`Variable costs are <strong>${vcPct<=40?"below":"above"} the 40% benchmark</strong>. Product margins are ${vcPct<=40?"solid, giving room to absorb some marketing inefficiency":"tight — needs attention"}. COGS at ${fp(XERO.cogs/XERO.rev*100)}, shipping at ${fp(XERO.postage/XERO.rev*100)}, packaging at ${fp(XERO.pkg/XERO.rev*100)} (Xero ratios). Minor optimisation: negotiate courier rates at your volume, and review Afterpay merchant fees.`,
+        {type:vcPct<=40?"opportunity":"warning",icon:vcPct<=40?"✅":"⚠️",title:"Variable Costs at "+vcPct.toFixed(1)+"% — "+(vcPct<=40?"Healthy, Room to Fine-Tune":"Above 40% Benchmark"),
+         body:"Variable costs are <strong>"+(vcPct<=40?"below":"above")+" the 40% benchmark</strong>. Product margins are "+(vcPct<=40?"solid, giving room to absorb some marketing inefficiency":"tight — needs attention")+". COGS at "+fp(XERO.cogs/XERO.rev*100)+", shipping at "+fp(XERO.postage/XERO.rev*100)+", packaging at "+fp(XERO.pkg/XERO.rev*100)+" (Xero ratios). Minor optimisation: negotiate courier rates at your volume, and review Afterpay merchant fees.",
          actions:[
            {week:"This Month",text:"Review courier contract — at your shipment volume, negotiate rates or test NZ Post vs CourierPost."},
          ]},
 
-        {type:npPct>=10?"opportunity":npPct>=5?"warning":"critical",icon:"🎯",title:`Situation ${situation}: ${npPct>=10?"Profitable":npPct>=0?"Near Breakeven":"Unprofitable"} at ${npPct.toFixed(1)}% — ${npPct>=10?"Scale":"Fix"} Roadmap`,
-         body:`You're in <strong>Situation ${situation}</strong>. The playbook: Calibrate → Scale → Optimise. Profit margin of ${npPct.toFixed(1)}% is ${npPct>=10?"above the 10% minimum":"below target"}. ${dtcMerVal>35||fcPct>20?"<strong>DTC MER at "+dtcMerVal.toFixed(1)+"%</strong> and <strong>fixed costs at "+fcPct.toFixed(1)+"%</strong> mean you need revenue growth more than cost cutting.":""} The EE framework says: when profitable with high fixed %, the answer is almost always SCALE — grow revenue to leverage the fixed cost base. LER at ${ler.toFixed(2)} ${ler>=2?"confirms wages are generating sufficient gross margin":"needs improvement"}.`,
+        {type:npPct>=10?"opportunity":npPct>=5?"warning":"critical",icon:"🎯",title:"Situation "+situation+": "+(npPct>=10?"Profitable":npPct>=0?"Near Breakeven":"Unprofitable")+" at "+npPct.toFixed(1)+"% — "+(npPct>=10?"Scale":"Fix")+" Roadmap",
+         body:"You're in <strong>Situation "+situation+"</strong>. The playbook: Calibrate → Scale → Optimise. Profit margin of "+npPct.toFixed(1)+"% is "+(npPct>=10?"above the 10% minimum":"below target")+". "+(dtcMerVal>35||fcPct>20?"<strong>DTC MER at "+dtcMerVal.toFixed(1)+"%</strong> and <strong>fixed costs at "+fcPct.toFixed(1)+"%</strong> mean you need revenue growth more than cost cutting.":"")+" The EE framework says: when profitable with high fixed %, the answer is almost always SCALE — grow revenue to leverage the fixed cost base. LER at "+ler.toFixed(2)+" "+(ler>=2?"confirms wages are generating sufficient gross margin":"needs improvement")+".",
          actions:[
            {week:"Week 1: Calibrate",text:"Lock in all EE inputs with live data. Verify Xero P&L matches tracking. Set 90-day targets."},
            {week:"Week 2: Stabilise Email",text:"Get email revenue floor above 25% of DTC revenue. Activate all automated flows."},
