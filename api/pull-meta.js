@@ -43,23 +43,28 @@ export default async function handler(req, res) {
       var pageTokenResult = await fetch(pageTokenUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; });
       var pageToken = (pageTokenResult && pageTokenResult.access_token) ? pageTokenResult.access_token : null;
 
-      // Step 2: Build API URLs
-      // FB Page insights — requires page token
+      // Step 2: Get page fan count (total likes) — uses page token or user token
+      var fbPageUrl = 'https://graph.facebook.com/v19.0/' + pageId +
+        '?fields=fan_count,name&access_token=' + (pageToken || token);
+
+      // Step 3: Build API URLs
+      // FB Page insights — requires page token; use only universally supported metrics
       var fbUrl = pageToken ? ('https://graph.facebook.com/v19.0/' + pageId + '/insights' +
-        '?metric=page_impressions,page_post_engagements,page_views_total,page_fan_adds' +
+        '?metric=page_impressions,page_post_engagements' +
         '&period=day&since=' + sinceDate + '&until=' + untilDate +
         '&access_token=' + pageToken) : null;
 
-      // IG daily metrics (period=day)
+      // IG daily metrics (period=day) — these support period=day natively
       var igDailyUrl = 'https://graph.facebook.com/v19.0/' + igId + '/insights' +
         '?metric=reach,follower_count' +
         '&period=day&since=' + sinceDate + '&until=' + untilDate +
         '&access_token=' + token;
 
-      // IG total_value metrics (need metric_type=total_value)
+      // IG total_value metrics — these REQUIRE metric_type=total_value
       var igTotalUrl = 'https://graph.facebook.com/v19.0/' + igId + '/insights' +
         '?metric=profile_views,accounts_engaged,total_interactions' +
-        '&period=day&metric_type=total_value&since=' + sinceDate + '&until=' + untilDate +
+        '&period=day&metric_type=total_value' +
+        '&since=' + sinceDate + '&until=' + untilDate +
         '&access_token=' + token;
 
       // IG media (posts)
@@ -68,10 +73,11 @@ export default async function handler(req, res) {
         '&limit=20&access_token=' + token;
 
       var fetches = [
-        fbUrl ? fetch(fbUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }) : Promise.resolve({ _error: 'No page token — user token cannot access page insights. Grant pages_read_engagement permission.' }),
+        fbUrl ? fetch(fbUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }) : Promise.resolve({ _error: 'No page token. Grant pages_read_engagement permission.' }),
         fetch(igDailyUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }),
         fetch(igTotalUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }),
         fetch(igMediaUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }),
+        fetch(fbPageUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }),
       ];
       var results = await Promise.all(fetches);
 
@@ -79,24 +85,22 @@ export default async function handler(req, res) {
       var igDailyInsights = results[1];
       var igTotalInsights = results[2];
       var igMedia = results[3];
+      var fbPageInfo = results[4];
 
-      // Parse Facebook Page insights
-      var facebook = { pageLikes: 0, engagedUsers: 0, impressions: 0, daily: [], error: null };
+      // Parse Facebook Page info (fan_count = total page likes)
+      var facebook = { pageLikes: 0, engagedUsers: 0, impressions: 0, pageViews: 0, newFans: 0, daily: [], error: null };
+      if (fbPageInfo && !fbPageInfo._error && !fbPageInfo.error) {
+        facebook.pageLikes = fbPageInfo.fan_count || 0;
+      }
+
+      // Parse Facebook Page insights (page_impressions + page_post_engagements only)
       if (fbData._error || fbData.error) {
         facebook.error = fbData._error || (fbData.error ? fbData.error.message : null) ||
-          'Facebook Page insights failed. Ensure the token has pages_read_engagement permission and the Page is linked.';
+          'Facebook Page insights failed. Ensure the token has pages_read_engagement permission.';
       } else {
         var fbMetrics = fbData.data || [];
         var impressionsMetric = fbMetrics.find(function(m) { return m.name === 'page_impressions'; });
         var engagedMetric = fbMetrics.find(function(m) { return m.name === 'page_post_engagements'; });
-        var viewsMetric = fbMetrics.find(function(m) { return m.name === 'page_views_total'; });
-        var fanAddsMetric = fbMetrics.find(function(m) { return m.name === 'page_fan_adds'; });
-
-        var fanAddsValues = fanAddsMetric ? (fanAddsMetric.values || []) : [];
-        facebook.newFans = fanAddsValues.reduce(function(s, v) { return s + (v.value || 0); }, 0);
-
-        var viewsValues = viewsMetric ? (viewsMetric.values || []) : [];
-        facebook.pageViews = viewsValues.reduce(function(s, v) { return s + (v.value || 0); }, 0);
 
         var engagedValues = engagedMetric ? (engagedMetric.values || []) : [];
         var impressionValues = impressionsMetric ? (impressionsMetric.values || []) : [];
@@ -119,7 +123,7 @@ export default async function handler(req, res) {
       if (!facebook.error) delete facebook.error;
 
       // Parse Instagram insights (from two separate API calls)
-      var instagram = { followers: 0, reach: 0, profileViews: 0, accountsEngaged: 0, totalInteractions: 0, daily: [], error: null };
+      var instagram = { followers: 0, reach: 0, avgDailyReach: 0, profileViews: 0, accountsEngaged: 0, totalInteractions: 0, daily: [], error: null };
 
       // A) Daily metrics (reach, follower_count)
       var igDailyError = null;
@@ -135,7 +139,9 @@ export default async function handler(req, res) {
         }
 
         var igReachValues = igReach ? (igReach.values || []) : [];
-        instagram.reach = igReachValues.reduce(function(s, v) { return s + (v.value || 0); }, 0);
+        var totalReach = igReachValues.reduce(function(s, v) { return s + (v.value || 0); }, 0);
+        instagram.reach = totalReach;
+        instagram.avgDailyReach = igReachValues.length > 0 ? Math.round(totalReach / igReachValues.length) : 0;
 
         igReachValues.forEach(function(v) {
           var d = v.end_time ? v.end_time.split('T')[0] : '';
@@ -147,6 +153,8 @@ export default async function handler(req, res) {
       var igTotalError = null;
       if (igTotalInsights._error || igTotalInsights.error) {
         igTotalError = igTotalInsights._error || (igTotalInsights.error ? igTotalInsights.error.message : 'IG total insights failed');
+        // Include debug info
+        instagram._totalValueDebug = igTotalInsights.error || igTotalInsights._error || 'unknown';
       } else {
         var igTotalMetrics = igTotalInsights.data || [];
         var igProfileViews = igTotalMetrics.find(function(m) { return m.name === 'profile_views'; });
@@ -206,14 +214,23 @@ export default async function handler(req, res) {
       }
 
       // Follower estimation fallback: if API returned 0 followers but we have posts,
-      // estimate from post engagement (avg likes * ~20 is a rough follower estimate for small accounts)
+      // estimate from top post engagement (top post typically gets 5-10% of followers engaging)
       if (instagram.followers === 0 && recentPosts.length > 0) {
-        var totalLikes = recentPosts.reduce(function(s, p) { return s + p.likes; }, 0);
-        var avgLikes = totalLikes / recentPosts.length;
-        if (avgLikes > 0) {
+        var maxLikes = recentPosts.reduce(function(mx, p) { return p.likes > mx ? p.likes : mx; }, 0);
+        if (maxLikes > 0) {
           instagram.followersEstimated = true;
-          instagram.followers = Math.round(avgLikes * 20);
+          // Top post = ~7% engagement rate for small skincare accounts
+          instagram.followers = Math.round(maxLikes / 0.07);
         }
+      }
+
+      // Also compute post-level engagement stats for the frontend
+      if (recentPosts.length > 0) {
+        var postTotalEng = recentPosts.reduce(function(s, p) { return s + p.likes + p.comments; }, 0);
+        instagram.postAvgEngagement = Math.round(postTotalEng / recentPosts.length * 10) / 10;
+        instagram.postEngagementRate = instagram.followers > 0
+          ? Math.round(postTotalEng / recentPosts.length / instagram.followers * 10000) / 100
+          : 0;
       }
 
       return res.status(200).json({
