@@ -6,13 +6,12 @@
 <title>Noody Command Center</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
-  :root{--bg:#0c0c18;--card:#13131f;--bdr:#1e1e34;--t1:#f0f0f5;--t2:#a0a0b8;--t3:#6b6b82;--acc:#4f6ef7;--grn:#22c55e;--ylw:#eab308;--red:#ef4444;--grid:#1e1e34;--tipbg:#1a1a2e;--tipbdr:#2d2d44}
-  [data-theme="light"]{--bg:#f4f4f8;--card:#fff;--bdr:#dde0e8;--t1:#1a1a2e;--t2:#555568;--t3:#8888a0;--acc:#4f6ef7;--grn:#16a34a;--ylw:#ca8a04;--red:#dc2626;--grid:#e4e4ef;--tipbg:#fff;--tipbdr:#dde0e8}
+  :root{--bg:#f8f9fb;--card:#ffffff;--bdr:#d1d5db;--t1:#111827;--t2:#374151;--t3:#6b7280;--acc:#3b5bdb;--grn:#15803d;--ylw:#92400e;--red:#b91c1c;--grid:#e5e7eb;--tipbg:#ffffff;--tipbdr:#d1d5db}
   *{margin:0;padding:0;box-sizing:border-box}
-  body{background:var(--bg);color:var(--t1);font-family:'DM Sans',-apple-system,sans-serif;-webkit-font-smoothing:antialiased;transition:background .25s,color .25s}
+  body{background:var(--bg);color:var(--t1);font-family:'DM Sans',-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
   ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
   button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
-  div,span,td,th{transition:background .2s,color .2s,border-color .2s}
+  div,span,td,th{}
   @keyframes pulse-red{0%,100%{opacity:1}50%{opacity:.7}}
   .pulse-pill-red{animation:pulse-red 2s ease-in-out infinite}
   .tab-sep{width:1px;height:28px;background:var(--bdr);margin:0 2px;flex-shrink:0;align-self:center}
@@ -20,10 +19,10 @@
   @media(max-width:768px){.tab-bar{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}.tab-bar::-webkit-scrollbar{display:none}}
   .pulse-bar{display:flex;gap:8px;flex-wrap:wrap;padding:8px 20px;border-bottom:1px solid var(--bdr)}
   .pulse-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;font-family:'JetBrains Mono',monospace;border:1px solid transparent;white-space:nowrap}
-  .pulse-pill[data-s="h"]{background:rgba(16,185,129,0.1);border-color:rgba(16,185,129,0.25);color:#10b981}
-  .pulse-pill[data-s="w"]{background:rgba(245,158,11,0.1);border-color:rgba(245,158,11,0.25);color:#f59e0b}
-  .pulse-pill[data-s="c"]{background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.25);color:#ef4444}
-  .pulse-pill[data-s="n"]{background:rgba(107,114,128,0.06);border-color:rgba(107,114,128,0.15);color:#6b7280}
+  .pulse-pill[data-s="h"]{background:rgba(21,128,61,0.08);border-color:rgba(21,128,61,0.3);color:#15803d}
+  .pulse-pill[data-s="w"]{background:rgba(146,64,14,0.08);border-color:rgba(146,64,14,0.3);color:#92400e}
+  .pulse-pill[data-s="c"]{background:rgba(185,28,28,0.08);border-color:rgba(185,28,28,0.3);color:#b91c1c}
+  .pulse-pill[data-s="n"]{background:rgba(107,114,128,0.06);border-color:rgba(107,114,128,0.2);color:#6b7280}
   @media(max-width:768px){.pulse-bar{flex-wrap:wrap}.pulse-pill{font-size:11px;padding:4px 10px}
     .main-content{padding:16px 12px !important}
     .metric-grid{grid-template-columns:repeat(2,1fr) !important}
@@ -65,8 +64,8 @@ const TARGETS = {
   metaROAS: 2.5,           // Meta ROAS target
 };
 function gs(v,b){if(!b||v==null)return"n";if(v>=b.h[0]&&v<=b.h[1])return"h";if(v>=b.w[0]&&v<=b.w[1])return"w";return"c";}
-const SC={h:"#10b981",w:"#f59e0b",c:"#ef4444",n:"#6b7280"};
-const SB={h:"rgba(16,185,129,0.08)",w:"rgba(245,158,11,0.08)",c:"rgba(239,68,68,0.08)",n:"rgba(107,114,128,0.06)"};
+const SC={h:"#15803d",w:"#92400e",c:"#b91c1c",n:"#6b7280"};
+const SB={h:"rgba(21,128,61,0.08)",w:"rgba(146,64,14,0.08)",c:"rgba(185,28,28,0.08)",n:"rgba(107,114,128,0.06)"};
 const f$=n=>n==null?"—":(n<0?"-":"")+"$"+Math.abs(Math.round(n)).toLocaleString();
 const fp=n=>n==null?"—":n.toFixed(1)+"%";
 const fn=n=>n==null?"—":Math.round(n).toLocaleString();
@@ -181,8 +180,7 @@ function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 
 function Dashboard(){
   const [tab,setTab]=useState("equation");
-  const [theme,setTheme]=useState("dark");
-  const toggleTheme=()=>{const t=theme==="dark"?"light":"dark";setTheme(t);document.documentElement.setAttribute("data-theme",t);};
+  // Light mode only — no theme toggle
   const [range,setRange]=useState(30);
   const [customFrom,setCustomFrom]=useState("");
   const [customTo,setCustomTo]=useState("");
@@ -474,7 +472,7 @@ function Dashboard(){
   const PIES=[
     {name:"DTC",value:xeroChannels.dtc,color:"#2563eb"},
     {name:"Wholesale",value:xeroChannels.wh,color:"#7c3aed"},
-    {name:"International",value:xeroChannels.intl,color:"#06b6d4"},
+    {name:"International",value:xeroChannels.intl,color:"#0e7490"},
   ];
 
   // Channel data computed in Equation tab IIFE
@@ -503,7 +501,6 @@ function Dashboard(){
         <div className="tab-sep"/>
         <Tab a={tab==="insights"} onClick={()=>setTab("insights")} icon="✦" accent="#7c3aed">Insights</Tab>
       </div>
-      <button onClick={toggleTheme} style={{padding:"10px",background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,cursor:"pointer",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",width:44,height:44,transition:"all .2s",color:"var(--t2)",flexShrink:0}} title={theme==="dark"?"Light mode":"Dark mode"}>{theme==="dark"?"☀️":"🌙"}</button>
     </div>
 
     <PulseBar agg={agg} xeroChannels={xeroChannels} klavLive={klavLive}/>
@@ -698,11 +695,11 @@ function Dashboard(){
             {l:"NET PROFIT",v:estProfit,p:estProfPct,bm:BM.np,target:"> 10%"},
           ].map((r,i)=>{
             const s=r.bm?gs(r.p,r.bm):"n";
-            const col=i===0?"#93c5fd":SC[s];
+            const col=i===0?"#1d4ed8":SC[s];
             const bg=i===0?"#2563eb":SC[s];
             return <div key={i} style={{marginBottom:i<4?10:0}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-                <span style={{fontSize:12,color:i===4?"#fff":"#9ca3af",fontWeight:i===4?700:400}}>
+                <span style={{fontSize:12,color:i===4?"var(--t1)":"var(--t3)",fontWeight:i===4?700:400}}>
                   {i>0&&i<4?"\u2212 ":i===4?"= ":""}{r.l}
                   {r.target&&<span style={{fontSize:9,color:"var(--t3)",marginLeft:6}}>{r.target}</span>}
                 </span>
@@ -757,7 +754,7 @@ function Dashboard(){
           {[
             {label:"DTC (Online)",rev:dtcRev,color:"#2563eb",adSpend:metaSpend,mer:estDtcMer,icon:"\uD83D\uDED2",source:"Shopify live"},
             {label:"Wholesale (est.)",rev:estWholesale,color:"#7c3aed",adSpend:0,mer:0,icon:"\uD83C\uDFEA",source:"Xero ratio"},
-            {label:"International (est.)",rev:estIntl,color:"#06b6d4",adSpend:0,mer:0,icon:"\uD83C\uDF0F",source:"Xero ratio"},
+            {label:"International (est.)",rev:estIntl,color:"#0e7490",adSpend:0,mer:0,icon:"\uD83C\uDF0F",source:"Xero ratio"},
           ].map((ch,i)=>{
             const pct=estTotalRev>0?Math.round(ch.rev/estTotalRev*100):0;
             return <div key={i} style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:14,textAlign:"center"}}>
@@ -780,12 +777,12 @@ function Dashboard(){
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
           <div style={{background:"rgba(16,185,129,0.08)",borderRadius:10,padding:12,textAlign:"center"}}>
             <div style={{fontSize:10,color:"var(--t3)"}}>BLENDED MER</div>
-            <div style={{fontSize:24,fontWeight:700,color:"#10b981",fontFamily:"'JetBrains Mono',monospace"}}>{fp(estMerPct)}</div>
+            <div style={{fontSize:24,fontWeight:700,color:"#15803d",fontFamily:"'JetBrains Mono',monospace"}}>{fp(estMerPct)}</div>
             <div style={{fontSize:9,color:"var(--t3)"}}>ad spend \u00F7 total revenue</div>
           </div>
           <div style={{background:"rgba(239,68,68,0.08)",borderRadius:10,padding:12,textAlign:"center"}}>
             <div style={{fontSize:10,color:"var(--t3)"}}>DTC-ONLY MER</div>
-            <div style={{fontSize:24,fontWeight:700,color:"#ef4444",fontFamily:"'JetBrains Mono',monospace"}}>{fp(estDtcMer)}</div>
+            <div style={{fontSize:24,fontWeight:700,color:"#b91c1c",fontFamily:"'JetBrains Mono',monospace"}}>{fp(estDtcMer)}</div>
             <div style={{fontSize:9,color:"var(--t3)"}}>ad spend \u00F7 DTC revenue only</div>
           </div>
         </div>
@@ -857,12 +854,12 @@ function Dashboard(){
         <div style={{fontSize:11,color:"var(--t3)",marginBottom:8}}>DTC REVENUE & META SPEND ({days}d) <Src s="SHOPIFY + META"/></div>
         <ResponsiveContainer width="100%" height={180}>
           <ComposedChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e"/>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb"/>
             <XAxis dataKey="d" tick={{fill:"#6b7280",fontSize:10}} interval={Math.max(0,Math.floor(chartData.length/12))}/>
             <YAxis tick={{fill:"#6b7280",fontSize:9}}/>
-            <Tooltip contentStyle={{background:"var(--bdr)",border:"1px solid #2d2d44",borderRadius:8,fontSize:11}}/>
+            <Tooltip contentStyle={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:8,fontSize:11}}/>
             <Area type="monotone" dataKey="rev" fill="rgba(37,99,235,0.12)" stroke="#2563eb" strokeWidth={1.5} name="DTC Revenue"/>
-            <Bar dataKey="meta" fill="#a855f755" radius={[2,2,0,0]} name="Meta Spend"/>
+            <Bar dataKey="meta" fill="#7c3aed44" radius={[2,2,0,0]} name="Meta Spend"/>
           </ComposedChart>
         </ResponsiveContainer>
       </div>}
@@ -934,12 +931,12 @@ function Dashboard(){
           <div style={{fontSize:11,color:"var(--t3)",marginBottom:8}}>REVENUE & META SPEND</div>
           <ResponsiveContainer width="100%" height={240}>
             <ComposedChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e"/>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb"/>
               <XAxis dataKey="d" tick={{fill:"#6b7280",fontSize:10}} interval={Math.max(0,Math.floor(chartData.length/12))}/>
               <YAxis tick={{fill:"#6b7280",fontSize:9}}/>
-              <Tooltip contentStyle={{background:"var(--bdr)",border:"1px solid #2d2d44",borderRadius:8,fontSize:11}}/>
+              <Tooltip contentStyle={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:8,fontSize:11}}/>
               <Area type="monotone" dataKey="rev" fill="rgba(37,99,235,0.12)" stroke="#2563eb" strokeWidth={1.5} name="Revenue"/>
-              <Bar dataKey="meta" fill="#a855f755" radius={[2,2,0,0]} name="Meta Spend"/>
+              <Bar dataKey="meta" fill="#7c3aed44" radius={[2,2,0,0]} name="Meta Spend"/>
             </ComposedChart>
           </ResponsiveContainer>
         </div>
@@ -947,23 +944,23 @@ function Dashboard(){
           <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18}}>
             <div style={{fontSize:11,color:"var(--t3)",marginBottom:8}}>DAILY MER</div>
             <ResponsiveContainer width="100%" height={180}>
-              <LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e"/>
+              <LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb"/>
                 <XAxis dataKey="d" tick={{fill:"#6b7280",fontSize:10}} interval={Math.max(0,Math.floor(chartData.length/8))}/>
                 <YAxis tick={{fill:"#6b7280",fontSize:9}}/>
-                <Tooltip contentStyle={{background:"var(--bdr)",border:"1px solid #2d2d44",borderRadius:8,fontSize:11}}/>
-                <Line type="monotone" dataKey="mer" stroke="#a855f7" strokeWidth={2} dot={false}/>
-                <ReferenceLine y={35} stroke="#ef4444" strokeDasharray="3 3"/>
+                <Tooltip contentStyle={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:8,fontSize:11}}/>
+                <Line type="monotone" dataKey="mer" stroke="#7c3aed" strokeWidth={2} dot={false}/>
+                <ReferenceLine y={35} stroke="#b91c1c" strokeDasharray="3 3"/>
               </LineChart>
             </ResponsiveContainer>
           </div>
           <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18}}>
             <div style={{fontSize:11,color:"var(--t3)",marginBottom:8}}>AOV TREND</div>
             <ResponsiveContainer width="100%" height={180}>
-              <LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e"/>
+              <LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb"/>
                 <XAxis dataKey="d" tick={{fill:"#6b7280",fontSize:10}} interval={Math.max(0,Math.floor(chartData.length/8))}/>
                 <YAxis tick={{fill:"#6b7280",fontSize:9}}/>
-                <Tooltip contentStyle={{background:"var(--bdr)",border:"1px solid #2d2d44",borderRadius:8,fontSize:11}}/>
-                <Line type="monotone" dataKey="aov" stroke="#f59e0b" strokeWidth={2} dot={false}/>
+                <Tooltip contentStyle={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:8,fontSize:11}}/>
+                <Line type="monotone" dataKey="aov" stroke="#92400e" strokeWidth={2} dot={false}/>
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -1145,21 +1142,21 @@ function Dashboard(){
               const fb=_freqBench[fun]||_freqBench.TOF;
               const fH=!c.frequency?"\u2014":c.frequency<=fb.g?"\uD83D\uDFE2":c.frequency<=fb.w?"\uD83D\uDFE1":"\uD83D\uDD34";
               const avgCpp=agg.cpp||30;
-              const cppC=!c.cpp?"inherit":c.cpp<=avgCpp?"#10b981":c.cpp<=avgCpp*2?"#f59e0b":"#ef4444";
-              const roasC=!c.roas?"inherit":c.roas>=3?"#10b981":c.roas>=2?"#f59e0b":"#ef4444";
-              const freqC=!c.frequency?"inherit":c.frequency<=fb.g?"#10b981":c.frequency<=fb.w?"#f59e0b":"#ef4444";
-              const funC=fun==="TOF"||fun==="ASC"?"#3b82f6":fun==="TOM"?"#a855f7":"#10b981";
+              const cppC=!c.cpp?"inherit":c.cpp<=avgCpp?"#15803d":c.cpp<=avgCpp*2?"#92400e":"#b91c1c";
+              const roasC=!c.roas?"inherit":c.roas>=3?"#15803d":c.roas>=2?"#92400e":"#b91c1c";
+              const freqC=!c.frequency?"inherit":c.frequency<=fb.g?"#15803d":c.frequency<=fb.w?"#92400e":"#b91c1c";
+              const funC=fun==="TOF"||fun==="ASC"?"#1d4ed8":fun==="TOM"?"#7c3aed":"#15803d";
               // Overall traffic light: Green=scale, Yellow=monitor, Red=pause
               var roasOk=c.roas&&c.roas>=TARGETS.metaROAS;
               var cppOk=c.cpp&&c.cpp<=avgCpp*1.5;
               var freqOk=c.frequency&&c.frequency<=fb.w;
               var tlScore=(roasOk?1:0)+(cppOk?1:0)+(freqOk?1:0);
               var tlLight=tlScore>=3?"\uD83D\uDFE2 Scale":tlScore>=2?"\uD83D\uDFE1 Monitor":c.purchases>0?"\uD83D\uDD34 Pause":"\u2014";
-              var tlColor=tlScore>=3?"#10b981":tlScore>=2?"#f59e0b":"#ef4444";
+              var tlColor=tlScore>=3?"#15803d":tlScore>=2?"#92400e":"#b91c1c";
               return <tr key={i} style={{borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
                 <td style={{padding:"8px 6px",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={c.campaign_name}>{c.campaign_name}</td>
                 <td style={{padding:"8px 6px"}}><span style={{color:funC,fontWeight:600,fontSize:10}}>{fun}</span></td>
-                <td style={{padding:"8px 6px",color:"#a855f7"}}>${fn(Math.round(c.spend||0))}</td>
+                <td style={{padding:"8px 6px",color:"#7c3aed"}}>${fn(Math.round(c.spend||0))}</td>
                 <td style={{padding:"8px 6px",color:cppC}}>{c.cpp?"$"+Math.round(c.cpp):"\u2014"}</td>
                 <td style={{padding:"8px 6px"}}>{c.purchases||0}</td>
                 <td style={{padding:"8px 6px",color:roasC}}>{c.roas?(c.roas).toFixed(2)+"x":"\u2014"}</td>
@@ -1178,7 +1175,7 @@ function Dashboard(){
         <div style={{fontSize:14,fontWeight:600,marginBottom:4}}>Funnel Spend Allocation</div>
         <div style={{fontSize:11,color:"var(--t3)",marginBottom:12}}>Actual vs EE framework target (TOF+TOM 45% / ASC 35% / MOF 20%)</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:8}}>
-          {[["TOF","#3b82f6",45],["ASC","#a855f7",35],["MOF","#10b981",20]].map(([label,col,ideal])=>{
+          {[["TOF","#1d4ed8",45],["ASC","#7c3aed",35],["MOF","#15803d",20]].map(([label,col,ideal])=>{
             const spent=(label==="TOF"?(_fs.TOF||0)+(_fs.TOM||0):(_fs[label]||0));
             const cnt=(label==="TOF"?(_fc.TOF||0)+(_fc.TOM||0):(_fc[label]||0));
             const actual=totalCSpend>0?spent/totalCSpend*100:0;
@@ -1187,7 +1184,7 @@ function Dashboard(){
             return <div key={label} style={{background:"rgba(255,255,255,0.03)",border:"1px solid var(--bdr)",borderRadius:10,padding:12}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                 <span style={{color:col,fontWeight:700,fontSize:13,fontFamily:"'JetBrains Mono',monospace"}}>{label}</span>
-                <span style={{fontSize:10,color:ok?"#10b981":"#f59e0b"}}>{ok?"✓":"⚠"} {diff>0?"+":""}{diff.toFixed(0)}pp</span>
+                <span style={{fontSize:10,color:ok?"#15803d":"#92400e"}}>{ok?"✓":"⚠"} {diff>0?"+":""}{diff.toFixed(0)}pp</span>
               </div>
               <div style={{height:8,background:"rgba(255,255,255,0.06)",borderRadius:4,marginBottom:4,position:"relative"}}>
                 <div style={{height:"100%",width:Math.min(actual,100)+"%",background:col,borderRadius:4,transition:"width .5s"}}/>
@@ -1208,13 +1205,13 @@ function Dashboard(){
         <div style={{fontSize:11,color:"var(--t3)",marginBottom:8}}>DAILY META SPEND & CPP TREND</div>
         <ResponsiveContainer width="100%" height={180}>
           <ComposedChart data={_cppTrend}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e"/>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb"/>
             <XAxis dataKey="d" tick={{fill:"#6b7280",fontSize:9}}/>
             <YAxis yAxisId="s" tick={{fill:"#6b7280",fontSize:9}}/>
             <YAxis yAxisId="c" orientation="right" tick={{fill:"#6b7280",fontSize:9}}/>
-            <Tooltip contentStyle={{background:"var(--bdr)",border:"1px solid #2d2d44",borderRadius:8,fontSize:11}}/>
-            <Bar yAxisId="s" dataKey="spend" fill="#a855f755" radius={[3,3,0,0]} name="Spend ($)"/>
-            <Line yAxisId="c" type="monotone" dataKey="cpp" stroke="#f59e0b" strokeWidth={2} dot={false} name="CPP ($)" connectNulls/>
+            <Tooltip contentStyle={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:8,fontSize:11}}/>
+            <Bar yAxisId="s" dataKey="spend" fill="#7c3aed44" radius={[3,3,0,0]} name="Spend ($)"/>
+            <Line yAxisId="c" type="monotone" dataKey="cpp" stroke="#92400e" strokeWidth={2} dot={false} name="CPP ($)" connectNulls/>
           </ComposedChart>
         </ResponsiveContainer>
       </div>}
@@ -1224,13 +1221,13 @@ function Dashboard(){
         <div style={{fontSize:11,color:"var(--t3)",marginBottom:8}}>MONTHLY META SPEND & MER</div>
         <ResponsiveContainer width="100%" height={200}>
           <ComposedChart data={monthly}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e"/>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb"/>
             <XAxis dataKey="month" tick={{fill:"#6b7280",fontSize:9}}/>
             <YAxis yAxisId="spend" tick={{fill:"#6b7280",fontSize:9}}/>
             <YAxis yAxisId="mer" orientation="right" tick={{fill:"#6b7280",fontSize:9}} domain={[0,60]}/>
-            <Tooltip contentStyle={{background:"var(--bdr)",border:"1px solid #2d2d44",borderRadius:8,fontSize:11}}/>
-            <Bar yAxisId="spend" dataKey="meta" fill="#a855f755" radius={[3,3,0,0]} name="Meta Spend ($)"/>
-            <Line yAxisId="mer" type="monotone" dataKey="mer" stroke="#ef4444" strokeWidth={2} dot={{r:3}} name="MER (%)"/>
+            <Tooltip contentStyle={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:8,fontSize:11}}/>
+            <Bar yAxisId="spend" dataKey="meta" fill="#7c3aed44" radius={[3,3,0,0]} name="Meta Spend ($)"/>
+            <Line yAxisId="mer" type="monotone" dataKey="mer" stroke="#b91c1c" strokeWidth={2} dot={{r:3}} name="MER (%)"/>
             <ReferenceLine yAxisId="mer" y={35} stroke="#ef444466" strokeDasharray="3 3"/>
           </ComposedChart>
         </ResponsiveContainer>
@@ -1249,11 +1246,11 @@ function Dashboard(){
               return <tr key={m.month} style={{borderBottom:"1px solid var(--bg)"}}>
                 <td style={{padding:"6px 8px",color:"var(--t2)"}}>{m.month}</td>
                 <td style={{padding:"6px 8px"}}>${fn(m.rev)}</td>
-                <td style={{padding:"6px 8px",color:"#a855f7"}}>${fn(m.meta)}</td>
+                <td style={{padding:"6px 8px",color:"#7c3aed"}}>${fn(m.meta)}</td>
                 <td style={{padding:"6px 8px",color:SC[ms]}}>{fp(m.mer)}</td>
                 <td style={{padding:"6px 8px"}}>{m.orders}</td>
                 <td style={{padding:"6px 8px"}}>${m.aov}</td>
-                <td style={{padding:"6px 8px",color:m.roas>=2?"#10b981":"#f59e0b"}}>{m.roas}x</td>
+                <td style={{padding:"6px 8px",color:m.roas>=2?"#15803d":"#92400e"}}>{m.roas}x</td>
                 <td style={{padding:"6px 8px"}}>${m.cpp}</td>
               </tr>;
             })}</tbody>
@@ -1335,26 +1332,26 @@ function Dashboard(){
         </div>)}
       </div>
 
-      <div style={{fontSize:12,fontWeight:700,color:situation<=2?"#f59e0b":"#ef4444",marginBottom:8}}>{estDtcMer>35||estFcPct>20?"⚠️ CONSTRAINTS IDENTIFIED":"✅ FUNDAMENTALS HEALTHY"}</div>
+      <div style={{fontSize:12,fontWeight:700,color:situation<=2?"#92400e":"#b91c1c",marginBottom:8}}>{estDtcMer>35||estFcPct>20?"⚠️ CONSTRAINTS IDENTIFIED":"✅ FUNDAMENTALS HEALTHY"}</div>
       <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:14}}>
         {[
-          {t:"BANDWIDTH",d:"Stock, capacity, founder time. Wholesale is mixed — some accounts growing, some declining. This needs stabilization.",c:"#f59e0b"},
-          {t:"EFFICIENCY",d:"Fixed costs at "+fp(estFcPct)+" ("+(estFcPct<=20?"✅ healthy":"above 20% benchmark")+"). DTC MER at "+fp(estDtcMer)+" ("+(estDtcMer<=35?"✅ healthy":"⚠️ high")+"). Blended MER "+fp(estMerPct)+". Variable costs "+fp(estVarPct)+(estVarPct<=40?" (healthy).":"."),c:estDtcMer>45?"#ef4444":estDtcMer>35?"#f59e0b":"#10b981"},
-          {t:"THROUGHPUT",d:"Scale revenue to leverage "+f$(annFixed)+" annual fixed costs. At $2M, fixed costs drop to "+fp(annFixed/2000000*100)+". "+(!roas||roas<1.5?"DTC acquisition must improve first.":"Meta ROAS at "+(roas||0).toFixed(2)+"x — "+(roas>=2.5?"strong.":"needs monitoring.")),c:"#2563eb"},
+          {t:"BANDWIDTH",d:"Stock, capacity, founder time. Wholesale is mixed — some accounts growing, some declining. This needs stabilization.",c:"#92400e"},
+          {t:"EFFICIENCY",d:"Fixed costs at "+fp(estFcPct)+" ("+(estFcPct<=20?"✅ healthy":"above 20% benchmark")+"). DTC MER at "+fp(estDtcMer)+" ("+(estDtcMer<=35?"✅ healthy":"⚠️ high")+"). Blended MER "+fp(estMerPct)+". Variable costs "+fp(estVarPct)+(estVarPct<=40?" (healthy).":"."),c:estDtcMer>45?"#b91c1c":estDtcMer>35?"#92400e":"#15803d"},
+          {t:"THROUGHPUT",d:"Scale revenue to leverage "+f$(annFixed)+" annual fixed costs. At $2M, fixed costs drop to "+fp(annFixed/2000000*100)+". "+(!roas||roas<1.5?"DTC acquisition must improve first.":"Meta ROAS at "+(roas||0).toFixed(2)+"x — "+(roas>=2.5?"strong.":"needs monitoring.")),c:"#1d4ed8"},
         ].map(c=><div key={c.t} style={{borderLeft:"3px solid "+c.c,paddingLeft:12,marginBottom:12}}>
           <div style={{fontSize:12,fontWeight:700,color:c.c}}>{c.t}</div>
           <div style={{fontSize:11,color:"var(--t2)",marginTop:2,lineHeight:1.5}}>{c.d}</div>
         </div>)}
       </div>
 
-      <div style={{fontSize:12,fontWeight:700,color:"#93c5fd",marginBottom:8}}>🎯 CALIBRATE SESSION — NEXT 6 WEEKS</div>
+      <div style={{fontSize:12,fontWeight:700,color:"#1d4ed8",marginBottom:8}}>🎯 CALIBRATE SESSION — NEXT 6 WEEKS</div>
       <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18}}>
         {[
           {w:"1-2",t:"Improve DTC Revenue Per Visit",d:"Push AOV higher (currently "+f$(currentAOV)+" — bundles, free shipping threshold). Rebuild dead Post-Purchase flow. Fix Browse Abandonment."},
           {w:"1-2",t:"Stabilize Email to 30%+",d:"Email at "+(emailPct!=null?fp(emailPct):"—")+" of DTC revenue. Campaign cadence minimum 2/month. Automated flows provide a stable floor."},
           {w:"3-4",t:"Audit Meta Spend Efficiency",d:f$(metaSpend)+" on Meta"+(roas?" at "+roas.toFixed(2)+"x ROAS":"")+". Identify hero vs villain creatives. Test scaling while watching blended MER."},
           {w:"5-6",t:"Wholesale Stabilization",d:"Top 10 accounts audit. Identify declining accounts and why. Every wholesale dollar earned at near-zero marketing cost — this is your profit engine."},
-        ].map((s,i)=><div key={i} style={{borderBottom:i<3?"1px solid #1a1a2e":"none",paddingBottom:10,marginBottom:10}}>
+        ].map((s,i)=><div key={i} style={{borderBottom:i<3?"1px solid var(--bdr)":"none",paddingBottom:10,marginBottom:10}}>
           <div style={{display:"flex",gap:8,alignItems:"baseline"}}>
             <span style={{fontSize:10,color:"var(--t3)",fontFamily:"'JetBrains Mono',monospace"}}>WK {s.w}</span>
             <span style={{fontSize:12,fontWeight:600,color:"var(--t1)"}}>{s.t}</span>
@@ -1394,7 +1391,7 @@ function Dashboard(){
       <h2 style={{fontSize:20,fontWeight:700,margin:"0 0 14px"}}>Path to $2M — From {f$(annRev)} Run Rate</h2>
 
       <div style={{background:"linear-gradient(135deg,rgba(37,99,235,0.08),rgba(124,58,237,0.08))",border:"1px solid rgba(37,99,235,0.25)",borderRadius:14,padding:20,marginBottom:14}}>
-        <div style={{fontSize:13,fontWeight:700,color:"#93c5fd",marginBottom:10}}>✈️ THE FIXED COST LEVERAGE</div>
+        <div style={{fontSize:13,fontWeight:700,color:"#1d4ed8",marginBottom:10}}>✈️ THE FIXED COST LEVERAGE</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
           <div style={{textAlign:"center"}}>
             <div style={{fontSize:10,color:"var(--t3)"}}>CURRENT ({days}d ann.)</div>
@@ -1404,12 +1401,12 @@ function Dashboard(){
           <div style={{textAlign:"center"}}>
             <div style={{fontSize:10,color:"var(--t3)"}}>AT $1.5M</div>
             <div style={{fontSize:20,fontWeight:700,color:"var(--t1)",fontFamily:"'JetBrains Mono',monospace"}}>$1.5M</div>
-            <div style={{fontSize:11,color:t1Fixed/1500000*100<=20?"#10b981":"#f59e0b"}}>FC: {fp(t1Fixed/1500000*100)}</div>
+            <div style={{fontSize:11,color:t1Fixed/1500000*100<=20?"#15803d":"#92400e"}}>FC: {fp(t1Fixed/1500000*100)}</div>
           </div>
           <div style={{textAlign:"center"}}>
             <div style={{fontSize:10,color:"var(--t3)"}}>AT $2M</div>
             <div style={{fontSize:20,fontWeight:700,color:"var(--t1)",fontFamily:"'JetBrains Mono',monospace"}}>$2M</div>
-            <div style={{fontSize:11,color:t2Fixed/2000000*100<=20?"#10b981":"#f59e0b"}}>FC: {fp(t2Fixed/2000000*100)}</div>
+            <div style={{fontSize:11,color:t2Fixed/2000000*100<=20?"#15803d":"#92400e"}}>FC: {fp(t2Fixed/2000000*100)}</div>
           </div>
         </div>
       </div>
@@ -1428,8 +1425,8 @@ function Dashboard(){
             {l:"PROFIT",c:[annProfit,t1Prof,t2Prof],bold:true},
             {l:"Profit %",c:[annProfPct,t1Prof/t1*100,t2Prof/t2*100],pct:true,bold:true},
           ].map((r,i)=><tr key={i} style={{borderBottom:"1px solid var(--bg)"}}>
-            <td style={{padding:"8px",color:r.bold?"#fff":"#9ca3af",fontWeight:r.bold?700:400,textAlign:"left"}}>{r.l}</td>
-            {r.c.map((v,j)=><td key={j} style={{padding:"8px",textAlign:"right",color:r.bold?(v>0?"#10b981":"#ef4444"):"#e5e7eb",fontWeight:r.bold?700:400}}>
+            <td style={{padding:"8px",color:r.bold?"var(--t1)":"var(--t3)",fontWeight:r.bold?700:400,textAlign:"left"}}>{r.l}</td>
+            {r.c.map((v,j)=><td key={j} style={{padding:"8px",textAlign:"right",color:r.bold?(v>0?"#15803d":"#b91c1c"):"var(--t2)",fontWeight:r.bold?700:400}}>
               {r.pct?fp(v):f$(v)}
             </td>)}
           </tr>)}
@@ -1438,9 +1435,9 @@ function Dashboard(){
       </div>
 
       <div style={{background:"rgba(16,185,129,0.06)",border:"1px solid rgba(16,185,129,0.2)",borderRadius:14,padding:18}}>
-        <div style={{fontSize:12,fontWeight:700,color:"#10b981",marginBottom:6}}>💪 THE MATH</div>
+        <div style={{fontSize:12,fontWeight:700,color:"#15803d",marginBottom:6}}>💪 THE MATH</div>
         <div style={{fontSize:12,color:"var(--t1)",lineHeight:1.7}}>
-          At $2M revenue with the same cost structure plus ~$42K additional fixed costs for capacity, profit jumps from {f$(annProfit)} to {f$(t2Prof)}{annProfit>0&&t2Prof>annProfit?<> — a <strong style={{color:"#10b981"}}>{profGrowthPct}% increase</strong> in profit on {revGrowthPct}% revenue growth</>:null}. Fixed cost leverage is the #1 profit unlock. But the growth engine needs to be DTC + wholesale together — not just pouring more into Meta{estDtcMer>35?" at "+fp(estDtcMer)+" DTC MER":""}.
+          At $2M revenue with the same cost structure plus ~$42K additional fixed costs for capacity, profit jumps from {f$(annProfit)} to {f$(t2Prof)}{annProfit>0&&t2Prof>annProfit?<> — a <strong style={{color:"#15803d"}}>{profGrowthPct}% increase</strong> in profit on {revGrowthPct}% revenue growth</>:null}. Fixed cost leverage is the #1 profit unlock. But the growth engine needs to be DTC + wholesale together — not just pouring more into Meta{estDtcMer>35?" at "+fp(estDtcMer)+" DTC MER":""}.
         </div>
       </div>
     </>;
@@ -1468,7 +1465,7 @@ function Dashboard(){
       </div>}
 
       {gadsError&&<div style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:14,padding:20,marginBottom:14}}>
-        <div style={{fontSize:13,fontWeight:700,color:"#ef4444",marginBottom:4}}>Connection Error</div>
+        <div style={{fontSize:13,fontWeight:700,color:"#b91c1c",marginBottom:4}}>Connection Error</div>
         <div style={{fontSize:12,color:"var(--t1)"}}>{gadsError}</div>
         <div style={{fontSize:11,color:"var(--t3)",marginTop:6}}>Check: Vercel env vars set? Google Ads API enabled? Refresh token valid?</div>
       </div>}
@@ -1492,12 +1489,12 @@ function Dashboard(){
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
             <div style={{textAlign:"center"}}>
               <div style={{fontSize:10,color:"var(--t3)"}}>GOOGLE ADS</div>
-              <div style={{fontSize:20,fontWeight:700,color:"#4285f4",fontFamily:"'JetBrains Mono',monospace"}}>{f$(gads.summary.totalSpend)}</div>
+              <div style={{fontSize:20,fontWeight:700,color:"#1a56db",fontFamily:"'JetBrains Mono',monospace"}}>{f$(gads.summary.totalSpend)}</div>
               <div style={{fontSize:10,color:"var(--t3)"}}>{gads.summary.roas}x ROAS</div>
             </div>
             <div style={{textAlign:"center"}}>
               <div style={{fontSize:10,color:"var(--t3)"}}>META ADS ({range}d)</div>
-              <div style={{fontSize:20,fontWeight:700,color:"#a855f7",fontFamily:"'JetBrains Mono',monospace"}}>{f$(agg.tms)}</div>
+              <div style={{fontSize:20,fontWeight:700,color:"#7c3aed",fontFamily:"'JetBrains Mono',monospace"}}>{f$(agg.tms)}</div>
               <div style={{fontSize:10,color:"var(--t3)"}}>{agg.metaROAS?agg.metaROAS.toFixed(2):"—"}x ROAS</div>
             </div>
             <div style={{textAlign:"center"}}>
@@ -1514,7 +1511,7 @@ function Dashboard(){
           <div style={{fontSize:11,color:"var(--t3)",marginBottom:8,textTransform:"uppercase"}}>Channel Type Split</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10}}>
             {pmax.length>0&&<div style={{textAlign:"center",padding:10,borderRadius:10,background:"rgba(66,133,244,0.08)"}}>
-              <div style={{fontSize:10,color:"#4285f4",fontWeight:600}}>PERFORMANCE MAX</div>
+              <div style={{fontSize:10,color:"#1a56db",fontWeight:600}}>PERFORMANCE MAX</div>
               <div style={{fontSize:18,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{f$(pmaxSpend)}</div>
               <div style={{fontSize:10,color:"var(--t3)"}}>{pmaxSpend>0?(pmaxConv/pmaxSpend).toFixed(1)+"x ROAS":"—"} · {pmax.length} campaign{pmax.length>1?"s":""}</div>
             </div>}
@@ -1543,14 +1540,14 @@ function Dashboard(){
                 const cRoas=c.spend>0?c.conversionValue/c.spend:0;
                 return <tr key={i} style={{borderBottom:"1px solid var(--bg)"}}>
                   <td style={{padding:"6px 8px",color:"var(--t1)",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.campaign}</td>
-                  <td style={{padding:"6px 8px",color:c.channel==="PERFORMANCE_MAX"?"#4285f4":c.channel==="SEARCH"?"#34a853":"#9ca3af",fontSize:9}}>{c.channel==="PERFORMANCE_MAX"?"PMax":c.channel==="SEARCH"?"Search":c.channel}</td>
+                  <td style={{padding:"6px 8px",color:c.channel==="PERFORMANCE_MAX"?"#1a56db":c.channel==="SEARCH"?"#15803d":"var(--t3)",fontSize:9}}>{c.channel==="PERFORMANCE_MAX"?"PMax":c.channel==="SEARCH"?"Search":c.channel}</td>
                   <td style={{padding:"6px 8px"}}>{f$(c.spend)}</td>
                   <td style={{padding:"6px 8px"}}>{c.clicks}</td>
                   <td style={{padding:"6px 8px"}}>{fn(c.impressions)}</td>
-                  <td style={{padding:"6px 8px",color:c.ctr>0.02?"#10b981":c.ctr>0.01?"#f59e0b":"#ef4444"}}>{(c.ctr*100).toFixed(1)}%</td>
+                  <td style={{padding:"6px 8px",color:c.ctr>0.02?"#15803d":c.ctr>0.01?"#92400e":"#b91c1c"}}>{(c.ctr*100).toFixed(1)}%</td>
                   <td style={{padding:"6px 8px"}}>{Math.round(c.conversions)}</td>
                   <td style={{padding:"6px 8px"}}>{f$(c.conversionValue)}</td>
-                  <td style={{padding:"6px 8px",color:cRoas>=5?"#10b981":cRoas>=2?"#f59e0b":"#ef4444"}}>{cRoas.toFixed(1)}x</td>
+                  <td style={{padding:"6px 8px",color:cRoas>=5?"#15803d":cRoas>=2?"#92400e":"#b91c1c"}}>{cRoas.toFixed(1)}x</td>
                   <td style={{padding:"6px 8px",color:"var(--t3)"}}>{c.entries||"—"}</td>
                 </tr>;
               })}</tbody>
@@ -2144,7 +2141,7 @@ function Dashboard(){
                   const bmNote=t.type==="Reel/Video"?"2-5x reach vs static":t.type==="Carousel"?"Highest save rate":"Lower reach";
                   return <tr key={i} style={{background:i===0?"rgba(34,197,94,0.04)":"transparent"}}>
                     <td style={{...tdS,fontFamily:"'DM Sans',sans-serif",fontWeight:600}}>
-                      <span style={{padding:"2px 8px",borderRadius:6,background:t.type==="Reel/Video"?"rgba(168,85,247,0.15)":t.type==="Carousel"?"rgba(79,110,247,0.15)":"rgba(107,114,128,0.1)",color:t.type==="Reel/Video"?"#a855f7":t.type==="Carousel"?"var(--acc)":"var(--t3)"}}>{t.type}</span>
+                      <span style={{padding:"2px 8px",borderRadius:6,background:t.type==="Reel/Video"?"rgba(168,85,247,0.15)":t.type==="Carousel"?"rgba(79,110,247,0.15)":"rgba(107,114,128,0.1)",color:t.type==="Reel/Video"?"#7c3aed":t.type==="Carousel"?"var(--acc)":"var(--t3)"}}>{t.type}</span>
                     </td>
                     <td style={{...tdS,textAlign:"right"}}>{t.count}</td>
                     <td style={{...tdS,textAlign:"right"}}>{Math.round(t.avgLikes)}</td>
@@ -2165,7 +2162,7 @@ function Dashboard(){
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10,marginBottom:12}}>
             <div style={{background:"rgba(168,85,247,0.06)",border:"1px solid rgba(168,85,247,0.2)",borderRadius:10,padding:14,textAlign:"center"}}>
               <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Current Followers</div>
-              <div style={{fontSize:24,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"#a855f7"}}>{fn(followers)}</div>
+              <div style={{fontSize:24,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"#7c3aed"}}>{fn(followers)}</div>
             </div>
             {monthlyGrowthPct>0&&<div style={{background:monthlyGrowthPct>=2?"rgba(34,197,94,0.06)":"rgba(245,158,11,0.06)",border:"1px solid "+(monthlyGrowthPct>=2?"rgba(34,197,94,0.2)":"rgba(245,158,11,0.2)"),borderRadius:10,padding:14,textAlign:"center"}}>
               <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Monthly Growth</div>
@@ -2193,7 +2190,7 @@ function Dashboard(){
               <XAxis dataKey="date" tick={{fill:"var(--t3)",fontSize:10}} interval={Math.max(0,Math.floor((ig.daily?.length||1)/10)-1)} />
               <YAxis tick={{fill:"var(--t3)",fontSize:10}} tickFormatter={v=>v>=1000?(v/1000).toFixed(0)+"k":v} />
               <Tooltip contentStyle={{background:"var(--tipbg)",border:"1px solid var(--tipbdr)",borderRadius:8,fontSize:12}} />
-              <Area type="monotone" dataKey="reach" fill="rgba(168,85,247,0.1)" stroke="#a855f7" strokeWidth={2} name="IG Reach" />
+              <Area type="monotone" dataKey="reach" fill="rgba(168,85,247,0.1)" stroke="#7c3aed" strokeWidth={2} name="IG Reach" />
             </ComposedChart>
           </ResponsiveContainer>
         </div>}
@@ -2207,7 +2204,7 @@ function Dashboard(){
               <YAxis tick={{fill:"var(--t3)",fontSize:10}} />
               <Tooltip contentStyle={{background:"var(--tipbg)",border:"1px solid var(--tipbdr)",borderRadius:8,fontSize:12}} />
               <Bar dataKey="impressions" fill="rgba(79,110,247,0.3)" radius={[3,3,0,0]} name="FB Impressions" />
-              <Line type="monotone" dataKey="engaged" stroke="#10b981" strokeWidth={2} dot={false} name="Engaged Users" />
+              <Line type="monotone" dataKey="engaged" stroke="#15803d" strokeWidth={2} dot={false} name="Engaged Users" />
             </ComposedChart>
           </ResponsiveContainer>
         </div>}
@@ -2235,7 +2232,7 @@ function Dashboard(){
                   return <tr key={i}>
                     <td style={tdS}>{p.date}</td>
                     <td style={{...tdS,fontFamily:"'DM Sans',sans-serif",maxWidth:250,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.caption||"—"}</td>
-                    <td style={{...tdS,fontSize:11}}><span style={{padding:"2px 8px",borderRadius:6,background:p.type==="VIDEO"?"rgba(168,85,247,0.15)":p.type==="CAROUSEL_ALBUM"?"rgba(79,110,247,0.15)":"rgba(107,114,128,0.1)",color:p.type==="VIDEO"?"#a855f7":p.type==="CAROUSEL_ALBUM"?"var(--acc)":"var(--t3)"}}>{typeLabel}</span></td>
+                    <td style={{...tdS,fontSize:11}}><span style={{padding:"2px 8px",borderRadius:6,background:p.type==="VIDEO"?"rgba(168,85,247,0.15)":p.type==="CAROUSEL_ALBUM"?"rgba(79,110,247,0.15)":"rgba(107,114,128,0.1)",color:p.type==="VIDEO"?"#7c3aed":p.type==="CAROUSEL_ALBUM"?"var(--acc)":"var(--t3)"}}>{typeLabel}</span></td>
                     <td style={{...tdS,textAlign:"right",color:"var(--red)"}}>{fn(p.likes)}</td>
                     <td style={{...tdS,textAlign:"right"}}>{fn(p.comments)}</td>
                     <td style={{...tdS,textAlign:"right",fontWeight:600,color:eng>=50?"var(--grn)":eng>=20?"var(--ylw)":"var(--t3)"}}>{fn(eng)}</td>
@@ -2421,16 +2418,16 @@ function Dashboard(){
         {/* 6-WEEK GAME PLAN */}
         {(()=>{
           // Determine which week Noody should be in
-          var weekPhase="1-2",phaseLabel="CALIBRATE",phaseColor="#3b82f6",phaseDesc="Lock in data, verify tracking, identify situation and constraint.";
-          if(situation===1&&dtcMerVal<=35&&fcPct<=25){weekPhase="5-6";phaseLabel="SCALE TEST";phaseColor="#10b981";phaseDesc="Equation is profitable. Increase ad spend 15-20% on top performers, test new creative.";}
-          else if(npPct>=5){weekPhase="3-4";phaseLabel="QUICK WINS";phaseColor="#f59e0b";phaseDesc="Fix obvious gaps \u2014 activate flows, optimize form, increase campaign cadence, pause villain ads.";}
+          var weekPhase="1-2",phaseLabel="CALIBRATE",phaseColor="#1d4ed8",phaseDesc="Lock in data, verify tracking, identify situation and constraint.";
+          if(situation===1&&dtcMerVal<=35&&fcPct<=25){weekPhase="5-6";phaseLabel="SCALE TEST";phaseColor="#15803d";phaseDesc="Equation is profitable. Increase ad spend 15-20% on top performers, test new creative.";}
+          else if(npPct>=5){weekPhase="3-4";phaseLabel="QUICK WINS";phaseColor="#92400e";phaseDesc="Fix obvious gaps \u2014 activate flows, optimize form, increase campaign cadence, pause villain ads.";}
           return <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:16}}>
             <div style={{fontSize:11,color:"var(--t3)",marginBottom:10,textTransform:"uppercase"}}>EE 6-Week Game Plan \u2014 Where Is Noody?</div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
               {[
-                {w:"1-2",l:"Calibrate",d:"Lock in data, verify tracking, set benchmarks",c:"#3b82f6"},
-                {w:"3-4",l:"Quick Wins",d:"Fix flows, form, campaign cadence, pause bad ads",c:"#f59e0b"},
-                {w:"5-6",l:"Scale Test",d:"Increase spend 15% if profitable, test new creative",c:"#10b981"},
+                {w:"1-2",l:"Calibrate",d:"Lock in data, verify tracking, set benchmarks",c:"#1d4ed8"},
+                {w:"3-4",l:"Quick Wins",d:"Fix flows, form, campaign cadence, pause bad ads",c:"#92400e"},
+                {w:"5-6",l:"Scale Test",d:"Increase spend 15% if profitable, test new creative",c:"#15803d"},
               ].map((phase,i)=>{
                 var isActive=phase.w===weekPhase;
                 return <div key={i} style={{background:isActive?phase.c+"14":"transparent",border:"1px solid "+(isActive?phase.c+"4d":"var(--bdr)"),borderRadius:10,padding:12,textAlign:"center",opacity:isActive?1:0.5}}>
@@ -2475,24 +2472,24 @@ function Dashboard(){
           <div style={{fontSize:11,color:"var(--t3)",marginBottom:8,textTransform:"uppercase"}}>Meta ROAS by Month</div>
           <ResponsiveContainer width="100%" height={200}>
             <ComposedChart data={monthlyRoas}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e"/>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb"/>
               <XAxis dataKey="month" tick={{fill:"#6b7280",fontSize:9}}/>
               <YAxis yAxisId="roas" tick={{fill:"#6b7280",fontSize:9}} domain={[0,"auto"]}/>
               <YAxis yAxisId="spend" orientation="right" tick={{fill:"#6b7280",fontSize:9}}/>
-              <Tooltip contentStyle={{background:"var(--bdr)",border:"1px solid #2d2d44",borderRadius:8,fontSize:11}}/>
+              <Tooltip contentStyle={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:8,fontSize:11}}/>
               <Bar yAxisId="spend" dataKey="spend" fill="#a855f722" radius={[3,3,0,0]} name="Meta Spend ($)"/>
-              <Line yAxisId="roas" type="monotone" dataKey="roas" stroke="#10b981" strokeWidth={2} dot={{r:3}} name="ROAS"/>
-              <ReferenceLine yAxisId="roas" y={2.5} stroke="#f59e0b66" strokeDasharray="3 3" label={{value:"2.5x target",fill:"#f59e0b",fontSize:9}}/>
+              <Line yAxisId="roas" type="monotone" dataKey="roas" stroke="#15803d" strokeWidth={2} dot={{r:3}} name="ROAS"/>
+              <ReferenceLine yAxisId="roas" y={2.5} stroke="#92400e66" strokeDasharray="3 3" label={{value:"2.5x target",fill:"#92400e",fontSize:9}}/>
             </ComposedChart>
           </ResponsiveContainer>
           {bestMonth&&worstMonth&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:10}}>
             <div style={{background:"rgba(16,185,129,0.06)",borderRadius:8,padding:10,textAlign:"center"}}>
               <div style={{fontSize:10,color:"var(--t3)"}}>BEST MONTH</div>
-              <div style={{fontSize:16,fontWeight:700,color:"#10b981",fontFamily:"'JetBrains Mono',monospace"}}>{bestMonth.month} — {bestMonth.roas}x</div>
+              <div style={{fontSize:16,fontWeight:700,color:"#15803d",fontFamily:"'JetBrains Mono',monospace"}}>{bestMonth.month} — {bestMonth.roas}x</div>
             </div>
             <div style={{background:"rgba(239,68,68,0.06)",borderRadius:8,padding:10,textAlign:"center"}}>
               <div style={{fontSize:10,color:"var(--t3)"}}>WORST MONTH</div>
-              <div style={{fontSize:16,fontWeight:700,color:"#ef4444",fontFamily:"'JetBrains Mono',monospace"}}>{worstMonth.month} — {worstMonth.roas}x</div>
+              <div style={{fontSize:16,fontWeight:700,color:"#b91c1c",fontFamily:"'JetBrains Mono',monospace"}}>{worstMonth.month} — {worstMonth.roas}x</div>
             </div>
           </div>}
         </div>}
