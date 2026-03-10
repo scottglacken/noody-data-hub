@@ -34,10 +34,10 @@ export default async function handler(req, res) {
 
   try {
     var allOrders = [];
-    var path = '/orders.json?status=any&limit=250&created_at_min=' + sinceDate + 'T00:00:00Z&fields=id,name,created_at,total_price,total_tax,total_discounts,total_shipping_price_set,financial_status,line_items,customer,cancelled_at';
+    var url = 'https://' + shop + '/admin/api/' + API_VERSION + '/orders.json?status=any&limit=250&created_at_min=' + sinceDate + 'T00:00:00Z&fields=id,name,created_at,total_price,total_tax,total_discounts,total_shipping_price_set,financial_status,line_items,customer,cancelled_at';
 
-    while (path) {
-      var response = await fetch('https://' + shop + '/admin/api/' + API_VERSION + path, {
+    while (url) {
+      var response = await fetch(url, {
         headers: { 'X-Shopify-Access-Token': token },
       });
       if (!response.ok) {
@@ -48,8 +48,8 @@ export default async function handler(req, res) {
       allOrders = allOrders.concat(data.orders || []);
 
       var link = response.headers.get('link');
-      var match = link ? link.match(/<https:\/\/[^/]+(.+?)>;\s*rel="next"/) : null;
-      path = match ? match[1] : null;
+      var match = link ? link.match(/<([^>]+)>;\s*rel="next"/) : null;
+      url = match ? match[1] : null;
     }
 
     // Filter cancelled/voided

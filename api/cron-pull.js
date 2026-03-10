@@ -7,10 +7,10 @@ const API_VERSION = '2024-10';
 async function pullShopify(shop, token) {
   const sinceDate = new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0]; // Last 2 days
   let orders = [];
-  let path = `/orders.json?status=any&limit=250&created_at_min=${sinceDate}T00:00:00Z&fields=id,created_at,total_price,total_tax,total_discounts,total_shipping_price_set,financial_status,line_items,customer,cancelled_at`;
+  let url = `https://${shop}/admin/api/${API_VERSION}/orders.json?status=any&limit=250&created_at_min=${sinceDate}T00:00:00Z&fields=id,created_at,total_price,total_tax,total_discounts,total_shipping_price_set,financial_status,line_items,customer,cancelled_at`;
 
-  while (path) {
-    const res = await fetch(`https://${shop}/admin/api/${API_VERSION}${path}`, {
+  while (url) {
+    const res = await fetch(url, {
       headers: { 'X-Shopify-Access-Token': token },
     });
     if (!res.ok) throw new Error(`Shopify ${res.status}`);
@@ -18,8 +18,8 @@ async function pullShopify(shop, token) {
     orders = orders.concat(data.orders || []);
 
     const link = res.headers.get('link');
-    const match = link?.match(/<https:\/\/[^/]+(.+?)>;\s*rel="next"/);
-    path = match ? match[1] : null;
+    const match = link?.match(/<([^>]+)>;\s*rel="next"/);
+    url = match ? match[1] : null;
   }
 
   return orders;
