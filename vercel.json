@@ -6,6 +6,9 @@
   "functions": {
     "api/ai-coach.js": {
       "includeFiles": "context/**"
+    },
+    "api/pull-google-ads.js": {
+      "maxDuration": 30
     }
   }
 }

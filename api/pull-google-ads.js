@@ -36,8 +36,8 @@ async function handleGA4(req, res, accessToken, clientId) {
     'Content-Type': 'application/json',
   };
 
-  // Run 3 reports in parallel: daily, traffic sources, landing pages
-  const [dailyRes, trafficRes, landingRes] = await Promise.all([
+  // Run all 4 reports in parallel
+  const [dailyRes, trafficRes, landingRes, totalSessionsRes] = await Promise.all([
     // 1. Daily sessions + conversions (purchase only)
     fetch(ga4Url, {
       method: 'POST', headers,
@@ -76,18 +76,17 @@ async function handleGA4(req, res, accessToken, clientId) {
         limit: '10',
       }),
     }),
-  ]);
-
-  // Also get total sessions (without purchase filter) for accurate session counts
-  const totalSessionsRes = await fetch(ga4Url, {
-    method: 'POST', headers,
-    body: JSON.stringify({
-      dateRanges: [{ startDate, endDate }],
-      dimensions: [{ name: 'date' }],
-      metrics: [{ name: 'sessions' }],
-      orderBys: [{ dimension: { dimensionName: 'date' } }],
+    // 4. Total sessions per day (unfiltered — for accurate session counts)
+    fetch(ga4Url, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: 'date' }],
+        metrics: [{ name: 'sessions' }],
+        orderBys: [{ dimension: { dimensionName: 'date' } }],
+      }),
     }),
-  });
+  ]);
 
   // Check for 403 (missing analytics scope)
   for (const r of [dailyRes, trafficRes, landingRes, totalSessionsRes]) {
