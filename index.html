@@ -150,6 +150,18 @@ function Dashboard(){
     setGadsLoading(false);
   },[]);
 
+  // GA4 analytics data
+  const [ga4,setGa4]=useState(null);
+  const [ga4Loading,setGa4Loading]=useState(false);
+  const fetchGa4=useCallback(async()=>{
+    setGa4Loading(true);
+    try{
+      const r=await fetch('/api/pull-google-ads?type=ga4&days=400',{headers:{"x-api-key":"noody-eq-2026-datahub"}});
+      if(r.ok){const d=await r.json();if(d.success)setGa4(d);}
+    }catch(e){console.error("GA4:",e);}
+    setGa4Loading(false);
+  },[]);
+
   useEffect(()=>{if(tab==="gads")fetchGads(gadsDays);},[tab,gadsDays]);
 
   // Live Xero data
@@ -209,20 +221,22 @@ function Dashboard(){
     if((tab==="equation"||tab==="diagnose"||tab==="scale"||tab==="insights")&&!xeroLive&&!xeroLoading)fetchXero(xeroMonths);
     if((tab==="gads"||tab==="insights")&&!gads&&!gadsLoading)fetchGads(gadsDays);
     if((tab==="equation"||tab==="daily"||tab==="insights")&&!klavLive&&!klavLoading)fetchKlav();
+    if((tab==="equation"||tab==="daily")&&!ga4&&!ga4Loading)fetchGa4();
   },[tab]);
 
-  // Merge hardcoded D with live Shopify+Meta+Klaviyo data
+  // Merge hardcoded D with live Shopify+Meta+Klaviyo+GA4 data
   const mergedD=useMemo(()=>{
-    if(!shopLive&&!metaLive&&!klavLive)return D;
-    const shopMap={};const metaMap={};const klavMap={};
+    if(!shopLive&&!metaLive&&!klavLive&&!ga4)return D;
+    const shopMap={};const metaMap={};const klavMap={};const ga4Map={};
     if(shopLive?.daily)shopLive.daily.forEach(d=>{shopMap[d.date]={r:d.revenue||0,o:d.orders||0,i:d.itemsSold||0,s:d.totalShipping||0};});
     if(metaLive?.daily)metaLive.daily.forEach(d=>{metaMap[d.date]={ms:d.metaSpend||0,mp:d.purchases||0,mv:d.purchaseValue||0};});
     if(klavLive?.daily)klavLive.daily.forEach(d=>{klavMap[d.date]={e:d.emailRevenue||0};});
+    if(ga4?.daily)ga4.daily.forEach(d=>{ga4Map[d.date]={ss:d.sessions||0,gc:d.conversions||0};});
     const merged=D.map(row=>{
-      const sd=shopMap[row.d];const md=metaMap[row.d];const kd=klavMap[row.d];
-      const overrides={...(sd||{}),...(md||{})};
-      if(kd)overrides.e=kd.e; // Klaviyo email rev overrides hardcoded
-      if(sd||md||kd)return{...row,...overrides};
+      const sd=shopMap[row.d];const md=metaMap[row.d];const kd=klavMap[row.d];const gd=ga4Map[row.d];
+      const overrides={...(sd||{}),...(md||{}),...(gd||{})};
+      if(kd)overrides.e=kd.e;
+      if(sd||md||kd||gd)return{...row,...overrides};
       return row;
     });
     const existDates=new Set(merged.map(r=>r.d));
@@ -231,14 +245,15 @@ function Dashboard(){
         if(!existDates.has(d.date)){
           const md=metaMap[d.date]||{ms:0,mp:0,mv:0};
           const kd=klavMap[d.date]||{e:0};
-          merged.push({d:d.date,r:d.revenue||0,o:d.orders||0,i:d.itemsSold||0,s:d.totalShipping||0,e:kd.e,...md});
+          const gd=ga4Map[d.date]||{ss:0,gc:0};
+          merged.push({d:d.date,r:d.revenue||0,o:d.orders||0,i:d.itemsSold||0,s:d.totalShipping||0,e:kd.e,...md,...gd});
           existDates.add(d.date);
         }
       });
     }
     merged.sort((a,b)=>a.d.localeCompare(b.d));
     return merged;
-  },[shopLive,metaLive,klavLive]);
+  },[shopLive,metaLive,klavLive,ga4]);
 
   // Live Xero P&L for Equation tab (falls back to hardcoded XERO)
   const liveXero=useMemo(()=>{
@@ -264,16 +279,24 @@ function Dashboard(){
   // Compute aggregates for any data slice
   const computeAgg=(data)=>{
     if(!data||!data.length)return null;
-    let tr=0,to=0,ti=0,ts=0,te=0,tms=0,tmp=0,tmv=0,tsess=0,sessDays=0;
+    let tr=0,to=0,ti=0,ts=0,te=0,tms=0,tmp=0,tmv=0,tsess=0,sessDays=0,tga4sess=0,tga4conv=0,ga4Days=0;
     data.forEach(d=>{tr+=d.r;to+=d.o;ti+=d.i;ts+=d.s;te+=d.e;tms+=d.ms;tmp+=d.mp;tmv+=d.mv;
+      // GA4 sessions (preferred) or manual fallback
+      if(d.ss&&d.ss>0){tga4sess+=d.ss;tga4conv+=d.gc||0;ga4Days++;}
       const sd=sessData[d.d];if(sd&&sd>0){tsess+=sd;sessDays++;}
     });
+    // Use GA4 sessions when available, fall back to manual
+    const useSess=ga4Days>0?tga4sess:tsess;
+    const useSessDays=ga4Days>0?ga4Days:sessDays;
+    const sessSource=ga4Days>0?"ga4":"manual";
     return {d:data.length,tr,to,ti,ts,te,tms,tmp,tmv,tsess,sessDays,
+      tga4sess,tga4conv,ga4Days,sessSource,
       aov:to>0?tr/to:0,mer:tr>0&&tms>0?(tms/tr)*100:null,
       avgRev:tr/data.length,avgOrd:to/data.length,
       shipPct:tr>0?(ts/tr)*100:0,emailPct:tr>0?(te/tr)*100:null,
       metaROAS:tms>0?tmv/tms:null,cpp:tmp>0?tms/tmp:null,
-      cr:tsess>0?(to/tsess)*100:null,rps:tsess>0?tr/tsess:null,
+      cr:useSess>0?(to/useSess)*100:null,rps:useSess>0?tr/useSess:null,
+      useSess,useSessDays,
       startDate:data[0]?.d,endDate:data[data.length-1]?.d,
     };
   };
@@ -463,9 +486,9 @@ function Dashboard(){
             {l:"Meta ROAS",v:roas,pv:pRoas,f:"n",sub:"last-click"},
             {l:"CPP",v:cpp,f:"$",inv:true,sub:"cost per purchase"},
             {l:"Email Rev %",v:emailPct,f:"%",bm:BM.em,sub:"benchmark 30-40%"},
-            {l:"Sessions",v:a.tsess||null,f:"n",sub:a.sessDays>0?a.sessDays+"d of data":"paste in Daily tab"},
-            {l:"Conv Rate",v:a.cr,f:"%",bm:{h:[2.5,100],w:[1.5,2.5]},sub:"orders / sessions"},
-            {l:"Rev/Session",v:a.rps,f:"$",sub:"RPV = CR \u00D7 AOV"},
+            {l:"Sessions",v:a.useSess||null,f:"n",sub:a.sessSource==="ga4"?a.ga4Days+"d GA4 data":"paste in Daily tab"},
+            {l:"Conv Rate",v:a.cr,f:"%",bm:{h:[2.5,100],w:[1.5,2.5]},sub:"orders / sessions"+(a.sessSource==="ga4"?" (GA4)":"")},
+            {l:"Rev/Session",v:a.rps,f:"$",sub:"RPV = CR \u00D7 AOV"+(a.sessSource==="ga4"?" (GA4)":"")},
             {l:"Shipping %",v:a.shipPct,f:"%",sub:"of DTC revenue"},
           ].map((m,i)=>{
             const dv=m.f==="$"?f$(m.v):m.f==="%"?fp(m.v):m.v!=null?m.v.toFixed(2):"\u2014";
@@ -724,9 +747,9 @@ function Dashboard(){
         <MC l="Avg AOV" v={agg.aov} fmt="$"/>
         <MC l="Orders" v={agg.to} fmt="n"/>
         <MC l="Meta ROAS" v={agg.metaROAS} fmt="n" sub="last-click"/>
-        <MC l="Sessions" v={agg.tsess||null} fmt="n" sub={agg.sessDays>0?agg.sessDays+"d of data":"enter below"}/>
-        <MC l="Conv Rate" v={agg.cr} fmt="%" bm={{h:[2.5,100],w:[1.5,2.5]}} sub="orders/sessions"/>
-        <MC l="Rev/Session" v={agg.rps} fmt="$" sub="RPV = CR x AOV"/>
+        <MC l="Sessions" v={agg.useSess||null} fmt="n" sub={agg.sessSource==="ga4"?agg.ga4Days+"d GA4":agg.sessDays>0?agg.sessDays+"d manual":"enter below"}/>
+        <MC l="Conv Rate" v={agg.cr} fmt="%" bm={{h:[2.5,100],w:[1.5,2.5]}} sub={"orders/sessions"+(agg.sessSource==="ga4"?" (GA4)":"")}/>
+        <MC l="Rev/Session" v={agg.rps} fmt="$" sub={"RPV = CR x AOV"+(agg.sessSource==="ga4"?" (GA4)":"")}/>
         <MC l="Avg CPP" v={agg.cpp} fmt="$"/>
         <MC l="Shipping %" v={agg.shipPct} fmt="%"/>
       </div>
