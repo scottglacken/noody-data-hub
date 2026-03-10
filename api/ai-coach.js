@@ -50,6 +50,8 @@ var KB_SECTIONS = {
   social: { ee: [], nurture: [] },
   // Insights tab
   insights: { ee: [5, 6, 20, 21], nurture: [] },
+  // Website tab
+  website: { ee: [10, 11, 19], nurture: [] },
 };
 
 // Map context keys to their context doc filenames
@@ -61,6 +63,7 @@ var CONTEXT_FILES = {
   gads: 'google-ads.md',
   xero: 'xero.md',
   social: 'social.md',
+  website: 'website.md',
 };
 
 // Build the knowledge context for a given tab

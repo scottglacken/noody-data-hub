@@ -318,6 +318,28 @@ function Dashboard(){
     setSocialLoading(false);
   },[]);
 
+  // Website tab data (Shopify website-specific + enhanced GA4)
+  const [webData,setWebData]=useState(null);
+  const [webLoading,setWebLoading]=useState(false);
+  const [webGa4,setWebGa4]=useState(null);
+  const [webGa4Loading,setWebGa4Loading]=useState(false);
+  const fetchWebData=useCallback(async(d)=>{
+    setWebLoading(true);
+    try{
+      const r=await fetch('/api/pull-shopify?type=website&days='+(d||30),{headers:{"x-api-key":"noody-eq-2026-datahub"}});
+      if(r.ok){const data=await r.json();setWebData(data);}
+    }catch(e){console.error("Website:",e);}
+    setWebLoading(false);
+  },[]);
+  const fetchWebGa4=useCallback(async(d)=>{
+    setWebGa4Loading(true);
+    try{
+      const r=await fetch('/api/pull-google-ads?type=ga4&days='+(d||30),{headers:{"x-api-key":"noody-eq-2026-datahub"}});
+      if(r.ok){const data=await r.json();if(data.success)setWebGa4(data);}
+    }catch(e){console.error("WebGA4:",e);}
+    setWebGa4Loading(false);
+  },[]);
+
   // Klaviyo detail data (flows, campaigns, deliverability)
   const [klavDetail,setKlavDetail]=useState(null);
   const [klavDetailLoading,setKlavDetailLoading]=useState(false);
@@ -333,7 +355,7 @@ function Dashboard(){
 
   // Auto-fetch on first visit to relevant tabs
   useEffect(()=>{
-    if((tab==="daily"||tab==="equation"||tab==="meta"||tab==="diagnose"||tab==="scale"||tab==="insights"||tab==="social")&&!shopLive&&!shopLoading)fetchShop();
+    if((tab==="daily"||tab==="equation"||tab==="meta"||tab==="diagnose"||tab==="scale"||tab==="insights"||tab==="social"||tab==="website")&&!shopLive&&!shopLoading)fetchShop();
     if((tab==="daily"||tab==="meta"||tab==="insights")&&!metaLive&&!metaLoading)fetchMeta();
     if(tab==="meta"&&!campaignData&&!campaignLoading)fetchCampaigns();
     if((tab==="equation"||tab==="diagnose"||tab==="scale"||tab==="insights")&&!xeroLive&&!xeroLoading)fetchXero(xeroMonths);
@@ -342,6 +364,8 @@ function Dashboard(){
     if(tab==="klaviyo"&&!klavDetail&&!klavDetailLoading)fetchKlavDetail(klavDetailDays);
     if(tab==="social"&&!socialData&&!socialLoading)fetchSocial();
     if((tab==="equation"||tab==="daily")&&!ga4&&!ga4Loading)fetchGa4();
+    if(tab==="website"&&!webData&&!webLoading)fetchWebData(range);
+    if(tab==="website"&&!webGa4&&!webGa4Loading)fetchWebGa4(range);
   },[tab]);
 
   // Merge hardcoded D with live Shopify+Meta+Klaviyo+GA4 data
@@ -489,6 +513,7 @@ function Dashboard(){
       <div className="tab-bar">
         <Tab a={tab==="equation"} onClick={()=>setTab("equation")} icon="💰">Equation</Tab>
         <Tab a={tab==="daily"} onClick={()=>setTab("daily")} icon="📊">Daily</Tab>
+        <Tab a={tab==="website"} onClick={()=>setTab("website")} icon="🌐">Website</Tab>
         <div className="tab-sep"/>
         <Tab a={tab==="meta"} onClick={()=>setTab("meta")} icon="📢">Meta Ads</Tab>
         <Tab a={tab==="gads"} onClick={()=>setTab("gads")} icon="🎯">Google Ads</Tab>
@@ -505,7 +530,7 @@ function Dashboard(){
 
     <PulseBar agg={agg} xeroChannels={xeroChannels} klavLive={klavLive}/>
 
-    {(tab==="equation"||tab==="daily"||tab==="meta"||tab==="insights"||tab==="diagnose"||tab==="scale"||tab==="klaviyo"||tab==="social"||tab==="gads"||tab==="xero")&&<div style={{padding:"6px 20px",display:"flex",gap:3,alignItems:"center",flexWrap:"wrap"}}>
+    {(tab==="equation"||tab==="daily"||tab==="meta"||tab==="insights"||tab==="diagnose"||tab==="scale"||tab==="klaviyo"||tab==="social"||tab==="gads"||tab==="xero"||tab==="website")&&<div style={{padding:"6px 20px",display:"flex",gap:3,alignItems:"center",flexWrap:"wrap"}}>
       {[7,14,30,90,180,365].map(r=><button key={r} onClick={()=>{setRange(r);setCustomFrom("");setCustomTo("");}} style={{padding:"8px 16px",fontSize:13,borderRadius:8,minHeight:36,cursor:"pointer",background:!customFrom&&range===r?"var(--acc)":"var(--card)",color:!customFrom&&range===r?"#fff":"var(--t2)",border:!customFrom&&range===r?"1px solid var(--acc)":"1px solid var(--bdr)"}}>{r}d</button>)}
       <span style={{fontSize:11,color:"var(--t3)",margin:"0 4px"}}>or</span>
       <input type="date" value={customFrom} onChange={e=>{setCustomFrom(e.target.value);}} style={{padding:"6px 8px",fontSize:12,borderRadius:6,background:"var(--card)",border:"1px solid var(--bdr)",color:"var(--t1)",fontFamily:"'JetBrains Mono',monospace"}}/>
@@ -1966,6 +1991,257 @@ function Dashboard(){
           {[30,60,90,180].map(d=><button key={d} onClick={()=>{setKlavDetailDays(d);setKlavDetail(null);fetchKlavDetail(d);}} style={{padding:"6px 14px",fontSize:12,borderRadius:8,cursor:"pointer",background:klavDetailDays===d?"var(--acc)":"var(--card)",color:klavDetailDays===d?"#fff":"var(--t2)",border:klavDetailDays===d?"1px solid var(--acc)":"1px solid var(--bdr)"}}>{d}d detail</button>)}
           {klavDetailLoading&&<span style={{fontSize:12,color:"var(--t3)"}}>Loading detail data...</span>}
           {klavDetail&&<span style={{fontSize:10,color:"var(--t3)",marginLeft:"auto"}}>Detail: {klavDetail.dateRange?.start} → {klavDetail.dateRange?.end} · Pulled: {klavDetail.pulledAt?new Date(klavDetail.pulledAt).toLocaleString("en-NZ",{timeZone:"Pacific/Auckland"}):"—"}</span>}
+        </div>
+      </>;
+    })()}
+
+    {tab==="website"&&(()=>{
+      const cardS={background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:12,padding:16,marginBottom:14};
+      const thS={fontSize:11,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",padding:"8px 10px",textAlign:"left",borderBottom:"1px solid var(--bdr)"};
+      const tdS={fontSize:13,padding:"8px 10px",borderBottom:"1px solid var(--bdr)",fontFamily:"'JetBrains Mono',monospace"};
+      const _days=range;
+      const wd=webData;
+      const ga=webGa4;
+      const loading=webLoading||webGa4Loading;
+
+      // Compute RPV and key metrics
+      const totalRev=wd?wd.summary.totalRevenue:0;
+      const totalOrders=wd?wd.summary.totalOrders:0;
+      const aov=wd?wd.summary.aov:0;
+      const totalSessions=ga?ga.summary.totalSessions:0;
+      const totalConversions=ga?ga.summary.totalConversions:0;
+      const cr=totalSessions>0?(totalOrders/totalSessions*100):0;
+      const rpv=totalSessions>0?totalRev/totalSessions:0;
+      const newPct=wd?wd.summary.newCustomerPct:0;
+      const retPct=wd?(100-wd.summary.newCustomerPct):0;
+      const itemsPerOrder=wd?wd.summary.avgItemsPerOrder:0;
+      const discountRate=wd?wd.summary.discountRate:0;
+      const engagementRate=ga?ga.summary.engagementRate:0;
+      const bounceRate=ga?ga.summary.bounceRate:0;
+      const avgDuration=ga?ga.summary.avgSessionDuration:0;
+
+      // Traffic light for RPV
+      const rpvStatus=rpv>=4?"h":rpv>=2.5?"h":rpv>=1.8?"w":rpv>0?"c":"n";
+      const rpvColor=rpvStatus==="h"?"var(--grn)":rpvStatus==="w"?"var(--ylw)":"var(--red)";
+      const rpvLabel=rpv>=4?"Excellent":rpv>=2.5?"Good":rpv>=1.8?"Average":rpv>0?"Below Average":"—";
+
+      // CR traffic light (Conversion Catalyst benchmarks)
+      const crStatus=cr>=3.2?"h":cr>=1.8?"w":cr>0?"c":"n";
+      const crColor=crStatus==="h"?"var(--grn)":crStatus==="w"?"var(--ylw)":"var(--red)";
+
+      // AI analysis — auto-fire on tab load
+      const webAiKey="website_"+rangeKey;
+      const aiText=tabAi[webAiKey];
+      const aiLoad=tabAiLoading.website;
+      if(wd&&ga&&!aiText&&!aiLoad){
+        const _prodLine=wd.topProducts?wd.topProducts.slice(0,5).map(function(p){return p.name+": "+f$(p.revenue)+" ("+p.units+" units, "+p.orders+" orders)";}).join("\n"):"No product data";
+        const _trafficLine=ga.trafficSources?ga.trafficSources.map(function(s){return s.channel+": "+fn(s.sessions)+" sessions, "+s.conversionRate+"% CR";}).join("\n"):"No traffic data";
+        const _deviceLine=ga.devices?ga.devices.map(function(d){return d.device+": "+fn(d.sessions)+" sessions ("+d.conversionRate+"% CR)";}).join("\n"):"No device data";
+        const prompt="Analyse Noody Skincare website performance (NZ eczema/baby skincare DTC brand). "+_days+"-day data.\n\n"+
+          "KEY METRICS:\n- Revenue: "+f$(totalRev)+" from "+fn(totalOrders)+" orders\n- Sessions: "+fn(totalSessions)+" (GA4)\n- Conversion Rate: "+cr.toFixed(2)+"% (Conversion Catalyst benchmark: median 1.8%, top quartile 3.2%)\n- AOV: "+f$(aov)+"\n- RPV: $"+rpv.toFixed(2)+" (benchmark: $2.50-$4.00 = Good for health/beauty DTC)\n- Items per Order: "+itemsPerOrder.toFixed(2)+"\n- Discount Rate: "+discountRate.toFixed(1)+"%\n- New Customer %: "+newPct.toFixed(1)+"% (benchmark: 40-60%)\n- Bounce Rate: "+bounceRate.toFixed(1)+"%\n- Engagement Rate: "+engagementRate.toFixed(1)+"%\n- Avg Session Duration: "+avgDuration.toFixed(0)+"s\n\n"+
+          "TOP PRODUCTS:\n"+_prodLine+"\n\n"+
+          "TRAFFIC SOURCES:\n"+_trafficLine+"\n\n"+
+          "DEVICE BREAKDOWN:\n"+_deviceLine+"\n\n"+
+          "Analyse using the RPV = CR x AOV framework. Compare against Conversion Catalyst benchmarks (594 brands). Identify whether CR or AOV is the bigger lever for improvement. Give 4-5 specific, actionable recommendations with numbers.";
+        setTimeout(()=>fetchTabAi("website",prompt,["website","shopify"]),0);
+      }
+
+      return <>
+        <div style={{fontSize:20,fontWeight:700,marginBottom:4}}>Website Performance</div>
+        <div style={{fontSize:12,color:"var(--t3)",marginBottom:16}}>
+          {_days}-day view · {wd?<span style={{fontSize:10,background:"rgba(21,128,61,0.08)",color:"var(--grn)",padding:"2px 6px",borderRadius:4,marginRight:4}}>SHOPIFY</span>:null}
+          {ga?<span style={{fontSize:10,background:"rgba(26,86,219,0.08)",color:"#1a56db",padding:"2px 6px",borderRadius:4}}>GA4</span>:null}
+        </div>
+
+        {loading&&<div style={{...cardS,textAlign:"center",color:"var(--t3)",fontSize:13}}>Loading website data...</div>}
+
+        {/* Section 1: RPV Hero */}
+        {!loading&&(wd||ga)&&<div style={{...cardS,textAlign:"center",padding:24,background:"linear-gradient(135deg,rgba(59,91,219,0.04),rgba(21,128,61,0.04))"}}>
+          <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Revenue Per Visit — The Grand Equalizer</div>
+          <div style={{fontSize:42,fontWeight:800,color:rpvColor,fontFamily:"'JetBrains Mono',monospace"}}>{"$"+rpv.toFixed(2)}</div>
+          <div style={{fontSize:12,color:rpvColor,fontWeight:600,marginBottom:12}}>{rpvLabel}</div>
+          <div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:8,fontSize:13,color:"var(--t2)"}}>
+            <span style={{padding:"4px 12px",background:"rgba(0,0,0,0.04)",borderRadius:6}}>CR {cr.toFixed(2)}%</span>
+            <span style={{fontSize:16,color:"var(--t3)"}}>×</span>
+            <span style={{padding:"4px 12px",background:"rgba(0,0,0,0.04)",borderRadius:6}}>AOV {f$(aov)}</span>
+            <span style={{fontSize:16,color:"var(--t3)"}}>=</span>
+            <span style={{padding:"4px 12px",background:"rgba(0,0,0,0.04)",borderRadius:6,fontWeight:600}}>RPV {"$"+rpv.toFixed(2)}</span>
+          </div>
+        </div>}
+
+        {/* Section 2: Key Metrics Grid */}
+        {!loading&&(wd||ga)&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginBottom:14}}>
+          {[
+            {l:"Sessions",v:fn(totalSessions),sub:"GA4",color:totalSessions>0?"var(--t1)":"var(--t3)"},
+            {l:"Conversion Rate",v:cr.toFixed(2)+"%",sub:"Top quartile: 3.2%",color:crColor},
+            {l:"AOV",v:f$(aov),sub:"Benchmark: >$70",color:aov>=70?"var(--grn)":aov>=50?"var(--ylw)":"var(--red)"},
+            {l:"RPV",v:"$"+rpv.toFixed(2),sub:"Good: $2.50-$4.00",color:rpvColor},
+            {l:"New Customers",v:newPct.toFixed(0)+"%",sub:"Healthy: 40-60%",color:newPct>=40&&newPct<=60?"var(--grn)":newPct>0?"var(--ylw)":"var(--t3)"},
+            {l:"Returning",v:retPct.toFixed(0)+"%",sub:fn(wd?wd.customerBreakdown.returning.orders:0)+" orders",color:retPct>=40&&retPct<=60?"var(--grn)":retPct>0?"var(--ylw)":"var(--t3)"},
+            {l:"Items/Order",v:itemsPerOrder.toFixed(2),sub:"Bundle opportunity",color:"var(--t1)"},
+            {l:"Discount Rate",v:discountRate.toFixed(1)+"%",sub:fn(wd?wd.summary.discountedOrders:0)+" discounted",color:discountRate>30?"var(--red)":discountRate>15?"var(--ylw)":"var(--grn)"},
+          ].map((m,i)=><div key={i} style={{...cardS,textAlign:"center",padding:12,marginBottom:0}}>
+            <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:4}}>{m.l}</div>
+            <div style={{fontSize:20,fontWeight:700,color:m.color,fontFamily:"'JetBrains Mono',monospace"}}>{m.v}</div>
+            <div style={{fontSize:10,color:"var(--t3)",marginTop:2}}>{m.sub}</div>
+          </div>)}
+        </div>}
+
+        {/* Section 3: AI Analysis */}
+        <AiSummary text={aiText} loading={aiLoad} label={"AI Website Analysis — "+_days+"d"}/>
+
+        {/* Section 4: Engagement Metrics (GA4) */}
+        {ga&&<div style={cardS}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Site Engagement</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+            <div style={{textAlign:"center"}}>
+              <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase"}}>Engagement Rate</div>
+              <div style={{fontSize:18,fontWeight:700,color:engagementRate>=60?"var(--grn)":engagementRate>=40?"var(--ylw)":"var(--red)",fontFamily:"'JetBrains Mono',monospace"}}>{engagementRate.toFixed(1)}%</div>
+            </div>
+            <div style={{textAlign:"center"}}>
+              <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase"}}>Bounce Rate</div>
+              <div style={{fontSize:18,fontWeight:700,color:bounceRate<=40?"var(--grn)":bounceRate<=60?"var(--ylw)":"var(--red)",fontFamily:"'JetBrains Mono',monospace"}}>{bounceRate.toFixed(1)}%</div>
+            </div>
+            <div style={{textAlign:"center"}}>
+              <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase"}}>Avg Duration</div>
+              <div style={{fontSize:18,fontWeight:700,color:"var(--t1)",fontFamily:"'JetBrains Mono',monospace"}}>{avgDuration>=60?Math.floor(avgDuration/60)+"m "+Math.round(avgDuration%60)+"s":Math.round(avgDuration)+"s"}</div>
+            </div>
+          </div>
+        </div>}
+
+        {/* Section 5: Traffic Sources */}
+        {ga&&ga.trafficSources&&ga.trafficSources.length>0&&<div style={cardS}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Traffic Sources</div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+              <thead><tr>
+                <th style={thS}>Channel</th>
+                <th style={{...thS,textAlign:"right"}}>Sessions</th>
+                <th style={{...thS,textAlign:"right"}}>Conversions</th>
+                <th style={{...thS,textAlign:"right"}}>Conv. Rate</th>
+                <th style={{...thS,textAlign:"right"}}>Share</th>
+              </tr></thead>
+              <tbody>
+                {ga.trafficSources.map((s,i)=>{
+                  const share=totalSessions>0?(s.sessions/totalSessions*100):0;
+                  const crCol=s.conversionRate>=3.2?"var(--grn)":s.conversionRate>=1.8?"var(--ylw)":s.conversionRate>0?"var(--red)":"var(--t3)";
+                  return <tr key={i}>
+                    <td style={tdS}>{s.channel}</td>
+                    <td style={{...tdS,textAlign:"right"}}>{fn(s.sessions)}</td>
+                    <td style={{...tdS,textAlign:"right"}}>{fn(s.conversions)}</td>
+                    <td style={{...tdS,textAlign:"right",color:crCol}}>{s.conversionRate.toFixed(2)}%</td>
+                    <td style={{...tdS,textAlign:"right"}}>{share.toFixed(1)}%</td>
+                  </tr>;
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>}
+
+        {/* Section 6: Device Performance */}
+        {ga&&ga.devices&&ga.devices.length>0&&<div style={cardS}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Device Performance</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10}}>
+            {ga.devices.map((d,i)=>{
+              const icon=d.device==="desktop"?"\uD83D\uDCBB":d.device==="mobile"?"\uD83D\uDCF1":d.device==="tablet"?"\uD83D\uDCF2":"\uD83C\uDF10";
+              const share=totalSessions>0?(d.sessions/totalSessions*100):0;
+              const crCol=d.conversionRate>=3.2?"var(--grn)":d.conversionRate>=1.8?"var(--ylw)":d.conversionRate>0?"var(--red)":"var(--t3)";
+              return <div key={i} style={{...cardS,textAlign:"center",padding:14,marginBottom:0}}>
+                <div style={{fontSize:24,marginBottom:4}}>{icon}</div>
+                <div style={{fontSize:12,fontWeight:600,textTransform:"capitalize",marginBottom:6}}>{d.device}</div>
+                <div style={{fontSize:10,color:"var(--t3)"}}>Sessions</div>
+                <div style={{fontSize:16,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{fn(d.sessions)}</div>
+                <div style={{fontSize:10,color:"var(--t3)",marginTop:4}}>Conv. Rate</div>
+                <div style={{fontSize:16,fontWeight:700,color:crCol,fontFamily:"'JetBrains Mono',monospace"}}>{d.conversionRate.toFixed(2)}%</div>
+                <div style={{fontSize:10,color:"var(--t3)",marginTop:4}}>Share</div>
+                <div style={{fontSize:13,fontWeight:600,fontFamily:"'JetBrains Mono',monospace"}}>{share.toFixed(1)}%</div>
+              </div>;
+            })}
+          </div>
+        </div>}
+
+        {/* Section 7: Top Products */}
+        {wd&&wd.topProducts&&wd.topProducts.length>0&&<div style={cardS}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Top Products</div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+              <thead><tr>
+                <th style={thS}>Product</th>
+                <th style={{...thS,textAlign:"right"}}>Revenue</th>
+                <th style={{...thS,textAlign:"right"}}>Units</th>
+                <th style={{...thS,textAlign:"right"}}>Orders</th>
+                <th style={{...thS,textAlign:"right"}}>AOV</th>
+              </tr></thead>
+              <tbody>
+                {wd.topProducts.map((p,i)=>{
+                  const revShare=totalRev>0?(p.revenue/totalRev*100):0;
+                  return <tr key={i}>
+                    <td style={tdS}><span style={{fontWeight:i<3?600:400}}>{p.name}</span></td>
+                    <td style={{...tdS,textAlign:"right"}}>{f$(p.revenue)} <span style={{fontSize:10,color:"var(--t3)"}}>({revShare.toFixed(0)}%)</span></td>
+                    <td style={{...tdS,textAlign:"right"}}>{fn(p.units)}</td>
+                    <td style={{...tdS,textAlign:"right"}}>{fn(p.orders)}</td>
+                    <td style={{...tdS,textAlign:"right"}}>{f$(p.aov)}</td>
+                  </tr>;
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>}
+
+        {/* Section 8: Customer Breakdown */}
+        {wd&&<div style={cardS}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Customer Breakdown</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div style={{textAlign:"center",padding:12,background:"rgba(21,128,61,0.04)",borderRadius:8}}>
+              <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase"}}>New Customers</div>
+              <div style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{fn(wd.customerBreakdown.new.orders)}</div>
+              <div style={{fontSize:12,color:"var(--t2)"}}>{f$(wd.customerBreakdown.new.revenue)} · AOV {f$(wd.customerBreakdown.new.aov)}</div>
+            </div>
+            <div style={{textAlign:"center",padding:12,background:"rgba(124,58,237,0.04)",borderRadius:8}}>
+              <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase"}}>Returning Customers</div>
+              <div style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{fn(wd.customerBreakdown.returning.orders)}</div>
+              <div style={{fontSize:12,color:"var(--t2)"}}>{f$(wd.customerBreakdown.returning.revenue)} · AOV {f$(wd.customerBreakdown.returning.aov)}</div>
+            </div>
+          </div>
+        </div>}
+
+        {/* Section 9: Landing Pages */}
+        {ga&&ga.landingPages&&ga.landingPages.length>0&&<div style={cardS}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Top Landing Pages</div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+              <thead><tr>
+                <th style={thS}>Page</th>
+                <th style={{...thS,textAlign:"right"}}>Sessions</th>
+                <th style={{...thS,textAlign:"right"}}>Bounce Rate</th>
+                <th style={{...thS,textAlign:"right"}}>Share</th>
+              </tr></thead>
+              <tbody>
+                {ga.landingPages.map((p,i)=>{
+                  const share=totalSessions>0?(p.sessions/totalSessions*100):0;
+                  const brCol=p.bounceRate<=40?"var(--grn)":p.bounceRate<=60?"var(--ylw)":"var(--red)";
+                  return <tr key={i}>
+                    <td style={{...tdS,maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={p.page}>{p.page}</td>
+                    <td style={{...tdS,textAlign:"right"}}>{fn(p.sessions)}</td>
+                    <td style={{...tdS,textAlign:"right",color:brCol}}>{p.bounceRate.toFixed(1)}%</td>
+                    <td style={{...tdS,textAlign:"right"}}>{share.toFixed(1)}%</td>
+                  </tr>;
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>}
+
+        {/* Section 10: Data Sources */}
+        {!loading&&!wd&&!ga&&<div style={{...cardS,borderColor:"var(--ylw)",background:"rgba(234,179,8,0.06)"}}>
+          <div style={{fontSize:13,color:"var(--t2)",fontWeight:600,marginBottom:6}}>No Website Data Available</div>
+          <div style={{fontSize:12,color:"var(--t3)"}}>Website tab requires Shopify store connection and GA4 property configured. Check that SHOPIFY_STORE and GA4_PROPERTY_ID environment variables are set.</div>
+        </div>}
+
+        <div style={{fontSize:10,color:"var(--t3)",textAlign:"right",marginTop:8}}>
+          {wd&&<span>Shopify: {wd.dateRange?.start} → {wd.dateRange?.end} · </span>}
+          {ga&&<span>GA4: {ga.dateRange?.start} → {ga.dateRange?.end} · </span>}
+          {(wd||ga)&&<span>Pulled: {(wd?.pulledAt||ga?.pulledAt)?new Date(wd?.pulledAt||ga?.pulledAt).toLocaleString("en-NZ",{timeZone:"Pacific/Auckland"}):"—"}</span>}
         </div>
       </>;
     })()}

@@ -36,8 +36,8 @@ async function handleGA4(req, res, accessToken, clientId) {
     'Content-Type': 'application/json',
   };
 
-  // Run all 4 reports in parallel
-  const [dailyRes, trafficRes, landingRes, totalSessionsRes] = await Promise.all([
+  // Run all 6 reports in parallel
+  const [dailyRes, trafficRes, landingRes, totalSessionsRes, deviceRes, engagementRes] = await Promise.all([
     // 1. Daily sessions + conversions (purchase only)
     fetch(ga4Url, {
       method: 'POST', headers,
@@ -65,13 +65,13 @@ async function handleGA4(req, res, accessToken, clientId) {
         limit: '10',
       }),
     }),
-    // 3. Landing pages (top 10)
+    // 3. Landing pages (top 10, with engagedSessions for bounce rate)
     fetch(ga4Url, {
       method: 'POST', headers,
       body: JSON.stringify({
         dateRanges: [{ startDate, endDate }],
         dimensions: [{ name: 'landingPagePlusQueryString' }],
-        metrics: [{ name: 'sessions' }],
+        metrics: [{ name: 'sessions' }, { name: 'engagedSessions' }],
         orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
         limit: '10',
       }),
@@ -86,10 +86,30 @@ async function handleGA4(req, res, accessToken, clientId) {
         orderBys: [{ dimension: { dimensionName: 'date' } }],
       }),
     }),
+    // 5. Device category breakdown (purchase-filtered)
+    fetch(ga4Url, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: 'deviceCategory' }],
+        metrics: [{ name: 'sessions' }, { name: 'conversions' }],
+        dimensionFilter: {
+          filter: { fieldName: 'eventName', stringFilter: { value: 'purchase' } },
+        },
+      }),
+    }),
+    // 6. Engagement summary (unfiltered)
+    fetch(ga4Url, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        dateRanges: [{ startDate, endDate }],
+        metrics: [{ name: 'sessions' }, { name: 'engagedSessions' }, { name: 'averageSessionDuration' }, { name: 'bounceRate' }],
+      }),
+    }),
   ]);
 
   // Check for 403 (missing analytics scope)
-  for (const r of [dailyRes, trafficRes, landingRes, totalSessionsRes]) {
+  for (const r of [dailyRes, trafficRes, landingRes, totalSessionsRes, deviceRes, engagementRes]) {
     if (r.status === 403) {
       const errBody = await r.json().catch(() => ({}));
       const reAuthUrl = 'https://accounts.google.com/o/oauth2/v2/auth?client_id=' + clientId +
@@ -104,15 +124,15 @@ async function handleGA4(req, res, accessToken, clientId) {
   }
 
   // Check other errors
-  for (const [label, r] of [['daily', dailyRes], ['traffic', trafficRes], ['landing', landingRes], ['totalSessions', totalSessionsRes]]) {
+  for (const [label, r] of [['daily', dailyRes], ['traffic', trafficRes], ['landing', landingRes], ['totalSessions', totalSessionsRes], ['device', deviceRes], ['engagement', engagementRes]]) {
     if (!r.ok) {
       const errText = await r.text();
       return res.status(r.status).json({ error: `GA4 ${label} report failed: ${r.status}`, detail: errText.slice(0, 500) });
     }
   }
 
-  const [dailyData, trafficData, landingData, totalSessionsData] = await Promise.all([
-    dailyRes.json(), trafficRes.json(), landingRes.json(), totalSessionsRes.json(),
+  const [dailyData, trafficData, landingData, totalSessionsData, deviceData, engagementData] = await Promise.all([
+    dailyRes.json(), trafficRes.json(), landingRes.json(), totalSessionsRes.json(), deviceRes.json(), engagementRes.json(),
   ]);
 
   // Build a map of total sessions per date (unfiltered)
@@ -154,10 +174,13 @@ async function handleGA4(req, res, accessToken, clientId) {
   const trafficSources = [];
   if (trafficData.rows) {
     for (const row of trafficData.rows) {
+      const sessions = parseInt(row.metricValues[0].value) || 0;
+      const conversions = parseInt(row.metricValues[1].value) || 0;
       trafficSources.push({
         channel: row.dimensionValues[0].value,
-        sessions: parseInt(row.metricValues[0].value) || 0,
-        conversions: parseInt(row.metricValues[1].value) || 0,
+        sessions,
+        conversions,
+        conversionRate: sessions > 0 ? Math.round((conversions / sessions) * 10000) / 100 : 0,
       });
     }
   }
@@ -166,11 +189,42 @@ async function handleGA4(req, res, accessToken, clientId) {
   const landingPages = [];
   if (landingData.rows) {
     for (const row of landingData.rows) {
+      const sessions = parseInt(row.metricValues[0].value) || 0;
+      const engagedSessions = parseInt(row.metricValues[1].value) || 0;
       landingPages.push({
         page: row.dimensionValues[0].value,
-        sessions: parseInt(row.metricValues[0].value) || 0,
+        sessions,
+        bounceRate: sessions > 0 ? Math.round(((sessions - engagedSessions) / sessions) * 10000) / 100 : 0,
       });
     }
+  }
+
+  // Parse device breakdown
+  const devices = [];
+  if (deviceData.rows) {
+    for (const row of deviceData.rows) {
+      const sessions = parseInt(row.metricValues[0].value) || 0;
+      const conversions = parseInt(row.metricValues[1].value) || 0;
+      devices.push({
+        device: row.dimensionValues[0].value,
+        sessions,
+        conversions,
+        conversionRate: sessions > 0 ? Math.round((conversions / sessions) * 10000) / 100 : 0,
+      });
+    }
+  }
+
+  // Parse engagement summary
+  let engagementRate = 0;
+  let avgSessionDuration = 0;
+  let bounceRate = 0;
+  if (engagementData.rows && engagementData.rows.length > 0) {
+    const row = engagementData.rows[0];
+    const eSessions = parseInt(row.metricValues[0].value) || 0;
+    const eEngaged = parseInt(row.metricValues[1].value) || 0;
+    avgSessionDuration = Math.round(parseFloat(row.metricValues[2].value) * 100) / 100;
+    bounceRate = Math.round(parseFloat(row.metricValues[3].value) * 10000) / 100;
+    engagementRate = eSessions > 0 ? Math.round((eEngaged / eSessions) * 10000) / 100 : 0;
   }
 
   return res.status(200).json({
@@ -181,10 +235,14 @@ async function handleGA4(req, res, accessToken, clientId) {
     daily,
     trafficSources,
     landingPages,
+    devices,
     summary: {
       totalSessions,
       totalConversions,
       avgConversionRate: totalSessions > 0 ? Math.round((totalConversions / totalSessions) * 10000) / 100 : 0,
+      engagementRate,
+      avgSessionDuration,
+      bounceRate,
     },
     pulledAt: new Date().toISOString(),
   });

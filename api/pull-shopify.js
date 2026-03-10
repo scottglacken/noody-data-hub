@@ -57,6 +57,126 @@ export default async function handler(req, res) {
       return !(o.cancelled_at && o.financial_status === 'voided');
     });
 
+    // Website analytics mode
+    if (req.query.type === 'website') {
+      var wTotalRev = 0, wTotalOrders = validOrders.length, wTotalItems = 0;
+      var wNewOrders = 0, wNewRev = 0, wRetOrders = 0, wRetRev = 0;
+      var wDiscountedOrders = 0, wTotalDiscountAmt = 0, wRefundedOrders = 0;
+      var productMap = {};
+      var wDayMap = {};
+
+      for (var wi = 0; wi < validOrders.length; wi++) {
+        var wo = validOrders[wi];
+        var woPrice = parseFloat(wo.total_price) || 0;
+        var woDisc = parseFloat(wo.total_discounts) || 0;
+        var woIsNew = wo.customer && wo.customer.orders_count <= 1;
+
+        wTotalRev += woPrice;
+
+        // new vs returning
+        if (woIsNew) { wNewOrders += 1; wNewRev += woPrice; }
+        else { wRetOrders += 1; wRetRev += woPrice; }
+
+        // discounts
+        if (woDisc > 0) { wDiscountedOrders += 1; wTotalDiscountAmt += woDisc; }
+
+        // refunds
+        if (wo.financial_status === 'refunded' || wo.financial_status === 'partially_refunded') {
+          wRefundedOrders += 1;
+        }
+
+        // line items — products + item count
+        if (wo.line_items) {
+          for (var wj = 0; wj < wo.line_items.length; wj++) {
+            var li = wo.line_items[wj];
+            var qty = li.quantity || 0;
+            wTotalItems += qty;
+            var pName = li.title || 'Unknown';
+            var pRev = parseFloat(li.price) * qty;
+            if (!productMap[pName]) {
+              productMap[pName] = { name: pName, revenue: 0, units: 0, orderIds: {} };
+            }
+            productMap[pName].revenue += pRev;
+            productMap[pName].units += qty;
+            productMap[pName].orderIds[wo.id] = true;
+          }
+        }
+
+        // daily bucketing
+        var wCreated = new Date(wo.created_at);
+        var wNzDate = new Date(wCreated.getTime() + 13 * 3600000);
+        var wDateStr = wNzDate.toISOString().split('T')[0];
+        if (!wDayMap[wDateStr]) {
+          wDayMap[wDateStr] = { date: wDateStr, revenue: 0, orders: 0, newCustomers: 0, returningCustomers: 0, itemsSold: 0, discountedOrders: 0 };
+        }
+        var wd = wDayMap[wDateStr];
+        wd.revenue += woPrice;
+        wd.orders += 1;
+        if (woIsNew) wd.newCustomers += 1; else wd.returningCustomers += 1;
+        if (woDisc > 0) wd.discountedOrders += 1;
+        if (wo.line_items) {
+          for (var wk = 0; wk < wo.line_items.length; wk++) {
+            wd.itemsSold += wo.line_items[wk].quantity || 0;
+          }
+        }
+      }
+
+      // Top 10 products by revenue
+      var prodList = Object.values(productMap);
+      prodList.sort(function(a, b) { return b.revenue - a.revenue; });
+      var topProducts = [];
+      for (var tp = 0; tp < Math.min(10, prodList.length); tp++) {
+        var p = prodList[tp];
+        var pOrders = Object.keys(p.orderIds).length;
+        topProducts.push({
+          name: p.name,
+          revenue: Math.round(p.revenue * 100) / 100,
+          units: p.units,
+          orders: pOrders,
+          aov: pOrders > 0 ? Math.round((p.revenue / pOrders) * 100) / 100 : 0
+        });
+      }
+
+      // Format daily
+      var wDaily = Object.values(wDayMap).map(function(dd) {
+        return {
+          date: dd.date,
+          revenue: Math.round(dd.revenue * 100) / 100,
+          orders: dd.orders,
+          newCustomers: dd.newCustomers,
+          returningCustomers: dd.returningCustomers,
+          itemsSold: dd.itemsSold,
+          discountedOrders: dd.discountedOrders
+        };
+      }).sort(function(a, b) { return a.date.localeCompare(b.date); });
+
+      return res.status(200).json({
+        shop: shop,
+        pulledAt: new Date().toISOString(),
+        dateRange: { start: sinceDate, end: new Date().toISOString().split('T')[0] },
+        summary: {
+          totalRevenue: Math.round(wTotalRev * 100) / 100,
+          totalOrders: wTotalOrders,
+          aov: wTotalOrders > 0 ? Math.round((wTotalRev / wTotalOrders) * 100) / 100 : 0,
+          avgItemsPerOrder: wTotalOrders > 0 ? Math.round((wTotalItems / wTotalOrders) * 100) / 100 : 0,
+          newCustomerOrders: wNewOrders,
+          returningCustomerOrders: wRetOrders,
+          newCustomerPct: wTotalOrders > 0 ? Math.round((wNewOrders / wTotalOrders) * 10000) / 100 : 0,
+          discountedOrders: wDiscountedOrders,
+          discountRate: wTotalOrders > 0 ? Math.round((wDiscountedOrders / wTotalOrders) * 10000) / 100 : 0,
+          avgDiscountAmount: wDiscountedOrders > 0 ? Math.round((wTotalDiscountAmt / wDiscountedOrders) * 100) / 100 : 0,
+          refundedOrders: wRefundedOrders,
+          refundRate: wTotalOrders > 0 ? Math.round((wRefundedOrders / wTotalOrders) * 10000) / 100 : 0
+        },
+        topProducts: topProducts,
+        customerBreakdown: {
+          new: { orders: wNewOrders, revenue: Math.round(wNewRev * 100) / 100, aov: wNewOrders > 0 ? Math.round((wNewRev / wNewOrders) * 100) / 100 : 0 },
+          returning: { orders: wRetOrders, revenue: Math.round(wRetRev * 100) / 100, aov: wRetOrders > 0 ? Math.round((wRetRev / wRetOrders) * 100) / 100 : 0 }
+        },
+        daily: wDaily
+      });
+    }
+
     // Bucket into daily (NZST)
     var dayMap = {};
     for (var i = 0; i < validOrders.length; i++) {
