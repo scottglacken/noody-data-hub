@@ -1335,7 +1335,7 @@ function Dashboard(){
       const aiText=tabAi[aiKey];
       const aiLoad=tabAiLoading.klaviyo;
       if(!aiText&&!aiLoad&&klavDetail){
-        const flowSummary=flows.filter(f=>f.revenue>0).map(f=>f.name+": $"+f.revenue+" ("+f.conversions+" conv, "+f.recipients+" recip)").join("; ");
+        const flowSummary=flows.filter(f=>f.revenue>0).map(f=>f.name+": $"+f.revenue+" ("+f.conversions+" conv, "+f.messages+" msgs)").join("; ");
         const delivSummary="Open "+deliv.openRate+"%, Click "+deliv.clickRate+"%, Bounce "+deliv.bounceRate+"%, Unsub "+deliv.unsubRate+"%, Spam "+deliv.spamRate+"%";
         const prompt="Analyse this Klaviyo email performance for Noody Skincare (NZ eczema/baby skincare DTC brand). "+a.d+" day period: Email attributed revenue $"+Math.round(emailRev)+" ("+emailPct.toFixed(1)+"% of DTC $"+Math.round(dtcRev)+"). Flow revenue: $"+Math.round(totalFlowRev)+". Campaign revenue: $"+Math.round(totalCampRev)+". Top flows: "+flowSummary+". Deliverability: "+delivSummary+" (benchmarks: Open 44%, Click 0.86%, Bounce 0.43%, Unsub 0.29%). Lists: "+lists.length+" lists. Give 3-4 specific actionable insights with numbers.";
         fetchTabAi("klaviyo",prompt,["klaviyo"]);
@@ -1414,8 +1414,7 @@ function Dashboard(){
                 <th style={thS}>Status</th>
                 <th style={{...thS,textAlign:"right"}}>Revenue</th>
                 <th style={{...thS,textAlign:"right"}}>Conversions</th>
-                <th style={{...thS,textAlign:"right"}}>Recipients</th>
-                <th style={{...thS,textAlign:"right"}}>$/Recipient</th>
+                <th style={{...thS,textAlign:"right"}}>Messages</th>
               </tr></thead>
               <tbody>
                 {flows.map((f,i)=>{
@@ -1430,8 +1429,7 @@ function Dashboard(){
                     <td style={tdS}><span style={{fontSize:11,padding:"2px 8px",borderRadius:6,background:isLive?"rgba(34,197,94,0.15)":f.status==="manual"?"rgba(245,158,11,0.15)":"rgba(107,114,128,0.15)",color:isLive?"var(--grn)":f.status==="manual"?"var(--ylw)":"var(--t3)"}}>{f.status}</span></td>
                     <td style={{...tdS,textAlign:"right",color:f.revenue>0?"var(--grn)":"var(--t3)"}}>{f$(f.revenue)}</td>
                     <td style={{...tdS,textAlign:"right"}}>{fn(f.conversions)}</td>
-                    <td style={{...tdS,textAlign:"right"}}>{fn(f.recipients)}</td>
-                    <td style={{...tdS,textAlign:"right"}}>{f.revenuePerRecipient?"$"+f.revenuePerRecipient.toFixed(2):"—"}</td>
+                    <td style={{...tdS,textAlign:"right"}}>{f.messages||"—"}</td>
                   </tr>;
                 })}
               </tbody>
@@ -1450,20 +1448,18 @@ function Dashboard(){
                 <th style={thS}>Send Date</th>
                 <th style={{...thS,textAlign:"right"}}>Revenue</th>
                 <th style={{...thS,textAlign:"right"}}>Conversions</th>
-                <th style={{...thS,textAlign:"right"}}>Recipients</th>
               </tr></thead>
               <tbody>
-                {sentCamps.slice(0,20).map((c,i)=>{
-                  const sendDate=c.sendTime?new Date(c.sendTime).toLocaleDateString("en-NZ",{timeZone:"Pacific/Auckland",day:"numeric",month:"short"}):"—";
+                {camps.filter(c=>c.revenue>0||c.status==="Sent"||c.status==="sent").slice(0,20).map((c,i)=>{
+                  const sendDate=c.sendTime?new Date(c.sendTime).toLocaleDateString("en-NZ",{timeZone:"Pacific/Auckland",day:"numeric",month:"short",year:"numeric"}):"—";
                   return <tr key={i}>
                     <td style={{...tdS,fontFamily:"'DM Sans',sans-serif"}}>{c.name}</td>
                     <td style={tdS}>{sendDate}</td>
                     <td style={{...tdS,textAlign:"right",color:c.revenue>0?"var(--grn)":"var(--t3)"}}>{f$(c.revenue)}</td>
                     <td style={{...tdS,textAlign:"right"}}>{fn(c.conversions)}</td>
-                    <td style={{...tdS,textAlign:"right"}}>{fn(c.recipients)}</td>
                   </tr>;
                 })}
-                {!sentCamps.length&&<tr><td colSpan={5} style={{...tdS,textAlign:"center",color:"var(--t3)"}}>No sent campaigns found</td></tr>}
+                {!camps.length&&<tr><td colSpan={4} style={{...tdS,textAlign:"center",color:"var(--t3)"}}>No campaigns found</td></tr>}
               </tbody>
             </table>
           </div>}
