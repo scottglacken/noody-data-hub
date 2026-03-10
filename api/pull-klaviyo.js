@@ -70,7 +70,7 @@ export default async function handler(req, res) {
           filter: [
             'greater-or-equal(datetime,' + sinceDate + 'T00:00:00Z)',
             'less-than(datetime,' + untilDate + 'T23:59:59Z)',
-                'equals($message_channel,"email")',
+                'equals($attributed_channel,"email")',
           ],
           by: ['$attribution_channel'],
           timezone: 'Pacific/Auckland',
@@ -99,7 +99,7 @@ export default async function handler(req, res) {
               filter: [
                 'greater-or-equal(datetime,' + sinceDate + 'T00:00:00Z)',
                 'less-than(datetime,' + untilDate + 'T23:59:59Z)',
-                'equals($message_channel,"email")',
+                'equals($attributed_channel,"email")',
               ],
               timezone: 'Pacific/Auckland',
             },
