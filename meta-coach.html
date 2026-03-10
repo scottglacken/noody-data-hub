@@ -57,9 +57,53 @@ const AUDIENCES=[
   {id:"021",name:"FB - Clicked CTA - 365d",usage:"Lookalike"},
 ];
 
+// Meta ads context (from context/meta-ads.md)
+const META_CONTEXT = `# Meta Ads \u2014 Noody Skincare Context
+## Business Context
+- Noody Skincare: NZ-based children's skincare brand
+- DTC is ~41% of revenue ($383K/yr), wholesale 45%, international 14%
+- Meta is the primary paid acquisition channel (80%+ of ad budget)
+## Creative Testing Framework
+- Always have 3-5 active creative tests running
+- Test structure: 1 hero creative + 2-3 variants (different hooks, formats)
+- Best performers historically: UGC testimonials from NZ parents, before/after skin results, product-in-use lifestyle shots
+- Video outperforms static 2:1 on average
+- Winning hook patterns: problem-first ("Is your child's skin..."), social proof ("10,000+ NZ families trust...")
+## Advantage+ Settings
+- Use Advantage+ Shopping campaigns for broad prospecting
+- Advantage+ Audience for retargeting
+- Minimum 7-day attribution window for children's skincare (longer consideration cycle)
+- Exclude existing customers from prospecting campaigns
+## Audience Notes
+- Core audience: NZ parents/caregivers of children 0-12
+- Key interests: natural skincare, eczema, sensitive skin, parenting
+- Lookalike audiences based on purchasers perform best
+- Geographic focus: NZ primary, AU secondary
+## Benchmarks (What Good Looks Like for Noody)
+- ROAS target: >2.5x (last-click)
+- CPP (Cost Per Purchase): <$25 ideal, <$35 acceptable
+- DTC MER (Meta spend / DTC revenue): <35%
+- CTR: >1.5% on prospecting, >2.5% on retargeting
+- Frequency: <2.0 on prospecting, <4.0 on retargeting
+## Historical Best Performers
+- Black Friday/Cyber Monday: ROAS peaks at 5-8x with bundle offers
+- Winter campaigns (Jun-Aug): Higher conversion due to eczema season
+- July 2025 sale: $24K+ single day, ROAS >7x
+- November 2025 BFCM: $45K+ single day peak
+## Common Issues
+- Platform concentration risk: 80%+ spend on Meta
+- Summer months (Dec-Feb): Lower ROAS as skincare demand drops
+- Creative fatigue: Refresh every 2-3 weeks
+- Attribution: Meta over-reports by ~20-30% vs Shopify actual
+## Strategic Notes
+- DTC ads may create halo effect driving wholesale (Farmers) sales
+- Consider: is the true value of Meta spend higher than DTC MER suggests?
+- Diversification target: 70% Meta / 20% Google / 10% TikTok within 6 months`;
+
 const f$=n=>n==null?"--":"$"+Math.round(n).toLocaleString();
 const fn=n=>n==null?"--":Math.round(n).toLocaleString();
 const fp=n=>n==null?"--":n.toFixed(1)+"%";
+const fRound=(n,d)=>n==null?"--":(Math.round(n*Math.pow(10,d))/Math.pow(10,d)).toFixed(d);
 
 // ---- Utility Components ----
 function Badge({color,children}){
@@ -87,47 +131,89 @@ function Input({label,value,onChange,prefix,suffix,type,min,max,step,small}){
   </div>;
 }
 
-// ---- AI Coach ----
-function AICoach({campaigns,metaData}){
+function SortHeader({label,sortKey,currentSort,onSort,align}){
+  const active=currentSort.key===sortKey;
+  const arrow=active?(currentSort.dir==="desc"?" \u25BC":" \u25B2"):"";
+  return <th onClick={()=>onSort(sortKey)} style={{padding:"10px 12px",fontSize:11,textTransform:"uppercase",letterSpacing:"0.04em",color:active?"var(--acc2)":"var(--t3)",fontWeight:600,cursor:"pointer",textAlign:align||"left",whiteSpace:"nowrap",userSelect:"none",borderBottom:"1px solid var(--bdr)"}}>{label}{arrow}</th>;
+}
+
+// ---- AI Coach (upgraded with context + Shopify MER) ----
+function AICoach({metaData,adsetData,adData,shopifyData,days}){
   const [q,setQ]=useState("");
   const [resp,setResp]=useState("");
   const [loading,setLoading]=useState(false);
   const [history,setHistory]=useState([]);
 
   const buildContext=()=>{
-    let ctx="";
+    let ctx="\n\n--- NOODY META ADS CONTEXT ---\n"+META_CONTEXT;
     if(metaData?.summary){
       const s=metaData.summary;
-      ctx+="\n\nLive Meta Ads Data (from Noody Hub):";
-      ctx+="\n- Total Spend: $"+(s.totalSpend||0).toFixed(2);
-      ctx+="\n- Total Purchases: "+(s.totalPurchases||0);
-      ctx+="\n- Avg CPP: $"+(s.avgCPP||0).toFixed(2);
-      ctx+="\n- ROAS: "+(s.roas||0).toFixed(2)+"x";
-      ctx+="\n- Period: "+metaData.dateRange;
+      const dr=metaData.dateRange;
+      const period=dr?(dr.start+" to "+dr.end):days+"d";
+      ctx+="\n\n--- LIVE META ADS DATA ("+period+") ---";
+      ctx+="\nTotal Spend: $"+fRound(s.totalSpend,2);
+      ctx+="\nTotal Purchases (Meta-attributed): "+s.totalPurchases;
+      ctx+="\nTotal Purchase Value (Meta-attributed): $"+fRound(s.totalPurchaseValue,2);
+      ctx+="\nAvg CPP: $"+fRound(s.avgCPP,2);
+      ctx+="\nROAS (Meta-attributed): "+fRound(s.roas,2)+"x";
     }
-    if(campaigns?.length>0){
-      ctx+="\n\nCampaign breakdown:";
-      campaigns.slice(0,10).forEach(c=>{
-        ctx+="\n- "+c.name+": CPA $"+c.cpa+", Freq "+c.frequency+", Spend $"+c.spend+" ("+c.funnel+")";
+    if(shopifyData){
+      ctx+="\n\n--- SHOPIFY DTC DATA (same period) ---";
+      ctx+="\nDTC Revenue: $"+fRound(shopifyData.totalRevenue,2);
+      ctx+="\nDTC Orders: "+shopifyData.totalOrders;
+      ctx+="\nAOV: $"+fRound(shopifyData.aov,2);
+      if(metaData?.summary?.totalSpend && shopifyData.totalRevenue>0){
+        const mer=(metaData.summary.totalSpend/shopifyData.totalRevenue*100);
+        ctx+="\nTrue DTC MER (Meta spend / Shopify DTC revenue): "+fRound(mer,1)+"%";
+        ctx+="\nBenchmark: DTC MER <35% is target";
+        const trueCPP=metaData.summary.totalSpend/shopifyData.totalOrders;
+        ctx+="\nTrue CPP (Meta spend / Shopify orders): $"+fRound(trueCPP,2);
+      }
+    }
+    if(metaData?.data?.length>0){
+      ctx+="\n\n--- CAMPAIGN BREAKDOWN ---";
+      metaData.data.sort(function(a,b){return b.spend-a.spend;}).slice(0,15).forEach(function(c){
+        ctx+="\n- "+c.campaign_name+": Spend $"+fRound(c.spend,0)+", Purchases "+c.purchases+", CPP $"+fRound(c.cpp,2)+", ROAS "+fRound(c.roas,2)+"x, Freq "+fRound(c.frequency,2)+", CTR "+fRound(c.ctr,2)+"%";
+      });
+    }
+    if(adsetData?.data?.length>0){
+      ctx+="\n\n--- TOP ADSETS ---";
+      adsetData.data.sort(function(a,b){return b.spend-a.spend;}).slice(0,15).forEach(function(a){
+        ctx+="\n- "+a.campaign_name+" > "+a.adset_name+": Spend $"+fRound(a.spend,0)+", Purchases "+a.purchases+", CPP $"+fRound(a.cpp,2)+", ROAS "+fRound(a.roas,2)+"x, Freq "+fRound(a.frequency,2);
+      });
+    }
+    if(adData?.data?.length>0){
+      ctx+="\n\n--- TOP ADS ---";
+      adData.data.sort(function(a,b){return b.spend-a.spend;}).slice(0,20).forEach(function(a){
+        ctx+="\n- "+a.ad_name+" ("+a.campaign_name+"): Spend $"+fRound(a.spend,0)+", Purchases "+a.purchases+", CPP $"+fRound(a.cpp,2)+", ROAS "+fRound(a.roas,2)+"x, Freq "+fRound(a.frequency,2)+", CTR "+fRound(a.ctr,2)+"%";
       });
     }
     return ctx;
   };
 
-  const ask=async()=>{
-    if(!q.trim())return;
+  const ask=async(prompt)=>{
+    const question=prompt||q;
+    if(!question.trim())return;
+    setQ(question);
     setLoading(true);
     try{
-      const r=await fetch("/api/ai-coach",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":API_KEY},body:JSON.stringify({prompt:q+buildContext()})});
+      const r=await fetch("/api/ai-coach",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":API_KEY},body:JSON.stringify({prompt:question+buildContext(),context:["meta"],max_tokens:2000})});
       const d=await r.json();
       if(d.error)throw new Error(d.error);
       setResp(d.text);
-      setHistory(p=>[...p,{role:"user",content:q},{role:"assistant",content:d.text}]);
+      setHistory(p=>[...p,{role:"user",content:question},{role:"assistant",content:d.text}]);
     }catch(e){setResp("Error: "+e.message);}
     setLoading(false);setQ("");
   };
 
-  const quickQs=["How should I structure campaigns for my spend level?","My TOF CPA looks high - is that normal?","When should I kill an ad vs refresh it?","How do I identify a hero ad?","What audiences should I use for MOF retargeting?","My CPA spiked this week - diagnose it"];
+  const diagnosticPrompts=[
+    {label:"Which campaigns should I pause?",prompt:"Analyse my campaign data and tell me specifically which campaigns I should pause and why. Consider CPP, ROAS, frequency, and spend. Be specific with campaign names and numbers."},
+    {label:"Where should I increase budget?",prompt:"Based on my campaign, adset, and ad level data, where should I increase budget? Look for campaigns with low CPP, good ROAS, and low frequency that have room to scale. Be specific with names and recommended budget changes."},
+    {label:"What's my creative fatigue situation?",prompt:"Analyse frequency across my campaigns, adsets, and ads. Which creatives are fatigued (frequency >2)? Which are still fresh? What's my overall creative health? Recommend specific actions."},
+    {label:"How's my true MER vs Meta ROAS?",prompt:"Compare my Meta-attributed ROAS with my true DTC MER (Meta spend / Shopify revenue). Is Meta over-reporting? What does this mean for my actual profitability? What's the gap between Meta-claimed and reality?"},
+    {label:"Find my hero ads",prompt:"Look at my ad-level data and identify hero ads (high ROAS, low CPP, good CTR, manageable frequency). Also identify underperformers to cut. Rank the top 5 best and worst ads with specific metrics."},
+    {label:"Full diagnostic",prompt:"Give me a full Meta ads diagnostic: 1) Overall health (MER, ROAS, CPP trends), 2) Campaign structure assessment, 3) Creative fatigue check, 4) Top performers to scale, 5) Underperformers to pause, 6) One specific action I should take today. Use all available campaign, adset, and ad data."},
+  ];
 
   return <Card glow>
     <div style={{marginBottom:20}}>
@@ -135,18 +221,24 @@ function AICoach({campaigns,metaData}){
         <span style={{fontSize:20}}>AI</span>
         <h2 style={{fontSize:18,fontWeight:700,color:"var(--t1)",margin:0}}>Meta Ads Coach</h2>
       </div>
-      <p style={{fontSize:13,color:"var(--t3)",margin:"4px 0 0 30px"}}>Ask anything about your Meta ad performance. Uses live data from your Noody Hub.</p>
+      <p style={{fontSize:13,color:"var(--t3)",margin:"4px 0 0 30px"}}>Uses live Meta + Shopify data with Noody business context. Knows your benchmarks, history, and strategy.</p>
     </div>
 
-    {!resp&&<div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}}>
-      {quickQs.map((qq,i)=><button key={i} onClick={()=>setQ(qq)} style={{padding:"6px 14px",background:"var(--card2)",border:"1px solid var(--bdr)",borderRadius:20,color:"var(--t3)",fontSize:12,cursor:"pointer",transition:"all .2s"}}>{qq}</button>)}
+    <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}}>
+      {diagnosticPrompts.map((dp,i)=><button key={i} onClick={()=>ask(dp.prompt)} disabled={loading} style={{padding:"6px 14px",background:i>=3?"var(--accbg)":"var(--card2)",border:"1px solid "+(i>=3?"var(--acc)22":"var(--bdr)"),borderRadius:20,color:i>=3?"var(--acc2)":"var(--t3)",fontSize:12,cursor:loading?"wait":"pointer",transition:"all .2s",opacity:loading?0.5:1}}>{dp.label}</button>)}
+    </div>
+
+    {resp&&<div style={{marginBottom:16}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+        <span style={{fontSize:12,color:"var(--t3)"}}>Coach Response</span>
+        <button onClick={()=>setResp("")} style={{padding:"4px 12px",background:"var(--card2)",border:"1px solid var(--bdr)",borderRadius:6,color:"var(--t3)",fontSize:11,cursor:"pointer"}}>Clear</button>
+      </div>
+      <div style={{padding:18,background:"var(--card2)",borderRadius:12,border:"1px solid var(--bdr)",whiteSpace:"pre-wrap",fontSize:14,color:"var(--t1)",lineHeight:1.7,maxHeight:500,overflowY:"auto"}}>{resp}</div>
     </div>}
 
-    {resp&&<div style={{marginBottom:16,padding:18,background:"var(--card2)",borderRadius:12,border:"1px solid var(--bdr)",whiteSpace:"pre-wrap",fontSize:14,color:"var(--t1)",lineHeight:1.7,maxHeight:400,overflowY:"auto"}}>{resp}</div>}
-
     <div style={{display:"flex",gap:8}}>
-      <input value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&ask()} placeholder="Ask the coach..." style={{flex:1,padding:"12px 16px",background:"var(--card2)",border:"1px solid var(--bdr)",borderRadius:10,color:"var(--t1)",fontSize:14}}/>
-      <button onClick={ask} disabled={loading} style={{padding:"12px 24px",background:"var(--acc)",border:"none",borderRadius:10,color:"#fff",fontWeight:700,cursor:loading?"wait":"pointer",fontSize:14,opacity:loading?0.6:1,whiteSpace:"nowrap"}}>{loading?"Thinking...":"Ask Coach"}</button>
+      <input value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&ask()} placeholder="Ask anything about your Meta ads..." style={{flex:1,padding:"12px 16px",background:"var(--card2)",border:"1px solid var(--bdr)",borderRadius:10,color:"var(--t1)",fontSize:14}}/>
+      <button onClick={()=>ask()} disabled={loading} style={{padding:"12px 24px",background:"var(--acc)",border:"none",borderRadius:10,color:"#fff",fontWeight:700,cursor:loading?"wait":"pointer",fontSize:14,opacity:loading?0.6:1,whiteSpace:"nowrap"}}>{loading?"Thinking...":"Ask Coach"}</button>
     </div>
   </Card>;
 }
@@ -222,10 +314,10 @@ function CampaignCalc({metaData}){
 
 // ---- Traffic Light Benchmarking ----
 function TrafficLight({metaData}){
-  const initCampaigns=metaData?.daily?.length>0?[{id:1,name:"All Campaigns ("+metaData.dateRange+")",cpa:metaData.summary?.avgCPP?.toFixed(2)||"",frequency:"",spend:metaData.summary?.totalSpend?.toFixed(0)||"",purchases:metaData.summary?.totalPurchases||"",funnel:"TOF"}]:[{id:1,name:"",cpa:"",frequency:"",spend:"",purchases:"",funnel:"TOF"}];
+  const initCampaigns=metaData?.data?.length>0?metaData.data.filter(function(c){return c.spend>5;}).map(function(c,i){return{id:i+1,name:c.campaign_name,cpa:c.cpp>0?c.cpp.toFixed(2):"",frequency:c.frequency>0?c.frequency.toFixed(2):"",spend:c.spend.toFixed(0),purchases:c.purchases,funnel:"TOF"};}):[{id:1,name:"",cpa:"",frequency:"",spend:"",purchases:"",funnel:"TOF"}];
   const [campaigns,setCampaigns]=useState(initCampaigns);
-  const [greenCPA,setGreenCPA]=useState("30");
-  const [yellowCPA,setYellowCPA]=useState("50");
+  const [greenCPA,setGreenCPA]=useState("25");
+  const [yellowCPA,setYellowCPA]=useState("35");
 
   const addC=()=>setCampaigns(p=>[...p,{id:Date.now(),name:"",cpa:"",frequency:"",spend:"",purchases:"",funnel:"TOF"}]);
   const updC=(id,f,v)=>setCampaigns(p=>p.map(c=>c.id===id?{...c,[f]:v}:c));
@@ -247,7 +339,7 @@ function TrafficLight({metaData}){
 
   return <Card>
     <div style={{marginBottom:20}}><div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}><span style={{fontSize:20}}>TL</span><h2 style={{fontSize:18,fontWeight:700,color:"var(--t1)",margin:0}}>Traffic Light Benchmarking</h2></div>
-    <p style={{fontSize:13,color:"var(--t3)",margin:"4px 0 0 30px"}}>Set CPA thresholds and assess each campaign. Frequency benchmarks: Green 1.0 / Yellow 2.0 / Red 3.0</p></div>
+    <p style={{fontSize:13,color:"var(--t3)",margin:"4px 0 0 30px"}}>Auto-populated from live data. CPA thresholds from Noody benchmarks: Green &lt;$25, Yellow &lt;$35</p></div>
 
     <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,marginBottom:24}}>
       <div style={{padding:14,borderRadius:10,background:"var(--grnbg)",border:"1px solid var(--grn)22"}}><Input label="Green CPA (target)" prefix="$" value={greenCPA} onChange={setGreenCPA} small/></div>
@@ -283,6 +375,163 @@ function TrafficLight({metaData}){
   </Card>;
 }
 
+// ---- Adset View ----
+function AdsetView({adsetData,loading}){
+  const [sort,setSort]=useState({key:"spend",dir:"desc"});
+  const [minSpend,setMinSpend]=useState("5");
+  const onSort=(key)=>setSort(prev=>({key,dir:prev.key===key&&prev.dir==="desc"?"asc":"desc"}));
+
+  if(loading)return <Card><div style={{textAlign:"center",padding:20,color:"var(--t3)"}}>Loading adset data...</div></Card>;
+  if(!adsetData?.data?.length)return <Card><div style={{textAlign:"center",padding:20,color:"var(--t3)"}}>No adset data available</div></Card>;
+
+  const minS=parseFloat(minSpend)||0;
+  const filtered=adsetData.data.filter(function(a){return a.spend>=minS;});
+  const sorted=[...filtered].sort(function(a,b){
+    const av=a[sort.key]||0,bv=b[sort.key]||0;
+    return sort.dir==="desc"?bv-av:av-bv;
+  });
+
+  const cppColor=function(v){return v<=0?"var(--t3)":v<=25?"var(--grn)":v<=35?"var(--ylw)":"var(--red)";};
+  const roasColor=function(v){return v<=0?"var(--t3)":v>=3?"var(--grn)":v>=2?"var(--ylw)":"var(--red)";};
+  const freqColor=function(v){return v<=0?"var(--t3)":v<=1.5?"var(--grn)":v<=2.5?"var(--ylw)":"var(--red)";};
+
+  return <Card>
+    <div style={{marginBottom:20}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:20}}>ADSET</span>
+          <h2 style={{fontSize:18,fontWeight:700,color:"var(--t1)",margin:0}}>Adset Performance</h2>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:11,color:"var(--t3)"}}>Min spend:</span>
+          <input value={minSpend} onChange={e=>setMinSpend(e.target.value)} style={{width:60,padding:"4px 8px",background:"var(--card2)",border:"1px solid var(--bdr)",borderRadius:6,color:"var(--t1)",fontSize:13,fontFamily:"monospace"}}/>
+        </div>
+      </div>
+      <p style={{fontSize:13,color:"var(--t3)",margin:"4px 0 0 30px"}}>{sorted.length} adsets with ${minSpend}+ spend. Click headers to sort.</p>
+    </div>
+
+    <div style={{overflowX:"auto"}}>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+        <thead>
+          <tr>
+            <th style={{padding:"10px 12px",fontSize:11,textTransform:"uppercase",letterSpacing:"0.04em",color:"var(--t3)",fontWeight:600,textAlign:"left",borderBottom:"1px solid var(--bdr)",minWidth:200}}>Campaign / Adset</th>
+            <SortHeader label="Spend" sortKey="spend" currentSort={sort} onSort={onSort} align="right"/>
+            <SortHeader label="Purch" sortKey="purchases" currentSort={sort} onSort={onSort} align="right"/>
+            <SortHeader label="CPP" sortKey="cpp" currentSort={sort} onSort={onSort} align="right"/>
+            <SortHeader label="ROAS" sortKey="roas" currentSort={sort} onSort={onSort} align="right"/>
+            <SortHeader label="Freq" sortKey="frequency" currentSort={sort} onSort={onSort} align="right"/>
+            <SortHeader label="CTR" sortKey="ctr" currentSort={sort} onSort={onSort} align="right"/>
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map(function(a,i){
+            return <tr key={i} style={{borderBottom:"1px solid var(--bdr)"}}>
+              <td style={{padding:"10px 12px"}}>
+                <div style={{fontSize:11,color:"var(--t3)",marginBottom:2}}>{a.campaign_name}</div>
+                <div style={{fontSize:13,color:"var(--t1)",fontWeight:500}}>{a.adset_name}</div>
+              </td>
+              <td style={{padding:"10px 12px",textAlign:"right",fontFamily:"monospace",color:"var(--t1)"}}>{f$(a.spend)}</td>
+              <td style={{padding:"10px 12px",textAlign:"right",fontFamily:"monospace",color:"var(--t1)"}}>{a.purchases}</td>
+              <td style={{padding:"10px 12px",textAlign:"right",fontFamily:"monospace",color:cppColor(a.cpp)}}>{a.cpp>0?f$(a.cpp):"--"}</td>
+              <td style={{padding:"10px 12px",textAlign:"right",fontFamily:"monospace",color:roasColor(a.roas)}}>{a.roas>0?a.roas.toFixed(2)+"x":"--"}</td>
+              <td style={{padding:"10px 12px",textAlign:"right",fontFamily:"monospace",color:freqColor(a.frequency)}}>{a.frequency>0?a.frequency.toFixed(2):"--"}</td>
+              <td style={{padding:"10px 12px",textAlign:"right",fontFamily:"monospace",color:"var(--t2)"}}>{a.ctr>0?a.ctr.toFixed(2)+"%":"--"}</td>
+            </tr>;
+          })}
+        </tbody>
+      </table>
+    </div>
+  </Card>;
+}
+
+// ---- Ad View ----
+function AdView({adData,loading}){
+  const [sort,setSort]=useState({key:"spend",dir:"desc"});
+  const [minSpend,setMinSpend]=useState("5");
+  const [view,setView]=useState("all");
+  const onSort=(key)=>setSort(prev=>({key,dir:prev.key===key&&prev.dir==="desc"?"asc":"desc"}));
+
+  if(loading)return <Card><div style={{textAlign:"center",padding:20,color:"var(--t3)"}}>Loading ad data...</div></Card>;
+  if(!adData?.data?.length)return <Card><div style={{textAlign:"center",padding:20,color:"var(--t3)"}}>No ad data available</div></Card>;
+
+  const minS=parseFloat(minSpend)||0;
+  var filtered=adData.data.filter(function(a){return a.spend>=minS;});
+  if(view==="heroes") filtered=filtered.filter(function(a){return a.purchases>0&&a.cpp>0&&a.cpp<=35&&a.roas>=2;});
+  if(view==="underperformers") filtered=filtered.filter(function(a){return a.spend>=10&&(a.purchases===0||(a.cpp>35));});
+
+  const sorted=[...filtered].sort(function(a,b){
+    const av=a[sort.key]||0,bv=b[sort.key]||0;
+    return sort.dir==="desc"?bv-av:av-bv;
+  });
+
+  const cppColor=function(v){return v<=0?"var(--t3)":v<=25?"var(--grn)":v<=35?"var(--ylw)":"var(--red)";};
+  const roasColor=function(v){return v<=0?"var(--t3)":v>=3?"var(--grn)":v>=2?"var(--ylw)":"var(--red)";};
+  const freqColor=function(v){return v<=0?"var(--t3)":v<=1.5?"var(--grn)":v<=2.5?"var(--ylw)":"var(--red)";};
+
+  const heroCount=adData.data.filter(function(a){return a.purchases>0&&a.cpp>0&&a.cpp<=35&&a.roas>=2;}).length;
+  const underCount=adData.data.filter(function(a){return a.spend>=10&&(a.purchases===0||(a.cpp>35));}).length;
+
+  return <Card>
+    <div style={{marginBottom:20}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:20}}>ADS</span>
+          <h2 style={{fontSize:18,fontWeight:700,color:"var(--t1)",margin:0}}>Ad Performance</h2>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:11,color:"var(--t3)"}}>Min spend:</span>
+          <input value={minSpend} onChange={e=>setMinSpend(e.target.value)} style={{width:60,padding:"4px 8px",background:"var(--card2)",border:"1px solid var(--bdr)",borderRadius:6,color:"var(--t1)",fontSize:13,fontFamily:"monospace"}}/>
+        </div>
+      </div>
+      <div style={{display:"flex",gap:8,margin:"8px 0 0 30px",flexWrap:"wrap"}}>
+        <Pill active={view==="all"} onClick={()=>setView("all")}>All ({filtered.length})</Pill>
+        <Pill active={view==="heroes"} onClick={()=>setView("heroes")}>Heroes ({heroCount})</Pill>
+        <Pill active={view==="underperformers"} onClick={()=>setView("underperformers")}>Underperformers ({underCount})</Pill>
+      </div>
+    </div>
+
+    <div style={{overflowX:"auto"}}>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+        <thead>
+          <tr>
+            <th style={{padding:"10px 12px",fontSize:11,textTransform:"uppercase",letterSpacing:"0.04em",color:"var(--t3)",fontWeight:600,textAlign:"left",borderBottom:"1px solid var(--bdr)",minWidth:200}}>Ad Name</th>
+            <SortHeader label="Spend" sortKey="spend" currentSort={sort} onSort={onSort} align="right"/>
+            <SortHeader label="Purch" sortKey="purchases" currentSort={sort} onSort={onSort} align="right"/>
+            <SortHeader label="CPP" sortKey="cpp" currentSort={sort} onSort={onSort} align="right"/>
+            <SortHeader label="ROAS" sortKey="roas" currentSort={sort} onSort={onSort} align="right"/>
+            <SortHeader label="Freq" sortKey="frequency" currentSort={sort} onSort={onSort} align="right"/>
+            <SortHeader label="CTR" sortKey="ctr" currentSort={sort} onSort={onSort} align="right"/>
+            <th style={{padding:"10px 12px",fontSize:11,textTransform:"uppercase",letterSpacing:"0.04em",color:"var(--t3)",fontWeight:600,textAlign:"center",borderBottom:"1px solid var(--bdr)"}}>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map(function(a,i){
+            const isHero=a.purchases>0&&a.cpp>0&&a.cpp<=35&&a.roas>=2;
+            const isUnder=a.spend>=10&&(a.purchases===0||(a.cpp>35));
+            return <tr key={i} style={{borderBottom:"1px solid var(--bdr)",background:isHero?"var(--grnbg)":isUnder?"var(--redbg)":"transparent"}}>
+              <td style={{padding:"10px 12px"}}>
+                <div style={{fontSize:13,color:"var(--t1)",fontWeight:500,maxWidth:250,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.ad_name}</div>
+                <div style={{fontSize:11,color:"var(--t3)",marginTop:2}}>{a.campaign_name}</div>
+              </td>
+              <td style={{padding:"10px 12px",textAlign:"right",fontFamily:"monospace",color:"var(--t1)"}}>{f$(a.spend)}</td>
+              <td style={{padding:"10px 12px",textAlign:"right",fontFamily:"monospace",color:"var(--t1)"}}>{a.purchases}</td>
+              <td style={{padding:"10px 12px",textAlign:"right",fontFamily:"monospace",color:cppColor(a.cpp)}}>{a.cpp>0?f$(a.cpp):"--"}</td>
+              <td style={{padding:"10px 12px",textAlign:"right",fontFamily:"monospace",color:roasColor(a.roas)}}>{a.roas>0?a.roas.toFixed(2)+"x":"--"}</td>
+              <td style={{padding:"10px 12px",textAlign:"right",fontFamily:"monospace",color:freqColor(a.frequency)}}>{a.frequency>0?a.frequency.toFixed(2):"--"}</td>
+              <td style={{padding:"10px 12px",textAlign:"right",fontFamily:"monospace",color:"var(--t2)"}}>{a.ctr>0?a.ctr.toFixed(2)+"%":"--"}</td>
+              <td style={{padding:"10px 12px",textAlign:"center"}}>
+                {isHero&&<Badge color="var(--grn)">Hero</Badge>}
+                {isUnder&&<Badge color="var(--red)">Cut</Badge>}
+                {!isHero&&!isUnder&&a.purchases>0&&<Badge color="var(--ylw)">Watch</Badge>}
+              </td>
+            </tr>;
+          })}
+        </tbody>
+      </table>
+    </div>
+  </Card>;
+}
+
 // ---- Audience Setup ----
 function AudienceSetup(){
   const [filter,setFilter]=useState("all");
@@ -306,28 +555,40 @@ function AudienceSetup(){
   </Card>;
 }
 
-// ---- Live Data Summary ----
-function LiveSummary({metaData,loading}){
-  if(loading)return <Card><div style={{textAlign:"center",padding:20,color:"var(--t3)"}}>Loading live Meta data from Noody Hub...</div></Card>;
+// ---- Live Data Summary (with Shopify cross-reference) ----
+function LiveSummary({metaData,shopifyData,loading,days}){
+  if(loading)return <Card><div style={{textAlign:"center",padding:20,color:"var(--t3)"}}>Loading live data from Noody Hub...</div></Card>;
   if(!metaData?.summary)return null;
   const s=metaData.summary;
+  const dtcRev=shopifyData?.totalRevenue||0;
+  const mer=dtcRev>0?(s.totalSpend/dtcRev*100):0;
+  const trueCPP=shopifyData?.totalOrders>0?(s.totalSpend/shopifyData.totalOrders):0;
+
   return <Card style={{background:"linear-gradient(135deg,var(--card),var(--accbg))"}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-      <div><div style={{fontSize:12,color:"var(--t3)",textTransform:"uppercase",fontWeight:500}}>Live from Noody Hub</div><div style={{fontSize:18,fontWeight:700,color:"var(--t1)"}}>Meta Ads Performance</div></div>
-      <Badge color="var(--grn)">LIVE - {metaData.dateRange||"30d"}</Badge>
+      <div><div style={{fontSize:12,color:"var(--t3)",textTransform:"uppercase",fontWeight:500}}>Live from Noody Hub</div><div style={{fontSize:18,fontWeight:700,color:"var(--t1)"}}>Meta Ads + Shopify Performance</div></div>
+      <Badge color="var(--grn)">LIVE - {days}d</Badge>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:12}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:12}}>
       {[
-        {l:"Total Spend",v:f$(s.totalSpend),c:"var(--acc2)"},
-        {l:"Purchases",v:fn(s.totalPurchases),c:"var(--t1)"},
-        {l:"Avg CPP",v:f$(s.avgCPP),c:s.avgCPP<=30?"var(--grn)":s.avgCPP<=50?"var(--ylw)":"var(--red)"},
-        {l:"ROAS",v:s.roas?s.roas.toFixed(2)+"x":"--",c:s.roas>=3?"var(--grn)":s.roas>=2?"var(--ylw)":"var(--red)"},
-        {l:"Days",v:metaData.daily?.length||"--",c:"var(--t1)"},
+        {l:"Meta Spend",v:f$(s.totalSpend),c:"var(--acc2)"},
+        {l:"Meta ROAS",v:s.roas?s.roas.toFixed(2)+"x":"--",c:s.roas>=3?"var(--grn)":s.roas>=2?"var(--ylw)":"var(--red)"},
+        {l:"Meta CPP",v:f$(s.avgCPP),c:s.avgCPP<=25?"var(--grn)":s.avgCPP<=35?"var(--ylw)":"var(--red)"},
+        {l:"DTC Revenue",v:dtcRev>0?f$(dtcRev):"--",c:"var(--blu)"},
+        {l:"True MER",v:mer>0?mer.toFixed(1)+"%":"--",c:mer>0?(mer<=25?"var(--grn)":mer<=35?"var(--ylw)":"var(--red)"):"var(--t3)"},
+        {l:"True CPP",v:trueCPP>0?f$(trueCPP):"--",c:trueCPP>0?(trueCPP<=25?"var(--grn)":trueCPP<=35?"var(--ylw)":"var(--red)"):"var(--t3)"},
+        {l:"DTC Orders",v:shopifyData?.totalOrders?fn(shopifyData.totalOrders):"--",c:"var(--t1)"},
+        {l:"AOV",v:shopifyData?.aov?f$(shopifyData.aov):"--",c:"var(--t1)"},
       ].map((m,i)=><div key={i} style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:12,padding:14}}>
         <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:4,fontWeight:500}}>{m.l}</div>
-        <div style={{fontSize:22,fontWeight:700,color:m.c,fontFamily:"'JetBrains Mono',monospace"}}>{m.v}</div>
+        <div style={{fontSize:20,fontWeight:700,color:m.c,fontFamily:"'JetBrains Mono',monospace"}}>{m.v}</div>
       </div>)}
     </div>
+    {mer>0&&<div style={{marginTop:12,padding:12,background:"var(--card2)",borderRadius:10,border:"1px solid var(--bdr)"}}>
+      <p style={{margin:0,fontSize:12,color:"var(--t2)",lineHeight:1.5}}>
+        <strong style={{color:"var(--t1)"}}>Meta ROAS vs True MER:</strong> Meta claims {s.roas?s.roas.toFixed(2):"--"}x ROAS, but true DTC MER is {mer.toFixed(1)}%. {mer<=35?"MER is within target (<35%).":"MER exceeds 35% target \u2014 review campaign efficiency."} Meta typically over-reports by 20-30%.
+      </p>
+    </div>}
   </Card>;
 }
 
@@ -336,21 +597,71 @@ function MetaCoach(){
   const [theme,setTheme]=useState("dark");
   const toggleTheme=()=>{const t=theme==="dark"?"light":"dark";setTheme(t);document.documentElement.setAttribute("data-theme",t);};
   const [tab,setTab]=useState("coach");
+  const [days,setDays]=useState(30);
   const [metaData,setMetaData]=useState(null);
+  const [adsetData,setAdsetData]=useState(null);
+  const [adData,setAdData]=useState(null);
+  const [shopifyData,setShopifyData]=useState(null);
   const [loading,setLoading]=useState(true);
+  const [adsetLoading,setAdsetLoading]=useState(false);
+  const [adLoading,setAdLoading]=useState(false);
+  const fetchedRef=useRef({});
+
+  const fetchAll=useCallback(async(d)=>{
+    setLoading(true);
+    try{
+      const [metaRes,shopRes]=await Promise.all([
+        fetch("/api/pull-meta?days="+d+"&level=campaign",{headers:{"x-api-key":API_KEY}}),
+        fetch("/api/pull-shopify?days="+d,{headers:{"x-api-key":API_KEY}}),
+      ]);
+      if(metaRes.ok){const md=await metaRes.json();setMetaData(md);}
+      if(shopRes.ok){const sd=await shopRes.json();setShopifyData(sd);}
+    }catch(e){console.error("Fetch error:",e);}
+    setLoading(false);
+    fetchedRef.current[d+"_campaign"]=true;
+  },[]);
+
+  const fetchAdsets=useCallback(async(d)=>{
+    if(fetchedRef.current[d+"_adset"])return;
+    setAdsetLoading(true);
+    try{
+      const r=await fetch("/api/pull-meta?days="+d+"&level=adset",{headers:{"x-api-key":API_KEY}});
+      if(r.ok){const data=await r.json();setAdsetData(data);}
+    }catch(e){console.error("Adset fetch:",e);}
+    setAdsetLoading(false);
+    fetchedRef.current[d+"_adset"]=true;
+  },[]);
+
+  const fetchAds=useCallback(async(d)=>{
+    if(fetchedRef.current[d+"_ad"])return;
+    setAdLoading(true);
+    try{
+      const r=await fetch("/api/pull-meta?days="+d+"&level=ad",{headers:{"x-api-key":API_KEY}});
+      if(r.ok){const data=await r.json();setAdData(data);}
+    }catch(e){console.error("Ad fetch:",e);}
+    setAdLoading(false);
+    fetchedRef.current[d+"_ad"]=true;
+  },[]);
+
+  useEffect(()=>{fetchAll(days);},[days]);
 
   useEffect(()=>{
-    (async()=>{
-      try{
-        const r=await fetch("/api/pull-meta?days=30&level=campaign",{headers:{"x-api-key":API_KEY}});
-        if(r.ok){const d=await r.json();if(d.daily)setMetaData(d);}
-      }catch(e){console.error("Meta fetch:",e);}
-      setLoading(false);
-    })();
-  },[]);
+    if(tab==="adsets")fetchAdsets(days);
+    if(tab==="ads")fetchAds(days);
+    if(tab==="coach"){fetchAdsets(days);fetchAds(days);}
+  },[tab,days]);
+
+  const changeDays=(d)=>{
+    fetchedRef.current={};
+    setAdsetData(null);
+    setAdData(null);
+    setDays(d);
+  };
 
   const tabs=[
     {id:"coach",label:"AI Coach",icon:"AI"},
+    {id:"adsets",label:"Adsets",icon:"AS"},
+    {id:"ads",label:"Ads",icon:"AD"},
     {id:"structure",label:"Structure",icon:"CALC"},
     {id:"benchmark",label:"Benchmark",icon:"TL"},
     {id:"audiences",label:"Audiences",icon:"AUD"},
@@ -358,32 +669,37 @@ function MetaCoach(){
 
   return <div style={{minHeight:"100vh",background:"var(--bg)",color:"var(--t1)",fontFamily:"'DM Sans',-apple-system,sans-serif"}}>
     <div style={{padding:"20px 24px 14px",borderBottom:"1px solid var(--bdr)",background:"var(--card)"}}>
-      <div style={{maxWidth:1000,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div style={{maxWidth:1100,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <div style={{width:40,height:40,borderRadius:10,background:"linear-gradient(135deg,var(--acc),var(--blu))",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:800,color:"#fff"}}>EE</div>
           <div>
             <h1 style={{fontSize:20,fontWeight:800,margin:0,letterSpacing:"-0.02em",color:"var(--t1)"}}>Meta Ads Intelligence Coach</h1>
-            <p style={{fontSize:12,color:"var(--t3)",margin:0}}>Ecommerce Equation Framework{metaData?" - Connected to Noody Hub":""}</p>
+            <p style={{fontSize:12,color:"var(--t3)",margin:0}}>Ecommerce Equation Framework{metaData?" - Connected to Noody Hub":""}{shopifyData?" + Shopify":""}</p>
           </div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <a href="/" style={{padding:"8px 16px",background:"var(--card2)",border:"1px solid var(--bdr)",borderRadius:8,color:"var(--t2)",textDecoration:"none",fontSize:13,fontWeight:500}}>Back to Dashboard</a>
+          <div style={{display:"flex",gap:4}}>
+            {[7,14,30,90].map(d=><button key={d} onClick={()=>changeDays(d)} style={{padding:"6px 14px",borderRadius:8,border:"1px solid "+(days===d?"var(--acc)":"var(--bdr)"),background:days===d?"var(--accbg)":"transparent",color:days===d?"var(--acc2)":"var(--t3)",fontSize:12,fontWeight:600,cursor:"pointer"}}>{d}d</button>)}
+          </div>
+          <a href="/" style={{padding:"8px 16px",background:"var(--card2)",border:"1px solid var(--bdr)",borderRadius:8,color:"var(--t2)",textDecoration:"none",fontSize:13,fontWeight:500}}>Dashboard</a>
           <button onClick={toggleTheme} style={{padding:"10px",background:"var(--card2)",border:"1px solid var(--bdr)",borderRadius:10,cursor:"pointer",fontSize:18,width:42,height:42,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--t2)"}}>{theme==="dark"?"Sun":"Moon"}</button>
         </div>
       </div>
     </div>
 
     <div style={{borderBottom:"1px solid var(--bdr)",background:"var(--card)",position:"sticky",top:0,zIndex:100,overflowX:"auto"}}>
-      <div style={{maxWidth:1000,margin:"0 auto",display:"flex",gap:2,padding:"0 24px"}}>
+      <div style={{maxWidth:1100,margin:"0 auto",display:"flex",gap:2,padding:"0 24px"}}>
         {tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"12px 20px",background:"transparent",border:"none",borderBottom:"2px solid "+(tab===t.id?"var(--acc)":"transparent"),color:tab===t.id?"var(--acc2)":"var(--t3)",fontSize:14,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",transition:"all .2s",display:"flex",alignItems:"center",gap:6}}>
           <span style={{fontSize:11,fontWeight:800,fontFamily:"monospace"}}>{t.icon}</span> {t.label}
         </button>)}
       </div>
     </div>
 
-    <div style={{maxWidth:1000,margin:"0 auto",padding:24,display:"flex",flexDirection:"column",gap:20}}>
-      <LiveSummary metaData={metaData} loading={loading}/>
-      {tab==="coach"&&<AICoach campaigns={[]} metaData={metaData}/>}
+    <div style={{maxWidth:1100,margin:"0 auto",padding:24,display:"flex",flexDirection:"column",gap:20}}>
+      <LiveSummary metaData={metaData} shopifyData={shopifyData} loading={loading} days={days}/>
+      {tab==="coach"&&<AICoach metaData={metaData} adsetData={adsetData} adData={adData} shopifyData={shopifyData} days={days}/>}
+      {tab==="adsets"&&<AdsetView adsetData={adsetData} loading={adsetLoading}/>}
+      {tab==="ads"&&<AdView adData={adData} loading={adLoading}/>}
       {tab==="structure"&&<CampaignCalc metaData={metaData}/>}
       {tab==="benchmark"&&<TrafficLight metaData={metaData}/>}
       {tab==="audiences"&&<AudienceSetup/>}
