@@ -204,8 +204,7 @@ function Dashboard(){
     {name:"International",value:XERO.intl,color:"#06b6d4"},
   ];
 
-  const dtcMer=XERO.rev>0?(XERO_MKT/XERO.dtc)*100:0;
-  const blendedMer=XERO.rev>0?(XERO_MKT/XERO.rev)*100:0;
+  // Channel data computed in Equation tab IIFE
 
   return <div style={{minHeight:"100vh",background:"var(--bg)",color:"var(--t1)",fontFamily:"'DM Sans',-apple-system,sans-serif"}}>
     
@@ -229,25 +228,63 @@ function Dashboard(){
       <button onClick={toggleTheme} style={{padding:"10px",background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,cursor:"pointer",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",width:44,height:44,transition:"all .2s",color:"var(--t2)",flexShrink:0}} title={theme==="dark"?"Light mode":"Dark mode"}>{theme==="dark"?"☀️":"🌙"}</button>
     </div>
 
-    {(tab==="daily"||tab==="meta")&&<div style={{padding:"6px 20px",display:"flex",gap:3}}>
+    {(tab==="equation"||tab==="daily"||tab==="meta"||tab==="insights"||tab==="diagnose"||tab==="scale")&&<div style={{padding:"6px 20px",display:"flex",gap:3,alignItems:"center",flexWrap:"wrap"}}>
       {[7,14,30,90,180,365].map(r=><button key={r} onClick={()=>setRange(r)} style={{padding:"8px 16px",fontSize:13,borderRadius:8,minHeight:36,cursor:"pointer",background:range===r?"var(--acc)":"var(--card)",color:range===r?"#fff":"var(--t2)",border:range===r?"1px solid var(--acc)":"1px solid var(--bdr)"}}>{r}d</button>)}
-      {(shopLoading||metaLoading)&&<span style={{fontSize:12,color:"var(--t3)",marginLeft:8}}>⏳ Refreshing live data...</span>}
+      {(shopLoading||metaLoading||xeroLoading)&&<span style={{fontSize:12,color:"var(--t3)",marginLeft:8}}>⏳ Refreshing live data...</span>}
+      <span style={{fontSize:11,color:"var(--t3)",marginLeft:"auto"}}>{mergedD.length} days · {(shopLive?"Shopify ✓ ":"")+(metaLive?"Meta ✓ ":"")+(gads?"Google ✓ ":"")+(xeroLive?"Xero ✓":"")}</span>
     </div>}
 
     <div style={{padding:"24px 28px",maxWidth:1400,margin:"0 auto"}}>
 
-    {tab==="equation"&&<>
-      <h2 style={{fontSize:20,fontWeight:700,margin:"0 0 14px",color:"var(--t1)"}}>The Daily Equation — Full P&L</h2>
-      <div style={{fontSize:11,color:"var(--t3)",marginBottom:10}}>{liveXero?"⚡ Live from Xero API":"📊 Xero P&L (Apr 2025 – Mar 2026)"}</div>
+    {tab==="equation"&&(()=>{
+      // Use live agg data for selected range where possible
+      const rangeRev=agg?agg.tr:0;
+      const rangeMeta=agg?agg.tms:0;
+      const rangeOrders=agg?agg.to:0;
+      const rangeAOV=rangeOrders>0?rangeRev/rangeOrders:0;
+      const rangeROAS=rangeMeta>0&&agg?agg.tmv/agg.tms:0;
+
+      // Use live Xero P&L if available, else hardcoded XERO
+      const xRev=liveXero?liveXero.rev:XERO.rev;
+      const xVar=liveXero?(liveXero.rev-liveXero.gp):XERO_VAR;
+      const xMkt=XERO_MKT; // Xero P&L doesn't split marketing clearly
+      const xFixed=XERO_FIXED;
+      const xProfit=liveXero?liveXero.np:XERO_PROFIT;
+      const xVarPct=xRev>0?xVar/xRev*100:XERO_VAR/XERO.rev*100;
+      const xMerPct=xRev>0?xMkt/xRev*100:XERO_MKT/XERO.rev*100;
+      const xFcPct=xRev>0?xFixed/xRev*100:XERO_FIXED/XERO.rev*100;
+      const xProfPct=xRev>0?xProfit/xRev*100:XERO_PROFIT/XERO.rev*100;
+      const xDtcMer=XERO.dtc>0?xMkt/XERO.dtc*100:60.4;
+
+      // Range-specific MER
+      const rangeMER=rangeRev>0?rangeMeta/rangeRev*100:null;
+
+      return <>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+        <div>
+          <h2 style={{fontSize:20,fontWeight:700,margin:0,color:"var(--t1)"}}>The Daily Equation — Full P&L</h2>
+          <div style={{fontSize:11,color:"var(--t3)",marginTop:2}}>{liveXero?"⚡ Live from Xero API":"📊 Xero P&L (Apr 2025 – Mar 2026)"} · Showing {range}d of trading data</div>
+        </div>
+      </div>
+
+      {/* Period Performance Strip */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:7,marginBottom:14}}>
+        <MC l={range+"d Revenue"} v={rangeRev} fmt="$" big/>
+        <MC l={range+"d Meta Spend"} v={rangeMeta} fmt="$"/>
+        <MC l={range+"d MER"} v={rangeMER} fmt="%" bm={BM.mer}/>
+        <MC l="Orders" v={rangeOrders} fmt="n"/>
+        <MC l="AOV" v={rangeAOV} fmt="$"/>
+        <MC l="Meta ROAS" v={rangeROAS} fmt="n" sub="last-click"/>
+      </div>
 
       {/* Equation bars */}
       <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:20,marginBottom:14}}>
         {[
-          {l:"Revenue",v:XERO.rev,p:100,c:"#fff",bg:"#2563eb"},
-          {l:"Variable Costs",v:XERO_VAR,p:XERO_VAR/XERO.rev*100,c:SC[gs(XERO_VAR/XERO.rev*100,BM.vc)],bg:SC[gs(XERO_VAR/XERO.rev*100,BM.vc)]},
-          {l:"Marketing (MER)",v:XERO_MKT,p:XERO_MKT/XERO.rev*100,c:SC[gs(XERO_MKT/XERO.rev*100,BM.mer)],bg:SC[gs(XERO_MKT/XERO.rev*100,BM.mer)]},
-          {l:"Fixed Costs",v:XERO_FIXED,p:XERO_FIXED/XERO.rev*100,c:SC[gs(XERO_FIXED/XERO.rev*100,BM.fc)],bg:SC[gs(XERO_FIXED/XERO.rev*100,BM.fc)]},
-          {l:"NET PROFIT",v:XERO_PROFIT,p:XERO_PROFIT/XERO.rev*100,c:SC[gs(XERO_PROFIT/XERO.rev*100,BM.np)],bg:SC[gs(XERO_PROFIT/XERO.rev*100,BM.np)]},
+          {l:"Revenue",v:xRev,p:100,c:"#fff",bg:"#2563eb"},
+          {l:"Variable Costs",v:xVar,p:xVarPct,c:SC[gs(xVarPct,BM.vc)],bg:SC[gs(xVarPct,BM.vc)]},
+          {l:"Marketing (MER)",v:xMkt,p:xMerPct,c:SC[gs(xMerPct,BM.mer)],bg:SC[gs(xMerPct,BM.mer)]},
+          {l:"Fixed Costs",v:xFixed,p:xFcPct,c:SC[gs(xFcPct,BM.fc)],bg:SC[gs(xFcPct,BM.fc)]},
+          {l:"NET PROFIT",v:xProfit,p:xProfPct,c:SC[gs(xProfPct,BM.np)],bg:SC[gs(xProfPct,BM.np)]},
         ].map((r,i)=><div key={i} style={{marginBottom:i<4?10:0}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
             <span style={{fontSize:12,color:i===4?"#fff":"#9ca3af",fontWeight:i===4?700:400}}>{i>0&&i<4?"− ":i===4?"= ":""}{r.l}</span>
@@ -259,7 +296,51 @@ function Dashboard(){
         </div>)}
       </div>
 
-      {/* Channel Mix */}
+      {/* DTC vs Wholesale Performance */}
+      <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:20,marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:700,color:"var(--t1)",marginBottom:14}}>DTC vs Wholesale Performance</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16}}>
+          {[
+            {label:"DTC (Online)",rev:XERO.dtc,pct:Math.round(XERO.dtc/XERO.rev*100),color:"#2563eb",adSpend:XERO_MKT,mer:xDtcMer},
+            {label:"Wholesale",rev:XERO.wh,pct:Math.round(XERO.wh/XERO.rev*100),color:"#7c3aed",adSpend:0,mer:0},
+            {label:"International",rev:XERO.intl,pct:Math.round(XERO.intl/XERO.rev*100),color:"#06b6d4",adSpend:0,mer:0},
+          ].map((ch,i)=><div key={i} style={{textAlign:"center"}}>
+            <div style={{width:48,height:48,borderRadius:12,background:ch.color+"15",border:"2px solid "+ch.color+"44",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 8px",fontSize:20,fontWeight:700,color:ch.color,fontFamily:"'JetBrains Mono',monospace"}}>{ch.pct}%</div>
+            <div style={{fontSize:13,fontWeight:600,color:"var(--t1)"}}>{ch.label}</div>
+            <div style={{fontSize:16,fontWeight:700,color:ch.color,fontFamily:"'JetBrains Mono',monospace",margin:"4px 0"}}>{f$(ch.rev)}</div>
+            <div style={{fontSize:11,color:"var(--t3)"}}>{f$(Math.round(ch.rev/XERO.months))}/mo</div>
+            {ch.adSpend>0&&<div style={{marginTop:6,padding:"6px 8px",background:"rgba(239,68,68,0.06)",borderRadius:6}}>
+              <div style={{fontSize:10,color:"var(--t3)"}}>MER</div>
+              <div style={{fontSize:14,fontWeight:700,color:ch.mer>35?"var(--red)":"var(--grn)",fontFamily:"'JetBrains Mono',monospace"}}>{fp(ch.mer)}</div>
+            </div>}
+            {ch.adSpend===0&&<div style={{marginTop:6,padding:"6px 8px",background:"rgba(16,185,129,0.06)",borderRadius:6}}>
+              <div style={{fontSize:10,color:"var(--t3)"}}>Ad Cost</div>
+              <div style={{fontSize:14,fontWeight:700,color:"var(--grn)",fontFamily:"'JetBrains Mono',monospace"}}>$0</div>
+            </div>}
+          </div>)}
+        </div>
+
+        {/* Revenue split bar */}
+        <div style={{marginTop:16,height:10,borderRadius:5,display:"flex",overflow:"hidden"}}>
+          <div style={{width:Math.round(XERO.dtc/XERO.rev*100)+"%",background:"#2563eb",transition:"width .3s"}}/>
+          <div style={{width:Math.round(XERO.wh/XERO.rev*100)+"%",background:"#7c3aed",transition:"width .3s"}}/>
+          <div style={{width:Math.round(XERO.intl/XERO.rev*100)+"%",background:"#06b6d4",transition:"width .3s"}}/>
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:10,color:"var(--t3)"}}>
+          <span>DTC {Math.round(XERO.dtc/XERO.rev*100)}%</span>
+          <span>Wholesale {Math.round(XERO.wh/XERO.rev*100)}%</span>
+          <span>Intl {Math.round(XERO.intl/XERO.rev*100)}%</span>
+        </div>
+
+        {/* Key insight */}
+        <div style={{marginTop:14,padding:12,background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.15)",borderRadius:8}}>
+          <div style={{fontSize:12,color:"var(--t1)",lineHeight:1.6}}>
+            <strong style={{color:"var(--red)"}}>The DTC profitability gap:</strong> Wholesale contributes {Math.round(XERO.wh/XERO.rev*100)}% of revenue at $0 ad spend. DTC contributes {Math.round(XERO.dtc/XERO.rev*100)}% but absorbs 100% of the ${fn(XERO_MKT)} marketing spend. Every dollar of wholesale revenue flows almost entirely to gross profit. Every dollar of DTC revenue costs ${(xDtcMer/100).toFixed(2)} in marketing first.
+          </div>
+        </div>
+      </div>
+
+      {/* Channel Mix Pie + Benchmarks */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
         <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18}}>
           <div style={{fontSize:11,color:"var(--t3)",marginBottom:8,textTransform:"uppercase"}}>Revenue by Channel</div>
@@ -278,13 +359,14 @@ function Dashboard(){
         <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18}}>
           <div style={{fontSize:11,color:"var(--t3)",marginBottom:8,textTransform:"uppercase"}}>Benchmark Status</div>
           {[
-            {l:"Variable Costs",v:XERO_VAR/XERO.rev*100,b:BM.vc,t:"<40%"},
-            {l:"Marketing (MER)",v:XERO_MKT/XERO.rev*100,b:BM.mer,t:"<35%"},
-            {l:"Fixed Costs",v:XERO_FIXED/XERO.rev*100,b:BM.fc,t:"<20%"},
-            {l:"Net Profit",v:XERO_PROFIT/XERO.rev*100,b:BM.np,t:">10%"},
+            {l:"Variable Costs",v:xVarPct,b:BM.vc,t:"<40%"},
+            {l:"Marketing (Blended MER)",v:xMerPct,b:BM.mer,t:"<35%"},
+            {l:"Marketing (DTC MER)",v:xDtcMer,b:BM.mer,t:"<35%"},
+            {l:"Fixed Costs",v:xFcPct,b:BM.fc,t:"<20%"},
+            {l:"Net Profit",v:xProfPct,b:BM.np,t:">10%"},
           ].map((m,i)=>{
             let s=gs(m.v,m.b);
-            return <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:i<3?"1px solid #1a1a2e":"none"}}>
+            return <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:i<4?"1px solid #1a1a2e":"none"}}>
               <span style={{fontSize:11,color:"var(--t2)"}}>{m.l}</span>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
                 <span style={{fontSize:12,fontWeight:600,color:SC[s],fontFamily:"'JetBrains Mono',monospace"}}>{fp(m.v)}</span>
@@ -299,23 +381,23 @@ function Dashboard(){
       <div style={{background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:14,padding:18,marginBottom:14}}>
         <div style={{fontSize:13,fontWeight:700,color:"#ef4444",marginBottom:6}}>🚨 CRITICAL INSIGHT: DTC MER</div>
         <div style={{fontSize:12,color:"var(--t1)",lineHeight:1.7}}>
-          Blended MER looks healthy at <strong style={{color:"#10b981"}}>{fp(blendedMer)}</strong> because wholesale ($405K) dilutes the marketing cost.
-          But your $222K ad spend is almost entirely driving DTC ($368K). The <strong>true DTC-only MER is <span style={{color:"#ef4444"}}>{fp(dtcMer)}</span></strong> — 
-          you're spending 60 cents for every $1 of DTC revenue. The business is profitable because wholesale carries the top line at near-zero marketing cost.
+          Blended MER looks healthy at <strong style={{color:"#10b981"}}>{fp(xMerPct)}</strong> because wholesale (${fn(XERO.wh)}) dilutes the marketing cost.
+          But your ${fn(XERO_MKT)} ad spend is almost entirely driving DTC (${fn(XERO.dtc)}). The <strong>true DTC-only MER is <span style={{color:"#ef4444"}}>{fp(xDtcMer)}</span></strong> — 
+          you're spending {Math.round(xDtcMer)} cents for every $1 of DTC revenue. The business is profitable because wholesale carries the top line at near-zero marketing cost.
         </div>
         <div style={{marginTop:8,display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
           <div style={{background:"rgba(16,185,129,0.08)",borderRadius:6,padding:8,textAlign:"center"}}>
             <div style={{fontSize:10,color:"var(--t3)"}}>BLENDED MER</div>
-            <div style={{fontSize:18,fontWeight:700,color:"#10b981",fontFamily:"'JetBrains Mono',monospace"}}>{fp(blendedMer)}</div>
+            <div style={{fontSize:18,fontWeight:700,color:"#10b981",fontFamily:"'JetBrains Mono',monospace"}}>{fp(xMerPct)}</div>
           </div>
           <div style={{background:"rgba(239,68,68,0.08)",borderRadius:6,padding:8,textAlign:"center"}}>
             <div style={{fontSize:10,color:"var(--t3)"}}>DTC-ONLY MER</div>
-            <div style={{fontSize:18,fontWeight:700,color:"#ef4444",fontFamily:"'JetBrains Mono',monospace"}}>{fp(dtcMer)}</div>
+            <div style={{fontSize:18,fontWeight:700,color:"#ef4444",fontFamily:"'JetBrains Mono',monospace"}}>{fp(xDtcMer)}</div>
           </div>
         </div>
       </div>
 
-      {/* Key P&L lines */}
+      {/* Variable Cost Breakdown */}
       <div style={{fontSize:11,color:"var(--t3)",marginBottom:6,textTransform:"uppercase"}}>Variable Cost Breakdown</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:6,marginBottom:14}}>
         <MC l="COGS" v={XERO.cogs/XERO.rev*100} fmt="%" sub={"$"+fn(XERO.cogs)} bm={BM.vc}/>
@@ -331,6 +413,21 @@ function Dashboard(){
         <MC l="Consultancy" v={XERO.consult} fmt="$" sub={f$(Math.round(XERO.consult/XERO.months))+"/mo"}/>
         <MC l="LER" v={Math.round((XERO.rev-XERO_VAR)/XERO.wages*100)/100} fmt="n" sub="Gross Margin / Wages" bm={{h:[2,100],w:[1.5,2]}}/>
       </div>
+
+      {/* Daily Revenue & Meta chart for selected range */}
+      {chartData.length>1&&<div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginTop:14}}>
+        <div style={{fontSize:11,color:"var(--t3)",marginBottom:8}}>REVENUE & META SPEND ({range}d)</div>
+        <ResponsiveContainer width="100%" height={200}>
+          <ComposedChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e"/>
+            <XAxis dataKey="d" tick={{fill:"#6b7280",fontSize:10}} interval={Math.max(0,Math.floor(chartData.length/12))}/>
+            <YAxis tick={{fill:"#6b7280",fontSize:9}}/>
+            <Tooltip contentStyle={{background:"var(--bdr)",border:"1px solid #2d2d44",borderRadius:8,fontSize:11}}/>
+            <Area type="monotone" dataKey="rev" fill="rgba(37,99,235,0.12)" stroke="#2563eb" strokeWidth={1.5} name="Revenue"/>
+            <Bar dataKey="meta" fill="#a855f755" radius={[2,2,0,0]} name="Meta Spend"/>
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>}
 
       {/* COACH & DIAGNOSIS */}
       {(()=>{
@@ -474,7 +571,8 @@ function Dashboard(){
           </div>
         </div>;
       })()}
-    </>}
+    </>;
+    })()}
 
     {tab==="daily"&&agg&&<>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
@@ -601,7 +699,7 @@ function Dashboard(){
       <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:14}}>
         {[
           {t:"BANDWIDTH",d:"Stock, capacity, founder time. Wholesale is mixed — some accounts growing, some declining. This needs stabilization.",c:"#f59e0b"},
-          {t:"EFFICIENCY",d:"Fixed costs at 24.9% (above 20% benchmark). DTC MER at 60.4% (critical). Blended MER masked by wholesale. Variable costs healthy at 33.9%.",c:dtcMer>45?"#ef4444":"#f59e0b"},
+          {t:"EFFICIENCY",d:"Fixed costs at 24.9% (above 20% benchmark). DTC MER at 60.4% (critical). Blended MER masked by wholesale. Variable costs healthy at 33.9%.",c:(XERO_MKT/XERO.dtc*100)>45?"#ef4444":"#f59e0b"},
           {t:"THROUGHPUT",d:"Primary growth lever. Scale revenue to leverage $224K fixed costs. At $2M, fixed costs drop to 11.2%. But DTC acquisition must improve first.",c:"#2563eb"},
         ].map(c=><div key={c.t} style={{borderLeft:"3px solid "+c.c,paddingLeft:12,marginBottom:12}}>
           <div style={{fontSize:12,fontWeight:700,color:c.c}}>{c.t}</div>
