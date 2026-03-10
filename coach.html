@@ -209,6 +209,11 @@ function App(){
   const[days,setDays]=useState(14);
   const[aov,setAov]=useState(78);
   const[mer,setMer]=useState(20);
+  const[knowledgeBase,setKnowledgeBase]=useState("");
+  const[chatQ,setChatQ]=useState("");
+  const[chatResp,setChatResp]=useState("");
+  const[chatLoading,setChatLoading]=useState(false);
+  const[chatHistory,setChatHistory]=useState([]);
 
   const thresholds=useMemo(()=>calcThresholds(aov,mer),[aov,mer]);
 
@@ -227,6 +232,12 @@ function App(){
         const ar=await fetch("/api/pull-meta?days="+d+"&level=ad",{headers:{"x-api-key":API_KEY}});
         if(ar.ok){const ad=await ar.json();setAds(ad.data||[]);}
       }catch(e){console.log("Ad-level not available:",e);}
+
+      setStatus("Loading EE knowledge base...");
+      try{
+        const kr=await fetch("/knowledge.md");
+        if(kr.ok){const kt=await kr.text();setKnowledgeBase(kt);}
+      }catch(e){console.log("Knowledge base not loaded:",e);}
 
       setApiOk({ok:true,msg:(cd.data||cd.campaigns||[]).length+" campaigns"});
     }catch(e){
@@ -280,6 +291,7 @@ function App(){
     {id:"campaigns",label:"Campaigns",icon:"📁"},
     {id:"marvel",label:"Marvel Math",icon:"🦸"},
     {id:"actions",label:"Actions",icon:"⚡"},
+    {id:"coach",label:"AI Coach",icon:"🤖"},
     {id:"structure",label:"Structure Calc",icon:"🧮"},
     {id:"settings",label:"Settings",icon:"⚙️"},
   ];
@@ -439,6 +451,70 @@ function App(){
           <p style={{color:"var(--t2)"}}>No immediate actions. {ads.length===0?"Connect ad-level data for Marvel Math classification.":"Account is stable — keep testing new creative."}</p>
         </div>}
       </div>}
+
+      {/* ── AI COACH TAB ─────────────────────── */}
+      {tab==="coach"&&(()=>{
+        const askCoach=async()=>{
+          if(!chatQ.trim())return;
+          setChatLoading(true);
+          const accountData=JSON.stringify({
+            summary:{spend:totalSpend,purchases:totalPurchases,revenue:totalRevenue,roas:blendedROAS,cpp:blendedCPA,dailySpend,profit},
+            campaigns:assessedCampaigns.map(c=>({name:c.campaign_name,stage:c.stage,health:c.healthStatus,spend:c.spend,cpp:c.cpp,roas:c.roas,freq:c.frequency,purchases:c.purchases})),
+            ads:classifiedAds.slice(0,30).map(a=>({name:a.ad_name||a.campaign_name,stage:a.stage,class:a.classification,spend:a.spend,cpp:a.cpp,roas:a.roas,freq:a.frequency,reach:a.reach,purchases:a.purchases})),
+            marvelCounts,
+            villainCount:villains.length,villainWaste,heroCount:heroes.length,
+          });
+          const sys=`You are the Ecommerce Equation Meta Ads Coach created by Koby. You have COMPLETE knowledge of the EE framework. Always reference specific framework concepts, thresholds, and terminology in your answers. Be specific, actionable, and concise.
+
+FRAMEWORK KNOWLEDGE BASE:
+${knowledgeBase||"Knowledge base not loaded — use your built-in EE framework knowledge."}
+
+LIVE ACCOUNT DATA (last ${days} days):
+${accountData}
+
+AOV: $${aov} | Target MER: ${mer}% | Base CPP: $${Math.round(aov*mer/100)}
+CPP Thresholds — TOF: green ≤$${Math.round(thresholds.tof.good)} red ≥$${Math.round(thresholds.tof.bad)} | MOF: green ≤$${Math.round(thresholds.mof.good)} red ≥$${Math.round(thresholds.mof.bad)}
+
+Rules:
+- Use Marvel Math terminology (Superhero/Hero/Sidekick/Civilian/Villain)
+- Reference specific campaigns and ads by name when giving advice
+- Compare within funnel stages only (TOF vs TOF, not TOF vs MOF)
+- Use the Traffic Light System for frequency assessment
+- Reference the Refresh System process for optimization advice
+- Be direct and actionable — tell them exactly what to do`;
+
+          try{
+            const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1500,system:sys,messages:[...chatHistory,{role:"user",content:chatQ}]})});
+            const d=await r.json();
+            const ans=d.content?.map(b=>b.text||"").join("\n")||"No response.";
+            setChatResp(ans);
+            setChatHistory(p=>[...p,{role:"user",content:chatQ},{role:"assistant",content:ans}]);
+          }catch(e){
+            setChatResp("⚠️ AI Coach couldn't connect. Check the other tabs for framework-based analysis of your data.");
+          }
+          setChatLoading(false);setChatQ("");
+        };
+        const quickQ=["Give me a full account audit","Which ads should I kill and which should I scale?","Is my funnel spend allocation correct?","My CPP is rising — diagnose it using the Refresh System","How do I find my next Superhero ad?","Should I be scaling right now? Run the Greenlight to Scale check"];
+        return <div>
+          <div className="card glow">
+            <div className="sh"><h2>🤖 AI Strategy Coach</h2><p>Powered by the full EE knowledge base + your live account data{knowledgeBase?" ✅ KB loaded":" ⏳ KB loading..."}</p></div>
+            {!chatResp&&<div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}>
+              {quickQ.map((q,i)=><button key={i} onClick={()=>setChatQ(q)} style={{padding:"6px 12px",background:"var(--ca)",border:"1px solid var(--bdr)",borderRadius:20,color:"var(--t2)",fontSize:11,cursor:"pointer"}}>{q}</button>)}
+            </div>}
+            {chatHistory.length>0&&<div style={{maxHeight:400,overflowY:"auto",marginBottom:16,display:"flex",flexDirection:"column",gap:8}}>
+              {chatHistory.map((m,i)=><div key={i} style={{padding:"12px 14px",borderRadius:10,background:m.role==="user"?"var(--ca)":"rgba(124,58,237,.08)",border:"1px solid "+(m.role==="user"?"var(--bdr)":"rgba(124,58,237,.2)"),fontSize:13,lineHeight:1.7,whiteSpace:"pre-wrap"}}>
+                <div style={{fontSize:10,color:"var(--t3)",marginBottom:4,fontWeight:600}}>{m.role==="user"?"YOU":"🤖 COACH"}</div>
+                {m.content}
+              </div>)}
+            </div>}
+            <div style={{display:"flex",gap:8}}>
+              <input value={chatQ} onChange={e=>setChatQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&askCoach()} placeholder="Ask the coach anything about your account..." style={{flex:1,padding:"11px 14px",background:"var(--ca)",border:"1px solid var(--bdr)",borderRadius:8,color:"var(--t1)",fontSize:13,outline:"none",fontFamily:"var(--fs)"}}/>
+              <button onClick={askCoach} disabled={chatLoading} style={{padding:"11px 20px",background:"var(--acc)",border:"none",borderRadius:8,color:"#fff",fontWeight:700,fontSize:13,opacity:chatLoading?.6:1}}>{chatLoading?"Thinking...":"Ask Coach"}</button>
+            </div>
+            {chatHistory.length>0&&<button onClick={()=>{setChatHistory([]);setChatResp("");}} style={{marginTop:8,padding:"6px 12px",background:"transparent",border:"1px solid var(--bdr)",borderRadius:6,color:"var(--t3)",fontSize:11}}>Clear chat</button>}
+          </div>
+        </div>;
+      })()}
 
       {/* ── STRUCTURE CALC ───────────────────── */}
       {tab==="structure"&&<div className="card">
