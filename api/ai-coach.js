@@ -8,6 +8,7 @@ const CONTEXT_FILES = {
   shopify: 'shopify.md',
   xero: 'xero.md',
   google: 'google-ads.md',
+  social: 'social.md',
 };
 
 function loadContext(keys) {

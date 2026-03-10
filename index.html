@@ -242,7 +242,7 @@ function Dashboard(){
 
   // Auto-fetch on first visit to relevant tabs
   useEffect(()=>{
-    if((tab==="daily"||tab==="equation"||tab==="meta"||tab==="diagnose"||tab==="scale"||tab==="insights")&&!shopLive&&!shopLoading)fetchShop();
+    if((tab==="daily"||tab==="equation"||tab==="meta"||tab==="diagnose"||tab==="scale"||tab==="insights"||tab==="social")&&!shopLive&&!shopLoading)fetchShop();
     if((tab==="daily"||tab==="meta"||tab==="insights")&&!metaLive&&!metaLoading)fetchMeta();
     if((tab==="equation"||tab==="diagnose"||tab==="scale"||tab==="insights")&&!xeroLive&&!xeroLoading)fetchXero(xeroMonths);
     if((tab==="gads"||tab==="insights")&&!gads&&!gadsLoading)fetchGads(gadsDays);
@@ -391,7 +391,7 @@ function Dashboard(){
       <button onClick={toggleTheme} style={{padding:"10px",background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,cursor:"pointer",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",width:44,height:44,transition:"all .2s",color:"var(--t2)",flexShrink:0}} title={theme==="dark"?"Light mode":"Dark mode"}>{theme==="dark"?"☀️":"🌙"}</button>
     </div>
 
-    {(tab==="equation"||tab==="daily"||tab==="meta"||tab==="insights"||tab==="diagnose"||tab==="scale"||tab==="klaviyo")&&<div style={{padding:"6px 20px",display:"flex",gap:3,alignItems:"center",flexWrap:"wrap"}}>
+    {(tab==="equation"||tab==="daily"||tab==="meta"||tab==="insights"||tab==="diagnose"||tab==="scale"||tab==="klaviyo"||tab==="social")&&<div style={{padding:"6px 20px",display:"flex",gap:3,alignItems:"center",flexWrap:"wrap"}}>
       {[7,14,30,90,180,365].map(r=><button key={r} onClick={()=>{setRange(r);setCustomFrom("");setCustomTo("");}} style={{padding:"8px 16px",fontSize:13,borderRadius:8,minHeight:36,cursor:"pointer",background:!customFrom&&range===r?"var(--acc)":"var(--card)",color:!customFrom&&range===r?"#fff":"var(--t2)",border:!customFrom&&range===r?"1px solid var(--acc)":"1px solid var(--bdr)"}}>{r}d</button>)}
       <span style={{fontSize:11,color:"var(--t3)",margin:"0 4px"}}>or</span>
       <input type="date" value={customFrom} onChange={e=>{setCustomFrom(e.target.value);}} style={{padding:"6px 8px",fontSize:12,borderRadius:6,background:"var(--card)",border:"1px solid var(--bdr)",color:"var(--t1)",fontFamily:"'JetBrains Mono',monospace"}}/>
@@ -1589,6 +1589,14 @@ function Dashboard(){
       const thS={fontSize:11,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",padding:"8px 10px",textAlign:"left",borderBottom:"1px solid var(--bdr)"};
       const tdS={fontSize:13,padding:"8px 10px",borderBottom:"1px solid var(--bdr)",fontFamily:"'JetBrains Mono',monospace"};
 
+      // Shopify referrer revenue data
+      const igRev=483,igSess=331,fbRev=278,fbSess=451;
+      const totalSocialRev=igRev+fbRev;
+      const totalSocialSess=igSess+fbSess;
+      const igRps=igRev/igSess;
+      const fbRps=fbRev/fbSess;
+      const socialRevPct=agg?(totalSocialRev/agg.tr*100):0;
+
       if(socialData&&socialData.setup){
         return <>
           <div style={{fontSize:20,fontWeight:700,marginBottom:16}}>Social Media</div>
@@ -1600,10 +1608,10 @@ function Dashboard(){
           <div style={cardS}>
             <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Social → Revenue Attribution (from Shopify)</div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10}}>
-              <MC l="Instagram Revenue" v={483} fmt="$" sub="331 sessions" />
-              <MC l="Facebook Revenue" v={278} fmt="$" sub="451 sessions" />
-              <MC l="Total Social Rev" v={761} fmt="$" sub="782 sessions" />
-              <MC l="Social Rev/Session" v={0.97} fmt="$" />
+              <MC l="Instagram Revenue" v={igRev} fmt="$" sub={igSess+" sessions"} />
+              <MC l="Facebook Revenue" v={fbRev} fmt="$" sub={fbSess+" sessions"} />
+              <MC l="Total Social Rev" v={totalSocialRev} fmt="$" sub={totalSocialSess+" sessions"} />
+              <MC l="IG Rev/Session" v={igRps} fmt="$" bm={{h:[0.5,100],w:[0.25,0.5]}} sub="Benchmark: $0.50–$2.00" />
             </div>
           </div>
         </>;
@@ -1622,20 +1630,70 @@ function Dashboard(){
       const hasData=socialData&&socialData.success;
       const topPosts=[...posts].sort((a,b)=>(b.likes+b.comments)-(a.likes+a.comments));
 
+      // Computed benchmark metrics
+      const followers=ig.followers||0;
+      const totalEng=ig.totalInteractions||0;
+      const igEngRate=followers>0?(totalEng/followers*100):0;
+      const igReachRate=followers>0&&ig.reach>0?(ig.reach/followers/30*100):0;
+      const igProfileRate=ig.reach>0?(ig.profileViews||0)/ig.reach*100:0;
+      const fbEngRate=fb.impressions>0?(fb.engagedUsers||0)/fb.impressions*100:0;
+      const fbReachRate=(fb.pageLikes||0)>0?(fb.impressions/(fb.pageLikes||1)/30*100):0;
+
+      // Growth tracking
+      const igDaily=ig.daily||[];
+      const followerStart=igDaily.length>1&&igDaily[0].followers?igDaily[0].followers:0;
+      const followerEnd=followers;
+      const growthAbs=followerEnd-followerStart;
+      const growthPct=followerStart>0?((followerEnd-followerStart)/followerStart*100):0;
+      const monthlyGrowthPct=igDaily.length>7?(growthPct/(igDaily.length/30)):growthPct;
+      const monthsTo10K=followers>0&&followers<10000&&monthlyGrowthPct>0?Math.ceil(((10000-followers)/followers*100)/monthlyGrowthPct):null;
+
+      // Content type performance
+      const typeStats={};
+      posts.forEach(p=>{
+        const t=p.type==="CAROUSEL_ALBUM"?"Carousel":p.type==="VIDEO"?"Reel/Video":"Static";
+        if(!typeStats[t])typeStats[t]={count:0,likes:0,comments:0};
+        typeStats[t].count++;
+        typeStats[t].likes+=p.likes;
+        typeStats[t].comments+=p.comments;
+      });
+      const typeRows=Object.keys(typeStats).map(t=>{
+        const s=typeStats[t];
+        return {type:t,count:s.count,avgEng:s.count>0?(s.likes+s.comments)/s.count:0,avgLikes:s.count>0?s.likes/s.count:0,avgComments:s.count>0?s.comments/s.count:0,engRate:followers>0?((s.likes+s.comments)/s.count/followers*100):0};
+      }).sort((a,b)=>b.avgEng-a.avgEng);
+
+      // AI analysis — auto-fire on tab load
+      const socialAiKey="social_"+rangeKey;
+      const aiText=tabAi[socialAiKey];
+      const aiLoad=tabAiLoading.social;
+      if(hasData&&!aiText&&!aiLoad){
+        const prompt="Analyse Noody Skincare's organic social media performance (NZ eczema/baby skincare DTC brand). 30-day data from Instagram & Facebook.\n\n"+
+          "INSTAGRAM:\n- Followers: "+fn(followers)+"\n- Reach (30d): "+fn(ig.reach||0)+"\n- Profile Views: "+fn(ig.profileViews||0)+"\n- Engaged Accounts: "+fn(ig.accountsEngaged||0)+"\n- Total Interactions: "+fn(totalEng)+"\n- Engagement Rate: "+igEngRate.toFixed(1)+"% (benchmark: 3-6% for skincare <10K)\n- Reach Rate: "+igReachRate.toFixed(1)+"% of followers/day (benchmark: 20-40%)\n- Profile Visit Rate: "+igProfileRate.toFixed(1)+"% of reach (benchmark: 2-5%)\n\n"+
+          "FACEBOOK PAGE:\n- Impressions (30d): "+fn(fb.impressions||0)+"\n- Engagements: "+fn(fb.engagedUsers||0)+"\n- Page Views: "+fn(fb.pageViews||0)+"\n- New Fans: "+fn(fb.newFans||0)+"\n- Engagement Rate: "+fbEngRate.toFixed(1)+"% (benchmark: 1-3%)\n\n"+
+          "CONTENT ("+posts.length+" recent posts):\n"+typeRows.map(t=>t.type+": "+t.count+" posts, avg "+t.avgEng.toFixed(0)+" engagement ("+t.engRate.toFixed(1)+"% rate)").join("\n")+"\n\n"+
+          "REVENUE ATTRIBUTION (Shopify referrers):\n- Instagram: $"+igRev+" from "+igSess+" sessions ($"+igRps.toFixed(2)+"/session)\n- Facebook: $"+fbRev+" from "+fbSess+" sessions ($"+fbRps.toFixed(2)+"/session)\n- Social as % of DTC: "+socialRevPct.toFixed(1)+"% (benchmark: 3-8%)\n- Rev/session benchmark: $0.50-$2.00\n\n"+
+          (monthlyGrowthPct>0?"GROWTH: "+monthlyGrowthPct.toFixed(1)+"%/month. "+(monthsTo10K?"~"+monthsTo10K+" months to 10K followers at current rate.\n\n"):"\n\n")+
+          "Compare each metric against the benchmarks for DTC skincare brands with <10K followers. Give 4-5 specific, actionable insights with numbers. Identify the biggest opportunity and the biggest risk. Suggest content strategy adjustments.";
+        setTimeout(()=>fetchTabAi("social",prompt,["social","meta"]),0);
+      }
+
       return <>
         <div style={{fontSize:20,fontWeight:700,marginBottom:16}}>Social Media</div>
+
+        <AiSummary text={aiText} loading={aiLoad} label="Social Media Analysis" />
 
         {!hasData&&!socialLoading&&<div style={{...cardS,borderColor:"var(--ylw)",background:"rgba(234,179,8,0.06)"}}>
           <div style={{fontSize:13,color:"var(--t2)"}}>{socialData?.error||socialData?.message||"Unable to load social data. Check Meta API permissions."}</div>
           {socialData?.hint&&<div style={{fontSize:12,color:"var(--t3)",marginTop:6}}>{socialData.hint}</div>}
         </div>}
 
+        {/* A) KEY METRICS */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:14}}>
-          <MC l="IG Followers" v={ig.followers||0} fmt="#" big />
+          <MC l="IG Followers" v={followers} fmt="#" big />
           <MC l="IG Reach (30d)" v={ig.reach||0} fmt="#" />
           <MC l="IG Profile Views" v={ig.profileViews||0} fmt="#" />
           <MC l="IG Engaged Accounts" v={ig.accountsEngaged||0} fmt="#" />
-          <MC l="IG Interactions" v={ig.totalInteractions||0} fmt="#" />
+          <MC l="IG Interactions" v={totalEng} fmt="#" />
           <MC l="FB Impressions (30d)" v={fb.impressions||0} fmt="#" big />
           <MC l="FB Engagements" v={fb.engagedUsers||0} fmt="#" />
           <MC l="FB Page Views" v={fb.pageViews||0} fmt="#" />
@@ -1645,8 +1703,93 @@ function Dashboard(){
         {ig.error&&<div style={{fontSize:12,color:"var(--ylw)",marginBottom:8}}>IG: {ig.error}</div>}
         {fb.error&&<div style={{fontSize:12,color:"var(--ylw)",marginBottom:8}}>FB: {fb.error}</div>}
 
+        {/* B) BENCHMARK SCORECARD */}
+        <div style={{...cardS,borderRadius:14,padding:18}}>
+          <div style={{fontSize:11,color:"var(--t3)",marginBottom:10,textTransform:"uppercase"}}>Social Benchmark Scorecard — DTC Skincare (&lt;10K Followers)</div>
+          <div style={{display:"grid",gap:8}}>
+            {[
+              {l:"IG Engagement Rate",actual:igEngRate,target:"3–6%",status:igEngRate>=3?"h":igEngRate>=2?"w":"c"},
+              {l:"IG Reach Rate (daily)",actual:igReachRate,target:"20–40% of followers",status:igReachRate>=20?"h":igReachRate>=10?"w":"c"},
+              {l:"IG Profile Visit Rate",actual:igProfileRate,target:"2–5% of reach",status:igProfileRate>=2?"h":igProfileRate>=1?"w":"c"},
+              {l:"FB Engagement Rate",actual:fbEngRate,target:"1–3%",status:fbEngRate>=1?"h":fbEngRate>=0.5?"w":"c"},
+              {l:"FB Organic Reach Rate",actual:fbReachRate,target:"5–15% of likes/day",status:fbReachRate>=5?"h":fbReachRate>=2?"w":"c"},
+              {l:"IG Rev/Session",actual:igRps,target:"$0.50–$2.00",status:igRps>=0.5?"h":igRps>=0.25?"w":"c",fmt:"$"},
+              {l:"FB Rev/Session",actual:fbRps,target:"$0.50–$2.00",status:fbRps>=0.5?"h":fbRps>=0.25?"w":"c",fmt:"$"},
+              {l:"Social % of DTC Rev",actual:socialRevPct,target:"3–8%",status:socialRevPct>=3?"h":socialRevPct>=1?"w":"c"},
+              ...(monthlyGrowthPct>0?[{l:"Monthly Follower Growth",actual:monthlyGrowthPct,target:"2–5%",status:monthlyGrowthPct>=2?"h":monthlyGrowthPct>=1?"w":"c"}]:[]),
+            ].map((b,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:i<8?"1px solid var(--bdr)":"none"}}>
+              <span style={{fontSize:13,color:"var(--t2)"}}>{b.l}</span>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:9,color:"var(--t3)"}}>{b.target}</span>
+                <span style={{fontSize:14,fontWeight:700,color:SC[b.status],fontFamily:"'JetBrains Mono',monospace"}}>{b.fmt==="$"?b.actual.toFixed(2):fp(b.actual)}</span>
+                <span style={{fontSize:12}}>{b.status==="h"?"✅":b.status==="w"?"⚠️":"🔴"}</span>
+              </div>
+            </div>)}
+          </div>
+        </div>
+
+        {/* C) CONTENT PERFORMANCE BY TYPE */}
+        {typeRows.length>0&&<div style={cardS}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Content Performance by Type</div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse"}}>
+              <thead><tr>
+                <th style={thS}>Type</th>
+                <th style={{...thS,textAlign:"right"}}>Posts</th>
+                <th style={{...thS,textAlign:"right"}}>Avg Likes</th>
+                <th style={{...thS,textAlign:"right"}}>Avg Comments</th>
+                <th style={{...thS,textAlign:"right"}}>Avg Engagement</th>
+                <th style={{...thS,textAlign:"right"}}>Eng Rate</th>
+                <th style={thS}>Benchmark</th>
+              </tr></thead>
+              <tbody>
+                {typeRows.map((t,i)=>{
+                  const bmNote=t.type==="Reel/Video"?"2-5x reach vs static":t.type==="Carousel"?"Highest save rate":"Lower reach";
+                  return <tr key={i} style={{background:i===0?"rgba(34,197,94,0.04)":"transparent"}}>
+                    <td style={{...tdS,fontFamily:"'DM Sans',sans-serif",fontWeight:600}}>
+                      <span style={{padding:"2px 8px",borderRadius:6,background:t.type==="Reel/Video"?"rgba(168,85,247,0.15)":t.type==="Carousel"?"rgba(79,110,247,0.15)":"rgba(107,114,128,0.1)",color:t.type==="Reel/Video"?"#a855f7":t.type==="Carousel"?"var(--acc)":"var(--t3)"}}>{t.type}</span>
+                    </td>
+                    <td style={{...tdS,textAlign:"right"}}>{t.count}</td>
+                    <td style={{...tdS,textAlign:"right"}}>{Math.round(t.avgLikes)}</td>
+                    <td style={{...tdS,textAlign:"right"}}>{t.avgComments.toFixed(1)}</td>
+                    <td style={{...tdS,textAlign:"right",fontWeight:600,color:t.avgEng>=20?"var(--grn)":t.avgEng>=10?"var(--ylw)":"var(--t3)"}}>{Math.round(t.avgEng)}</td>
+                    <td style={{...tdS,textAlign:"right",color:t.engRate>=3?"var(--grn)":t.engRate>=2?"var(--ylw)":"var(--t3)"}}>{t.engRate.toFixed(1)}%</td>
+                    <td style={{...tdS,fontSize:10,color:"var(--t3)",fontFamily:"'DM Sans',sans-serif"}}>{bmNote}</td>
+                  </tr>;
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>}
+
+        {/* D) GROWTH TRACKING */}
+        {followers>0&&<div style={cardS}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Growth Tracking</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10,marginBottom:12}}>
+            <div style={{background:"rgba(168,85,247,0.06)",border:"1px solid rgba(168,85,247,0.2)",borderRadius:10,padding:14,textAlign:"center"}}>
+              <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Current Followers</div>
+              <div style={{fontSize:24,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"#a855f7"}}>{fn(followers)}</div>
+            </div>
+            {monthlyGrowthPct>0&&<div style={{background:monthlyGrowthPct>=2?"rgba(34,197,94,0.06)":"rgba(245,158,11,0.06)",border:"1px solid "+(monthlyGrowthPct>=2?"rgba(34,197,94,0.2)":"rgba(245,158,11,0.2)"),borderRadius:10,padding:14,textAlign:"center"}}>
+              <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Monthly Growth</div>
+              <div style={{fontSize:24,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:monthlyGrowthPct>=2?"var(--grn)":"var(--ylw)"}}>{monthlyGrowthPct.toFixed(1)}%</div>
+              <div style={{fontSize:10,color:"var(--t3)",marginTop:2}}>Benchmark: 2-5%</div>
+            </div>}
+            {monthsTo10K&&<div style={{background:"rgba(79,110,247,0.06)",border:"1px solid rgba(79,110,247,0.2)",borderRadius:10,padding:14,textAlign:"center"}}>
+              <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Months to 10K</div>
+              <div style={{fontSize:24,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"var(--acc)"}}>{monthsTo10K}</div>
+              <div style={{fontSize:10,color:"var(--t3)",marginTop:2}}>at {monthlyGrowthPct.toFixed(1)}%/mo</div>
+            </div>}
+            {growthAbs!==0&&<div style={{background:growthAbs>0?"rgba(34,197,94,0.06)":"rgba(239,68,68,0.06)",borderRadius:10,padding:14,textAlign:"center",border:"1px solid "+(growthAbs>0?"rgba(34,197,94,0.2)":"rgba(239,68,68,0.2)")}}>
+              <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Net Change (30d)</div>
+              <div style={{fontSize:24,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:growthAbs>0?"var(--grn)":"var(--red)"}}>{growthAbs>0?"+":""}{fn(growthAbs)}</div>
+            </div>}
+          </div>
+        </div>}
+
+        {/* E) DAILY CHARTS */}
         {(ig.daily?.length>1||fb.daily?.length>1)&&<div style={cardS}>
-          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Daily Reach & Impressions</div>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Daily Reach & Interactions</div>
           <ResponsiveContainer width="100%" height={220}>
             <ComposedChart data={ig.daily?.length?ig.daily:fb.daily}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--grid)" />
@@ -1673,6 +1816,7 @@ function Dashboard(){
           </ResponsiveContainer>
         </div>}
 
+        {/* F) RECENT POSTS TABLE */}
         {posts.length>0&&<div style={cardS}>
           <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Recent Instagram Posts (Top by Engagement)</div>
           <div style={{overflowX:"auto"}}>
@@ -1684,12 +1828,14 @@ function Dashboard(){
                 <th style={{...thS,textAlign:"right"}}>Likes</th>
                 <th style={{...thS,textAlign:"right"}}>Comments</th>
                 <th style={{...thS,textAlign:"right"}}>Engagement</th>
+                <th style={{...thS,textAlign:"right"}}>Eng Rate</th>
                 <th style={thS}>Link</th>
               </tr></thead>
               <tbody>
                 {topPosts.slice(0,15).map((p,i)=>{
                   const eng=p.likes+p.comments;
-                  const typeLabel=p.type==="CAROUSEL_ALBUM"?"Carousel":p.type==="VIDEO"?"Video":"Image";
+                  const postEngRate=followers>0?(eng/followers*100):0;
+                  const typeLabel=p.type==="CAROUSEL_ALBUM"?"Carousel":p.type==="VIDEO"?"Reel/Video":"Static";
                   return <tr key={i}>
                     <td style={tdS}>{p.date}</td>
                     <td style={{...tdS,fontFamily:"'DM Sans',sans-serif",maxWidth:250,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.caption||"—"}</td>
@@ -1697,6 +1843,7 @@ function Dashboard(){
                     <td style={{...tdS,textAlign:"right",color:"var(--red)"}}>{fn(p.likes)}</td>
                     <td style={{...tdS,textAlign:"right"}}>{fn(p.comments)}</td>
                     <td style={{...tdS,textAlign:"right",fontWeight:600,color:eng>=50?"var(--grn)":eng>=20?"var(--ylw)":"var(--t3)"}}>{fn(eng)}</td>
+                    <td style={{...tdS,textAlign:"right",color:postEngRate>=3?"var(--grn)":postEngRate>=2?"var(--ylw)":"var(--t3)"}}>{postEngRate.toFixed(1)}%</td>
                     <td style={tdS}>{p.permalink?<a href={p.permalink} target="_blank" rel="noopener noreferrer" style={{color:"var(--acc)",textDecoration:"none",fontSize:11}}>View</a>:"—"}</td>
                   </tr>;
                 })}
@@ -1705,20 +1852,23 @@ function Dashboard(){
           </div>
         </div>}
 
+        {/* G) SOCIAL → REVENUE ATTRIBUTION */}
         <div style={cardS}>
           <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Social → Revenue Attribution (from Shopify)</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:12}}>
-            <MC l="Instagram Revenue" v={483} fmt="$" sub="331 sessions" />
-            <MC l="Facebook Revenue" v={278} fmt="$" sub="451 sessions" />
-            <MC l="Total Social Rev" v={761} fmt="$" sub="782 sessions" />
-            <MC l="IG Rev/Session" v={483/331} fmt="$" />
-            <MC l="FB Rev/Session" v={278/451} fmt="$" />
+            <MC l="Instagram Revenue" v={igRev} fmt="$" sub={igSess+" sessions"} />
+            <MC l="Facebook Revenue" v={fbRev} fmt="$" sub={fbSess+" sessions"} />
+            <MC l="Total Social Rev" v={totalSocialRev} fmt="$" sub={totalSocialSess+" sessions"} />
+            <MC l="IG Rev/Session" v={igRps} fmt="$" bm={{h:[0.5,100],w:[0.25,0.5]}} sub="Benchmark: $0.50–$2.00" />
+            <MC l="FB Rev/Session" v={fbRps} fmt="$" bm={{h:[0.5,100],w:[0.25,0.5]}} sub="Benchmark: $0.50–$2.00" />
+            <MC l="Social % of DTC" v={socialRevPct} fmt="%" bm={{h:[3,100],w:[1,3]}} sub="Benchmark: 3–8%" />
           </div>
           <div style={{fontSize:11,color:"var(--t3)",lineHeight:1.6}}>
-            Revenue attributed via Shopify referrer tracking. Instagram drives higher revenue per session ({"$" + (483/331).toFixed(2)}) vs Facebook ({"$" + (278/451).toFixed(2)}).
+            Revenue attributed via Shopify referrer tracking. Instagram drives higher revenue per session ({"$" + igRps.toFixed(2)}) vs Facebook ({"$" + fbRps.toFixed(2)}). Social accounts for {socialRevPct.toFixed(1)}% of DTC revenue (benchmark: 3-8% for organic social).
           </div>
         </div>
 
+        {/* Reload */}
         <div style={{display:"flex",gap:8,alignItems:"center",marginTop:8}}>
           <button onClick={()=>{setSocialData(null);fetchSocial();}} style={{padding:"8px 16px",fontSize:12,borderRadius:8,cursor:"pointer",background:"var(--card)",color:"var(--t2)",border:"1px solid var(--bdr)"}}>Refresh Social Data</button>
           {socialLoading&&<span style={{fontSize:12,color:"var(--t3)"}}>Loading...</span>}
