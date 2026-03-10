@@ -34,6 +34,7 @@ const XERO_VAR = XERO.cogs+XERO.testing+XERO.postage+XERO.pkg+XERO.txn+XERO.reba
 const XERO_MKT = XERO.ads+XERO.mktOther+XERO.photo;
 const XERO_FIXED = XERO.wages+XERO.subs+XERO.rent+XERO.consult+XERO.opex+XERO.general+XERO.otherFixed;
 const XERO_PROFIT = XERO.rev-XERO_VAR-XERO_MKT-XERO_FIXED;
+const XERO_RECENT={dtc:55873,wh:94749,intl:33529,rev:184151};
 
 const BM = {fc:{h:[0,20],w:[20,30]},vc:{h:[0,40],w:[40,50]},mer:{h:[0,35],w:[35,45]},np:{h:[10,100],w:[5,10]},em:{h:[30,100],w:[15,30]}};
 
@@ -359,9 +360,9 @@ function Dashboard(){
   })),[vis]);
 
   const PIES=[
-    {name:"DTC",value:XERO.dtc,color:"#2563eb"},
-    {name:"Wholesale",value:XERO.wh,color:"#7c3aed"},
-    {name:"International",value:XERO.intl,color:"#06b6d4"},
+    {name:"DTC",value:XERO_RECENT.dtc,color:"#2563eb"},
+    {name:"Wholesale",value:XERO_RECENT.wh,color:"#7c3aed"},
+    {name:"International",value:XERO_RECENT.intl,color:"#06b6d4"},
   ];
 
   // Channel data computed in Equation tab IIFE
@@ -414,14 +415,15 @@ function Dashboard(){
       const mer=a.mer;
       const roas=a.metaROAS;
       const cpp=a.cpp;
-      const emailPct=a.emailPct;
-      const emailRev=a.te;
+      const klavReliable=!!klavLive;
+      const emailPct=klavReliable?a.emailPct:null;
+      const emailRev=klavReliable?a.te:null;
       const days=a.d;
 
-      // Estimated full-business using Xero ratios
-      const whRatio=XERO.wh/XERO.rev;
-      const intlRatio=XERO.intl/XERO.rev;
-      const dtcRatio=XERO.dtc/XERO.rev;
+      // Estimated full-business using Xero ratios (prefer recent 3-month over annual)
+      const dtcRatio=XERO_RECENT.dtc/XERO_RECENT.rev;
+      const whRatio=XERO_RECENT.wh/XERO_RECENT.rev;
+      const intlRatio=XERO_RECENT.intl/XERO_RECENT.rev;
       const estTotalRev=dtcRatio>0?dtcRev/dtcRatio:dtcRev;
       const estWholesale=estTotalRev*whRatio;
       const estIntl=estTotalRev*intlRatio;
@@ -493,7 +495,7 @@ function Dashboard(){
         <TargetBar label="DTC Revenue" current={dtcRev/(days/30)} target={TARGETS.monthlyDtcRev} fmt="$"/>
         <TargetBar label="Ad Spend Budget" current={metaSpend/(days/30)} target={TARGETS.monthlyAdSpend} fmt="$" inv/>
         <TargetBar label="AOV" current={aov} target={TARGETS.aov} fmt="$"/>
-        <TargetBar label="Email Rev %" current={emailPct||0} target={TARGETS.emailPct} fmt="%"/>
+        {emailPct!=null&&<TargetBar label="Email Rev %" current={emailPct} target={TARGETS.emailPct} fmt="%"/>}
         <TargetBar label="Meta ROAS" current={roas||0} target={TARGETS.metaROAS} fmt="x"/>
       </div>
 
@@ -514,7 +516,7 @@ function Dashboard(){
             {l:"DTC MER",v:mer,pv:pMer,f:"%",bm:BM.mer,inv:true,sub:"benchmark <35%"},
             {l:"Meta ROAS",v:roas,pv:pRoas,f:"n",sub:"last-click"},
             {l:"CPP",v:cpp,f:"$",inv:true,sub:"cost per purchase"},
-            {l:"Email Rev %",v:emailPct,f:"%",bm:BM.em,sub:"benchmark 30-40%"},
+            ...(emailPct!=null?[{l:"Email Rev %",v:emailPct,f:"%",bm:BM.em,sub:"benchmark 30-40%"}]:[]),
             {l:"Sessions",v:a.useSess||null,f:"n",sub:a.sessSource==="ga4"?a.ga4Days+"d GA4 data":"paste in Daily tab"},
             {l:"Conv Rate",v:a.cr,f:"%",bm:{h:[2.5,100],w:[1.5,2.5]},sub:"orders / sessions"+(a.sessSource==="ga4"?" (GA4)":"")},
             {l:"Rev/Session",v:a.rps,f:"$",sub:"RPV = CR \u00D7 AOV"+(a.sessSource==="ga4"?" (GA4)":"")},
@@ -578,7 +580,7 @@ function Dashboard(){
           {l:"DTC-Only MER",v:estDtcMer,b:BM.mer,t:"< 35%",note:"Ad spend \u00F7 Shopify DTC revenue \u2014 the REAL cost"},
           {l:"Fixed Costs",v:estFcPct,b:BM.fc,t:"< 20%",note:f$(fixedMonthly)+"/mo prorated to "+days+"d"},
           {l:"Net Profit",v:estProfPct,b:BM.np,t:"> 10%",note:"Estimated from equation"},
-          {l:"Email Rev %",v:emailPct||0,b:BM.em,t:"30\u201340%",note:f$(emailRev)+" email \u00F7 "+f$(dtcRev)+" DTC"},
+          ...(emailPct!=null?[{l:"Email Rev %",v:emailPct,b:BM.em,t:"30\u201340%",note:f$(emailRev)+" email \u00F7 "+f$(dtcRev)+" DTC"}]:[]),
           {l:"LER",v:ler,b:{h:[2,100],w:[1.5,2]},t:"> $2.00",note:"Est. gross margin \u00F7 prorated wages",fmt:"$"},
           {l:"AOV",v:aov,b:{h:[70,500],w:[50,70]},t:"> $70",note:fn(orders)+" orders",fmt:"$"},
           {l:"Meta ROAS",v:roas||0,b:{h:[2.5,100],w:[1.5,2.5]},t:"> 2.5x",note:"Purchase value \u00F7 Meta spend",fmt:"x"},
@@ -666,7 +668,7 @@ function Dashboard(){
               {l:"DTC MER",c:mer,pv:pMer,f:"%",inv:true},
               {l:"Meta ROAS",c:roas,pv:pRoas,f:"x"},
               {l:"CPP",c:cpp,pv:p?p.cpp:null,f:"$",inv:true},
-              {l:"Email Rev %",c:emailPct,pv:p?p.emailPct:null,f:"%"},
+              ...(emailPct!=null?[{l:"Email Rev %",c:emailPct,pv:p?p.emailPct:null,f:"%"}]:[]),
             ].map((row,i)=>{
               const ch=pctChange(row.c,row.pv);
               const good=ch!=null?(row.inv?ch<0:ch>0):null;
@@ -731,7 +733,7 @@ function Dashboard(){
           <button onClick={async()=>{
             setAiLoading(true);setAiCoach(null);
             try{
-              const prompt="Analyse this ecommerce business using the Ecommerce Equation framework for "+agg.startDate+" to "+agg.endDate+" ("+days+"d). Situation classification (1-5), constraint, root cause, prescribed action, what NOT to do. Be direct.\n\nCurrent Period:\n- DTC Revenue: $"+fn(dtcRev)+"\n- Est Total: $"+fn(estTotalRev)+"\n- Orders: "+orders+" AOV: $"+Math.round(aov)+"\n- Meta Spend: $"+fn(metaSpend)+"\n- DTC MER: "+fp(estDtcMer)+" Blended MER: "+fp(estMerPct)+"\n- Variable: "+fp(estVarPct)+" Fixed: "+fp(estFcPct)+"\n- Est Profit: "+fp(estProfPct)+"\n- ROAS: "+(roas||0).toFixed(2)+"x CPP: $"+Math.round(cpp||0)+"\n- Email: "+fp(emailPct||0)+"\n- LER: "+ler.toFixed(2)+(prevAgg?"\n\nPrior Period ("+prevAgg.startDate+" to "+prevAgg.endDate+"):\n- DTC Revenue: $"+fn(pDtcRev)+"\n- Orders: "+pOrders+" AOV: $"+Math.round(pAov||0)+"\n- Meta Spend: $"+fn(pMetaSpend)+"\n- DTC MER: "+fp(pMer||0):"");
+              const prompt="Analyse this ecommerce business using the Ecommerce Equation framework for "+agg.startDate+" to "+agg.endDate+" ("+days+"d). Situation classification (1-5), constraint, root cause, prescribed action, what NOT to do. Be direct.\n\nCurrent Period:\n- DTC Revenue: $"+fn(dtcRev)+"\n- Est Total: $"+fn(estTotalRev)+"\n- Orders: "+orders+" AOV: $"+Math.round(aov)+"\n- Meta Spend: $"+fn(metaSpend)+"\n- DTC MER: "+fp(estDtcMer)+" Blended MER: "+fp(estMerPct)+"\n- Variable: "+fp(estVarPct)+" Fixed: "+fp(estFcPct)+"\n- Est Profit: "+fp(estProfPct)+"\n- ROAS: "+(roas||0).toFixed(2)+"x CPP: $"+Math.round(cpp||0)+"\n- Email: "+(emailPct!=null?fp(emailPct):"not loaded")+"\n- LER: "+ler.toFixed(2)+(prevAgg?"\n\nPrior Period ("+prevAgg.startDate+" to "+prevAgg.endDate+"):\n- DTC Revenue: $"+fn(pDtcRev)+"\n- Orders: "+pOrders+" AOV: $"+Math.round(pAov||0)+"\n- Meta Spend: $"+fn(pMetaSpend)+"\n- DTC MER: "+fp(pMer||0):"");
               const r=await fetch("/api/ai-coach",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":"noody-eq-2026-datahub"},body:JSON.stringify({prompt})});
               const d=await r.json();
               setAiCoach(d.text||"{no response}");
@@ -752,7 +754,8 @@ function Dashboard(){
       const _moRev=agg.tr/_mo;const _moSpend=agg.tms/_mo;
       const _dailyAiKey="daily_"+rangeKey;
       if(!tabAi[_dailyAiKey]&&!tabAiLoading.daily){
-        const _p="Analyse this "+_days+"-day DTC daily performance ("+agg.startDate+" to "+agg.endDate+"). Give 3-5 sentences with specific numbers, period-over-period insight, and one actionable recommendation.\n\nRevenue: $"+fn(agg.tr)+" ("+f$(agg.avgRev)+"/day)\nOrders: "+fn(agg.to)+" ("+fn(agg.avgOrd)+"/day)\nAOV: $"+Math.round(agg.aov)+" (target: $"+TARGETS.aov+")\nMeta Spend: $"+fn(agg.tms)+"\nMER: "+(agg.mer?agg.mer.toFixed(1):"—")+"%\nROAS: "+(agg.metaROAS?agg.metaROAS.toFixed(2):"—")+"x\nEmail %: "+(agg.emailPct?agg.emailPct.toFixed(1):"—")+"%"+(prevAgg?"\n\nPrior period: Rev $"+fn(prevAgg.tr)+", AOV $"+Math.round(prevAgg.aov)+", MER "+(prevAgg.mer?prevAgg.mer.toFixed(1):"—")+"%":"");
+        const _ep=klavLive&&agg.emailPct!=null?agg.emailPct.toFixed(1)+"%":"not loaded";
+        const _p="Analyse this "+_days+"-day DTC daily performance ("+agg.startDate+" to "+agg.endDate+"). Give 3-5 sentences with specific numbers, period-over-period insight, and one actionable recommendation.\n\nRevenue: $"+fn(agg.tr)+" ("+f$(agg.avgRev)+"/day)\nOrders: "+fn(agg.to)+" ("+fn(agg.avgOrd)+"/day)\nAOV: $"+Math.round(agg.aov)+" (target: $"+TARGETS.aov+")\nMeta Spend: $"+fn(agg.tms)+"\nMER: "+(agg.mer?agg.mer.toFixed(1):"—")+"%\nROAS: "+(agg.metaROAS?agg.metaROAS.toFixed(2):"—")+"x\nEmail %: "+_ep+(prevAgg?"\n\nPrior period: Rev $"+fn(prevAgg.tr)+", AOV $"+Math.round(prevAgg.aov)+", MER "+(prevAgg.mer?prevAgg.mer.toFixed(1):"—")+"%":"");
         setTimeout(()=>fetchTabAi("daily",_p,["shopify","klaviyo"]),0);
       }
       return <>
@@ -766,7 +769,7 @@ function Dashboard(){
         <TargetBar label="DTC Revenue" current={_moRev} target={TARGETS.monthlyDtcRev} fmt="$"/>
         <TargetBar label="Ad Spend" current={_moSpend} target={TARGETS.monthlyAdSpend} fmt="$" inv/>
         <TargetBar label="AOV" current={agg.aov} target={TARGETS.aov} fmt="$"/>
-        <TargetBar label="Email Rev %" current={agg.emailPct||0} target={TARGETS.emailPct} fmt="%"/>
+        {klavLive&&agg.emailPct!=null&&<TargetBar label="Email Rev %" current={agg.emailPct} target={TARGETS.emailPct} fmt="%"/>}
       </div>
       <AiSummary text={tabAi[_dailyAiKey]} loading={tabAiLoading.daily} label={"AI Daily Analysis — "+_days+"d"}/>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:7,marginBottom:14}}>
@@ -995,7 +998,7 @@ function Dashboard(){
       if(!agg)return <div style={{padding:40,textAlign:"center",color:"var(--t3)"}}>Loading data...</div>;
       const a=agg;const days=a.d;
       const dtcRev=a.tr;const metaSpend=a.tms;
-      const dtcRatio=XERO.dtc/XERO.rev;const whRatio=XERO.wh/XERO.rev;
+      const dtcRatio=XERO_RECENT.dtc/XERO_RECENT.rev;const whRatio=XERO_RECENT.wh/XERO_RECENT.rev;
       const varRatio=XERO_VAR/XERO.rev;const fixedMonthly=XERO_FIXED/XERO.months;
       const estTotalRev=dtcRatio>0?dtcRev/dtcRatio:dtcRev;
       const estVariable=estTotalRev*varRatio;const estFixed=fixedMonthly*(days/30);
@@ -1005,7 +1008,7 @@ function Dashboard(){
       const estVarPct=estTotalRev>0?estVariable/estTotalRev*100:0;
       const estDtcMer=dtcRev>0?metaSpend/dtcRev*100:0;
       const estMerPct=estTotalRev>0?metaSpend/estTotalRev*100:0;
-      const emailPct=a.emailPct;const roas=a.metaROAS;const currentAOV=a.aov;
+      const emailPct=klavLive?a.emailPct:null;const roas=a.metaROAS;const currentAOV=a.aov;
       const annRev=Math.round(estTotalRev/(days/365));
       const annFixed=Math.round(XERO_FIXED);
 
@@ -1068,7 +1071,7 @@ function Dashboard(){
       if(!agg)return <div style={{padding:40,textAlign:"center",color:"var(--t3)"}}>Loading data...</div>;
       const a=agg;const days=a.d;
       const dtcRev=a.tr;const metaSpend=a.tms;
-      const dtcRatio=XERO.dtc/XERO.rev;const varRatio=XERO_VAR/XERO.rev;
+      const dtcRatio=XERO_RECENT.dtc/XERO_RECENT.rev;const varRatio=XERO_VAR/XERO.rev;
       const fixedMonthly=XERO_FIXED/XERO.months;
       const estTotalRev=dtcRatio>0?dtcRev/dtcRatio:dtcRev;
       const annRev=Math.round(estTotalRev/(days/365));
@@ -1207,9 +1210,32 @@ function Dashboard(){
           </div>
         </div>}
 
+        {/* PMax vs Search split */}
+        {(()=>{const pmax=gads.campaigns.filter(c=>c.channel==="PERFORMANCE_MAX");const search=gads.campaigns.filter(c=>c.channel==="SEARCH");const other=gads.campaigns.filter(c=>c.channel!=="PERFORMANCE_MAX"&&c.channel!=="SEARCH");const pmaxSpend=pmax.reduce((s,c)=>s+c.spend,0);const searchSpend=search.reduce((s,c)=>s+c.spend,0);const otherSpend=other.reduce((s,c)=>s+c.spend,0);const pmaxConv=pmax.reduce((s,c)=>s+c.conversionValue,0);const searchConv=search.reduce((s,c)=>s+c.conversionValue,0);
+        return (pmax.length>0||search.length>0)?<div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:14}}>
+          <div style={{fontSize:11,color:"var(--t3)",marginBottom:8,textTransform:"uppercase"}}>Channel Type Split</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10}}>
+            {pmax.length>0&&<div style={{textAlign:"center",padding:10,borderRadius:10,background:"rgba(66,133,244,0.08)"}}>
+              <div style={{fontSize:10,color:"#4285f4",fontWeight:600}}>PERFORMANCE MAX</div>
+              <div style={{fontSize:18,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{f$(pmaxSpend)}</div>
+              <div style={{fontSize:10,color:"var(--t3)"}}>{pmaxSpend>0?(pmaxConv/pmaxSpend).toFixed(1)+"x ROAS":"—"} · {pmax.length} campaign{pmax.length>1?"s":""}</div>
+            </div>}
+            {search.length>0&&<div style={{textAlign:"center",padding:10,borderRadius:10,background:"rgba(52,168,83,0.08)"}}>
+              <div style={{fontSize:10,color:"#34a853",fontWeight:600}}>SEARCH</div>
+              <div style={{fontSize:18,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{f$(searchSpend)}</div>
+              <div style={{fontSize:10,color:"var(--t3)"}}>{searchSpend>0?(searchConv/searchSpend).toFixed(1)+"x ROAS":"—"} · {search.length} campaign{search.length>1?"s":""}</div>
+            </div>}
+            {other.length>0&&<div style={{textAlign:"center",padding:10,borderRadius:10,background:"rgba(107,114,128,0.08)"}}>
+              <div style={{fontSize:10,color:"var(--t3)",fontWeight:600}}>OTHER</div>
+              <div style={{fontSize:18,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{f$(otherSpend)}</div>
+              <div style={{fontSize:10,color:"var(--t3)"}}>{other.length} campaign{other.length>1?"s":""}</div>
+            </div>}
+          </div>
+        </div>:null;})()}
+
         {/* Campaigns table */}
         <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18}}>
-          <div style={{fontSize:11,color:"var(--t3)",marginBottom:8,textTransform:"uppercase"}}>Campaigns ({gads.campaigns.length})</div>
+          <div style={{fontSize:11,color:"var(--t3)",marginBottom:8,textTransform:"uppercase"}}>Campaigns ({gads.campaigns.length}){gads.summary.rawRowCount?" — aggregated from "+gads.summary.rawRowCount+" daily rows":""}</div>
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,fontFamily:"'JetBrains Mono',monospace"}}>
               <thead><tr style={{borderBottom:"1px solid var(--bdr)"}}>
@@ -1312,8 +1338,8 @@ function Dashboard(){
     {tab==="klaviyo"&&(()=>{
       if(!agg)return <div style={{padding:40,textAlign:"center",color:"var(--t3)"}}>Loading data...</div>;
       const a=agg;const p=prevAgg;
-      // Prefer live klavDetail totalRevenue over agg.te (which may have stale D array values)
-      const emailRev=klavDetail?.totalRevenue||a.te;
+      // Prefer live klavDetail totalRevenue; fall back to agg only if klaviyo loaded
+      const emailRev=klavDetail?.totalRevenue||(klavLive?a.te:0);
       const dtcRev=a.tr;
       const emailPct=dtcRev>0?(emailRev/dtcRev)*100:0;
       const prevEmailRev=p?p.te:null;
@@ -1703,7 +1729,7 @@ function Dashboard(){
       // ─── Compute all insight data from selected range ───
       const a=agg;const days=a.d;
       const dtcRev=a.tr;const metaSpend=a.tms;
-      const dtcRatio=XERO.dtc/XERO.rev;const whRatio=XERO.wh/XERO.rev;const intlRatio=XERO.intl/XERO.rev;
+      const dtcRatio=XERO_RECENT.dtc/XERO_RECENT.rev;const whRatio=XERO_RECENT.wh/XERO_RECENT.rev;const intlRatio=XERO_RECENT.intl/XERO_RECENT.rev;
       const varRatio=XERO_VAR/XERO.rev;const fixedMonthly=XERO_FIXED/XERO.months;
       const estTotalRev=dtcRatio>0?dtcRev/dtcRatio:dtcRev;
       const estVariable=estTotalRev*varRatio;const estFixed=fixedMonthly*(days/30);

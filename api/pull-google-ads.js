@@ -343,14 +343,16 @@ export default async function handler(req, res) {
       }
     }
 
-    // ── Step 5: Transform into clean output ──
+    // ── Step 5: Aggregate by campaign name ──
+    const rawRowCount = rows.length;
     let totalSpend = 0;
     let totalClicks = 0;
     let totalImpressions = 0;
     let totalConversions = 0;
     let totalConversionValue = 0;
 
-    const campaigns = rows.map((row) => {
+    const campaignMap = {};
+    for (const row of rows) {
       const costMicros = parseInt(row.metrics?.costMicros || '0');
       const spend = costMicros / 1_000_000;
       const clicks = parseInt(row.metrics?.clicks || '0');
@@ -364,20 +366,37 @@ export default async function handler(req, res) {
       totalConversions += conversions;
       totalConversionValue += conversionValue;
 
-      return {
-        campaign: row.campaign?.name || 'Unknown',
-        status: row.campaign?.status || 'UNKNOWN',
-        channel: row.campaign?.advertisingChannelType || 'UNKNOWN',
-        date: row.segments?.date || null,
-        spend: Math.round(spend * 100) / 100,
-        clicks,
-        impressions,
-        ctr: parseFloat(row.metrics?.ctr || '0'),
-        avgCpc: parseInt(row.metrics?.averageCpc || '0') / 1_000_000,
-        conversions,
-        conversionValue: Math.round(conversionValue * 100) / 100,
-      };
-    });
+      const name = row.campaign?.name || 'Unknown';
+      if (!campaignMap[name]) {
+        campaignMap[name] = {
+          campaign: name,
+          status: row.campaign?.status || 'UNKNOWN',
+          channel: row.campaign?.advertisingChannelType || 'UNKNOWN',
+          spend: 0, clicks: 0, impressions: 0, conversions: 0, conversionValue: 0, entries: 0,
+        };
+      }
+      const c = campaignMap[name];
+      c.spend += spend;
+      c.clicks += clicks;
+      c.impressions += impressions;
+      c.conversions += conversions;
+      c.conversionValue += conversionValue;
+      c.entries++;
+    }
+
+    const campaigns = Object.values(campaignMap).map((c) => ({
+      campaign: c.campaign,
+      status: c.status,
+      channel: c.channel,
+      spend: Math.round(c.spend * 100) / 100,
+      clicks: c.clicks,
+      impressions: c.impressions,
+      ctr: c.impressions > 0 ? c.clicks / c.impressions : 0,
+      avgCpc: c.clicks > 0 ? c.spend / c.clicks : 0,
+      conversions: Math.round(c.conversions * 100) / 100,
+      conversionValue: Math.round(c.conversionValue * 100) / 100,
+      entries: c.entries,
+    })).sort((a, b) => b.spend - a.spend);
 
     // ── Step 6: Return clean response ──
     const summary = {
@@ -396,6 +415,7 @@ export default async function handler(req, res) {
         ? Math.round((totalConversionValue / totalSpend) * 100) / 100
         : 0,
       campaignCount: campaigns.length,
+      rawRowCount,
     };
 
     return res.status(200).json({
