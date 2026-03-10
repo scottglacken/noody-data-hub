@@ -723,24 +723,55 @@ function Dashboard(){
       </div>
     </>}
 
-    {tab==="diagnose"&&<>
-      <h2 style={{fontSize:20,fontWeight:700,margin:"0 0 14px"}}>Equation Evaluation</h2>
+    {tab==="diagnose"&&(()=>{
+      if(!agg)return <div style={{padding:40,textAlign:"center",color:"var(--t3)"}}>Loading data...</div>;
+      const a=agg;const days=a.d;
+      const dtcRev=a.tr;const metaSpend=a.tms;
+      const dtcRatio=XERO.dtc/XERO.rev;const whRatio=XERO.wh/XERO.rev;
+      const varRatio=XERO_VAR/XERO.rev;const fixedMonthly=XERO_FIXED/XERO.months;
+      const estTotalRev=dtcRatio>0?dtcRev/dtcRatio:dtcRev;
+      const estVariable=estTotalRev*varRatio;const estFixed=fixedMonthly*(days/30);
+      const estProfit=estTotalRev-estVariable-metaSpend-estFixed;
+      const estProfPct=estTotalRev>0?estProfit/estTotalRev*100:0;
+      const estFcPct=estTotalRev>0?estFixed/estTotalRev*100:0;
+      const estVarPct=estTotalRev>0?estVariable/estTotalRev*100:0;
+      const estDtcMer=dtcRev>0?metaSpend/dtcRev*100:0;
+      const estMerPct=estTotalRev>0?metaSpend/estTotalRev*100:0;
+      const emailPct=a.emailPct;const roas=a.metaROAS;const currentAOV=a.aov;
+      const annRev=Math.round(estTotalRev/(days/365));
+      const annFixed=Math.round(XERO_FIXED);
 
-      <div style={{background:"linear-gradient(135deg,rgba(16,185,129,0.08),rgba(16,185,129,0.02))",border:"1px solid rgba(16,185,129,0.3)",borderRadius:14,padding:20,marginBottom:14}}>
+      let situation=1,sitLabel="PROFITABLE",sitColor="var(--grn)",sitIcon="🚀";
+      if(estProfPct<0){situation=5;sitLabel="UNPROFITABLE";sitColor="var(--red)";sitIcon="🚨";}
+      else if(estProfPct<5){situation=3;sitLabel="BREAKEVEN ZONE";sitColor="var(--ylw)";sitIcon="⚠️";}
+      else if(estProfPct<10||estDtcMer>45||estFcPct>25){situation=2;sitLabel="PROFITABLE — CONSTRAINED";sitColor="var(--ylw)";sitIcon="⚠️";}
+
+      const prescription=situation<=2?"SCALE — grow revenue to leverage fixed costs."
+        :situation===3?"Fix efficiency before scaling. Improve MER and email share."
+        :"Fix unit economics first. Cut losses or restructure costs.";
+
+      return <>
+      <h2 style={{fontSize:20,fontWeight:700,margin:"0 0 14px"}}>Equation Evaluation — {days} Days</h2>
+
+      <div style={{background:"linear-gradient(135deg,"+sitColor+"14,"+sitColor+"06)",border:"1px solid "+sitColor+"4d",borderRadius:14,padding:20,marginBottom:14}}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
-          <span style={{fontSize:26}}>🚀</span>
-          <div><div style={{fontSize:11,color:"var(--t2)"}}>SITUATION 1</div>
-          <div style={{fontSize:18,fontWeight:700,color:"#10b981"}}>PROFITABLE AT 16.4%</div></div>
+          <span style={{fontSize:26}}>{sitIcon}</span>
+          <div><div style={{fontSize:11,color:"var(--t2)"}}>SITUATION {situation}</div>
+          <div style={{fontSize:18,fontWeight:700,color:sitColor}}>{sitLabel} AT {fp(estProfPct)}</div></div>
         </div>
-        <div style={{fontSize:12,color:"var(--t1)",lineHeight:1.6}}>The equation works. Profit is above the 10% benchmark. The prescription is SCALE — but with a critical caveat about DTC marketing efficiency.</div>
+        <div style={{fontSize:12,color:"var(--t1)",lineHeight:1.6}}>
+          {estProfPct>=10?"The equation works. Profit is above the 10% benchmark. ":"Profit at "+fp(estProfPct)+" is "+(estProfPct<0?"negative":"below the 10% target")+". "}
+          Prescription: {prescription}
+          {estDtcMer>35&&" Critical caveat: DTC MER at "+fp(estDtcMer)+" needs attention."}
+        </div>
       </div>
 
-      <div style={{fontSize:12,fontWeight:700,color:"#f59e0b",marginBottom:8}}>⚠️ CONSTRAINT: FIXED COSTS + DTC MER</div>
+      <div style={{fontSize:12,fontWeight:700,color:situation<=2?"#f59e0b":"#ef4444",marginBottom:8}}>{estDtcMer>35||estFcPct>20?"⚠️ CONSTRAINTS IDENTIFIED":"✅ FUNDAMENTALS HEALTHY"}</div>
       <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:14}}>
         {[
           {t:"BANDWIDTH",d:"Stock, capacity, founder time. Wholesale is mixed — some accounts growing, some declining. This needs stabilization.",c:"#f59e0b"},
-          {t:"EFFICIENCY",d:"Fixed costs at 24.9% (above 20% benchmark). DTC MER at 60.4% (critical). Blended MER masked by wholesale. Variable costs healthy at 33.9%.",c:(XERO_MKT/XERO.dtc*100)>45?"#ef4444":"#f59e0b"},
-          {t:"THROUGHPUT",d:"Primary growth lever. Scale revenue to leverage $224K fixed costs. At $2M, fixed costs drop to 11.2%. But DTC acquisition must improve first.",c:"#2563eb"},
+          {t:"EFFICIENCY",d:"Fixed costs at "+fp(estFcPct)+" ("+(estFcPct<=20?"✅ healthy":"above 20% benchmark")+"). DTC MER at "+fp(estDtcMer)+" ("+(estDtcMer<=35?"✅ healthy":"⚠️ high")+"). Blended MER "+fp(estMerPct)+". Variable costs "+fp(estVarPct)+(estVarPct<=40?" (healthy).":"."),c:estDtcMer>45?"#ef4444":estDtcMer>35?"#f59e0b":"#10b981"},
+          {t:"THROUGHPUT",d:"Scale revenue to leverage "+f$(annFixed)+" annual fixed costs. At $2M, fixed costs drop to "+fp(annFixed/2000000*100)+". "+(!roas||roas<1.5?"DTC acquisition must improve first.":"Meta ROAS at "+(roas||0).toFixed(2)+"x — "+(roas>=2.5?"strong.":"needs monitoring.")),c:"#2563eb"},
         ].map(c=><div key={c.t} style={{borderLeft:"3px solid "+c.c,paddingLeft:12,marginBottom:12}}>
           <div style={{fontSize:12,fontWeight:700,color:c.c}}>{c.t}</div>
           <div style={{fontSize:11,color:"var(--t2)",marginTop:2,lineHeight:1.5}}>{c.d}</div>
@@ -750,9 +781,9 @@ function Dashboard(){
       <div style={{fontSize:12,fontWeight:700,color:"#93c5fd",marginBottom:8}}>🎯 CALIBRATE SESSION — NEXT 6 WEEKS</div>
       <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18}}>
         {[
-          {w:"1-2",t:"Improve DTC Revenue Per Visit",d:"Push AOV higher (bundles, free shipping threshold above current $75 AOV). Rebuild dead Post-Purchase flow ($186/yr). Fix Browse Abandonment (only 665 recipients/yr)."},
-          {w:"1-2",t:"Stabilize Email to 30%+",d:"Campaign cadence minimum 2/month every month. Email swings from 20-44% — needs consistency. Welcome Series is elite ($74K/yr) — protect it."},
-          {w:"3-4",t:"Audit Meta Spend Efficiency",d:"$196K on Meta at 2.21x ROAS. Identify hero vs villain creatives. Test scaling from current levels while watching blended MER."},
+          {w:"1-2",t:"Improve DTC Revenue Per Visit",d:"Push AOV higher (currently "+f$(currentAOV)+" — bundles, free shipping threshold). Rebuild dead Post-Purchase flow. Fix Browse Abandonment."},
+          {w:"1-2",t:"Stabilize Email to 30%+",d:"Email at "+(emailPct!=null?fp(emailPct):"—")+" of DTC revenue. Campaign cadence minimum 2/month. Automated flows provide a stable floor."},
+          {w:"3-4",t:"Audit Meta Spend Efficiency",d:f$(metaSpend)+" on Meta"+(roas?" at "+roas.toFixed(2)+"x ROAS":"")+". Identify hero vs villain creatives. Test scaling while watching blended MER."},
           {w:"5-6",t:"Wholesale Stabilization",d:"Top 10 accounts audit. Identify declining accounts and why. Every wholesale dollar earned at near-zero marketing cost — this is your profit engine."},
         ].map((s,i)=><div key={i} style={{borderBottom:i<3?"1px solid #1a1a2e":"none",paddingBottom:10,marginBottom:10}}>
           <div style={{display:"flex",gap:8,alignItems:"baseline"}}>
@@ -762,45 +793,71 @@ function Dashboard(){
           <div style={{fontSize:11,color:"var(--t2)",marginTop:3,lineHeight:1.5}}>{s.d}</div>
         </div>)}
       </div>
-    </>}
+    </>;
+    })()}
 
-    {tab==="scale"&&<>
-      <h2 style={{fontSize:20,fontWeight:700,margin:"0 0 14px"}}>Path to $2M</h2>
+    {tab==="scale"&&(()=>{
+      if(!agg)return <div style={{padding:40,textAlign:"center",color:"var(--t3)"}}>Loading data...</div>;
+      const a=agg;const days=a.d;
+      const dtcRev=a.tr;const metaSpend=a.tms;
+      const dtcRatio=XERO.dtc/XERO.rev;const varRatio=XERO_VAR/XERO.rev;
+      const fixedMonthly=XERO_FIXED/XERO.months;
+      const estTotalRev=dtcRatio>0?dtcRev/dtcRatio:dtcRev;
+      const annRev=Math.round(estTotalRev/(days/365));
+      const annVar=Math.round(annRev*varRatio);
+      const annMkt=Math.round(metaSpend/(days/365));
+      const annFixed=Math.round(XERO_FIXED);
+      const annProfit=annRev-annVar-annMkt-annFixed;
+      const annProfPct=annRev>0?annProfit/annRev*100:0;
+      const estDtcMer=dtcRev>0?metaSpend/dtcRev*100:0;
+      const varPctLabel=Math.round(varRatio*100);
+
+      // Scale targets
+      const t1=1500000;const t2=2000000;
+      const t1Var=Math.round(t1*varRatio);const t2Var=Math.round(t2*varRatio);
+      const t1Mkt=Math.round(t1*0.25);const t2Mkt=Math.round(t2*0.25);
+      const t1Fixed=annFixed+20000;const t2Fixed=annFixed+42000;
+      const t1Prof=t1-t1Var-t1Mkt-t1Fixed;const t2Prof=t2-t2Var-t2Mkt-t2Fixed;
+      const revGrowthPct=annRev>0?Math.round((2000000-annRev)/annRev*100):0;
+      const profGrowthPct=annProfit>0?Math.round((t2Prof-annProfit)/annProfit*100):0;
+
+      return <>
+      <h2 style={{fontSize:20,fontWeight:700,margin:"0 0 14px"}}>Path to $2M — From {f$(annRev)} Run Rate</h2>
 
       <div style={{background:"linear-gradient(135deg,rgba(37,99,235,0.08),rgba(124,58,237,0.08))",border:"1px solid rgba(37,99,235,0.25)",borderRadius:14,padding:20,marginBottom:14}}>
         <div style={{fontSize:13,fontWeight:700,color:"#93c5fd",marginBottom:10}}>✈️ THE FIXED COST LEVERAGE</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
           <div style={{textAlign:"center"}}>
-            <div style={{fontSize:10,color:"var(--t3)"}}>CURRENT</div>
-            <div style={{fontSize:20,fontWeight:700,color:"var(--t1)",fontFamily:"'JetBrains Mono',monospace"}}>$960K</div>
-            <div style={{fontSize:11,color:SC[gs(XERO_FIXED/XERO.rev*100,BM.fc)]}}>FC: {fp(XERO_FIXED/XERO.rev*100)}</div>
+            <div style={{fontSize:10,color:"var(--t3)"}}>CURRENT ({days}d ann.)</div>
+            <div style={{fontSize:20,fontWeight:700,color:"var(--t1)",fontFamily:"'JetBrains Mono',monospace"}}>{f$(annRev)}</div>
+            <div style={{fontSize:11,color:SC[gs(annFixed/annRev*100,BM.fc)]}}>FC: {fp(annFixed/annRev*100)}</div>
           </div>
           <div style={{textAlign:"center"}}>
             <div style={{fontSize:10,color:"var(--t3)"}}>AT $1.5M</div>
             <div style={{fontSize:20,fontWeight:700,color:"var(--t1)",fontFamily:"'JetBrains Mono',monospace"}}>$1.5M</div>
-            <div style={{fontSize:11,color:"#f59e0b"}}>FC: {fp(XERO_FIXED/(1500000/12*XERO.months)*100)}</div>
+            <div style={{fontSize:11,color:t1Fixed/1500000*100<=20?"#10b981":"#f59e0b"}}>FC: {fp(t1Fixed/1500000*100)}</div>
           </div>
           <div style={{textAlign:"center"}}>
             <div style={{fontSize:10,color:"var(--t3)"}}>AT $2M</div>
             <div style={{fontSize:20,fontWeight:700,color:"var(--t1)",fontFamily:"'JetBrains Mono',monospace"}}>$2M</div>
-            <div style={{fontSize:11,color:"#10b981"}}>FC: {fp(XERO_FIXED/(2000000/12*XERO.months)*100)}</div>
+            <div style={{fontSize:11,color:t2Fixed/2000000*100<=20?"#10b981":"#f59e0b"}}>FC: {fp(t2Fixed/2000000*100)}</div>
           </div>
         </div>
       </div>
 
       <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:14}}>
-        <div style={{fontSize:11,color:"var(--t3)",marginBottom:10,textTransform:"uppercase"}}>Scale Projection</div>
+        <div style={{fontSize:11,color:"var(--t3)",marginBottom:10,textTransform:"uppercase"}}>Scale Projection (annualized from {days}-day window)</div>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,fontFamily:"'JetBrains Mono',monospace"}}>
           <thead><tr style={{borderBottom:"1px solid var(--bdr)"}}>
-            {["","Current ($960K)","At $1.5M","At $2M"].map(h=><th key={h} style={{padding:"8px",textAlign:"right",color:"var(--t3)",fontWeight:500,fontSize:10}}>{h}</th>)}
+            {["","Current ("+f$(annRev)+")","At $1.5M","At $2M"].map(h=><th key={h} style={{padding:"8px",textAlign:"right",color:"var(--t3)",fontWeight:500,fontSize:10}}>{h}</th>)}
           </tr></thead>
           <tbody>{[
-            {l:"Revenue",c:[960000,1500000,2000000]},
-            {l:"Variable (34%)",c:[325440,509000,678000]},
-            {l:"Marketing (25%)",c:[239000,375000,500000]},
-            {l:"Fixed Costs",c:[238000,260000,280000]},
-            {l:"PROFIT",c:[960000-325440-239000-238000,1500000-509000-375000-260000,2000000-678000-500000-280000],bold:true},
-            {l:"Profit %",c:[(960000-325440-239000-238000)/960000*100,(1500000-509000-375000-260000)/1500000*100,(2000000-678000-500000-280000)/2000000*100],pct:true,bold:true},
+            {l:"Revenue",c:[annRev,t1,t2]},
+            {l:"Variable ("+varPctLabel+"%)",c:[annVar,t1Var,t2Var]},
+            {l:"Marketing",c:[annMkt,t1Mkt,t2Mkt]},
+            {l:"Fixed Costs",c:[annFixed,t1Fixed,t2Fixed]},
+            {l:"PROFIT",c:[annProfit,t1Prof,t2Prof],bold:true},
+            {l:"Profit %",c:[annProfPct,t1Prof/t1*100,t2Prof/t2*100],pct:true,bold:true},
           ].map((r,i)=><tr key={i} style={{borderBottom:"1px solid var(--bg)"}}>
             <td style={{padding:"8px",color:r.bold?"#fff":"#9ca3af",fontWeight:r.bold?700:400,textAlign:"left"}}>{r.l}</td>
             {r.c.map((v,j)=><td key={j} style={{padding:"8px",textAlign:"right",color:r.bold?(v>0?"#10b981":"#ef4444"):"#e5e7eb",fontWeight:r.bold?700:400}}>
@@ -814,10 +871,11 @@ function Dashboard(){
       <div style={{background:"rgba(16,185,129,0.06)",border:"1px solid rgba(16,185,129,0.2)",borderRadius:14,padding:18}}>
         <div style={{fontSize:12,fontWeight:700,color:"#10b981",marginBottom:6}}>💪 THE MATH</div>
         <div style={{fontSize:12,color:"var(--t1)",lineHeight:1.7}}>
-          At $2M revenue with the same cost structure plus ~$42K additional fixed costs for capacity, profit jumps from ~$158K to ~$542K — a <strong style={{color:"#10b981"}}>243% increase</strong> in profit on 108% revenue growth. Fixed cost leverage is the #1 profit unlock. But the growth engine needs to be DTC + wholesale together — not just pouring more into Meta at 60% DTC MER.
+          At $2M revenue with the same cost structure plus ~$42K additional fixed costs for capacity, profit jumps from {f$(annProfit)} to {f$(t2Prof)}{annProfit>0&&t2Prof>annProfit?<> — a <strong style={{color:"#10b981"}}>{profGrowthPct}% increase</strong> in profit on {revGrowthPct}% revenue growth</>:null}. Fixed cost leverage is the #1 profit unlock. But the growth engine needs to be DTC + wholesale together — not just pouring more into Meta{estDtcMer>35?" at "+fp(estDtcMer)+" DTC MER":""}.
         </div>
       </div>
-    </>}
+    </>;
+    })()}
 
     {tab==="gads"&&<>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
@@ -964,23 +1022,32 @@ function Dashboard(){
     </>}
 
     {tab==="insights"&&(()=>{
-      // ─── Compute all insight data ───
-      const vcPct=XERO_VAR/XERO.rev*100;
-      const merPct=XERO_MKT/XERO.rev*100;
-      const fcPct=XERO_FIXED/XERO.rev*100;
-      const npPct=XERO_PROFIT/XERO.rev*100;
-      const dtcMerVal=XERO_MKT/XERO.dtc*100;
-      const ler=(XERO.rev-XERO_VAR)/XERO.wages;
-      const metaROAS=agg&&agg.tms>0?agg.tmv/agg.tms:null;
-      const currentAOV=agg&&agg.to>0?agg.tr/agg.to:65;
-      const whPct=Math.round(XERO.wh/XERO.rev*100);
-      const dtcPct=Math.round(XERO.dtc/XERO.rev*100);
-      const intlPct=Math.round(XERO.intl/XERO.rev*100);
-      const metaPctBudget=XERO_MKT>0?Math.round(XERO.ads/XERO_MKT*100):91;
-      const googleSpend=gads?gads.summary.totalSpend:XERO_MKT-XERO.ads;
+      if(!agg)return <div style={{padding:40,textAlign:"center",color:"var(--t3)"}}>Loading data...</div>;
+      // ─── Compute all insight data from selected range ───
+      const a=agg;const days=a.d;
+      const dtcRev=a.tr;const metaSpend=a.tms;
+      const dtcRatio=XERO.dtc/XERO.rev;const whRatio=XERO.wh/XERO.rev;const intlRatio=XERO.intl/XERO.rev;
+      const varRatio=XERO_VAR/XERO.rev;const fixedMonthly=XERO_FIXED/XERO.months;
+      const estTotalRev=dtcRatio>0?dtcRev/dtcRatio:dtcRev;
+      const estVariable=estTotalRev*varRatio;const estFixed=fixedMonthly*(days/30);
+      const estProfit=estTotalRev-estVariable-metaSpend-estFixed;
+      const vcPct=estTotalRev>0?estVariable/estTotalRev*100:0;
+      const merPct=estTotalRev>0?metaSpend/estTotalRev*100:0;
+      const fcPct=estTotalRev>0?estFixed/estTotalRev*100:0;
+      const npPct=estTotalRev>0?estProfit/estTotalRev*100:0;
+      const dtcMerVal=dtcRev>0?metaSpend/dtcRev*100:0;
+      const ler=estTotalRev>0?(estTotalRev-estVariable)/(XERO.wages/XERO.months*(days/30)):0;
+      const metaROAS=a.metaROAS;
+      const currentAOV=a.aov;
+      const whPct=Math.round(whRatio*100);
+      const dtcPct=Math.round(dtcRatio*100);
+      const intlPct=Math.round(intlRatio*100);
+      const totalAdSpend=metaSpend+(gads?gads.summary.totalSpend:0);
+      const metaPctBudget=totalAdSpend>0?Math.round(metaSpend/totalAdSpend*100):100;
+      const googleSpend=gads?gads.summary.totalSpend:0;
       
-      // Email % from recent data
-      const last90=mergedD.slice(-90);
+      // Email % from selected range
+      const last90=vis;
       const emailRevs=last90.filter(d=>d.e>0).map(d=>d.r>0?(d.e/d.r*100):0);
       const emailMin=emailRevs.length?Math.round(Math.min(...emailRevs)):11;
       const emailMax=emailRevs.length?Math.round(Math.max(...emailRevs)):44;
@@ -991,31 +1058,41 @@ function Dashboard(){
       const bestMonth=monthlyRoas.length?monthlyRoas.reduce((a,b)=>b.roas>a.roas?b:a):null;
       const worstMonth=monthlyRoas.length?monthlyRoas.reduce((a,b)=>b.roas<a.roas&&b.meta>200?b:a):null;
 
+      const estWH=estTotalRev*whRatio;const annRevEst=Math.round(estTotalRev/(days/365));
+      const fcMonthly=Math.round(fixedMonthly);
+      const estAt140=annRevEst*1.4;
+
+      // Determine situation
+      let situation=1;
+      if(npPct<0)situation=5;
+      else if(npPct<5)situation=3;
+      else if(npPct<10||dtcMerVal>45||fcPct>25)situation=2;
+
       const insights=[
-        {type:"critical",icon:"🚨",title:`DTC-Only MER at ${dtcMerVal.toFixed(1)}% — Nearly Double the 35% Benchmark`,
-         body:`Blended MER looks manageable at <strong>${merPct.toFixed(1)}%</strong> because wholesale ($${fn(XERO.wh)}, ${whPct}% of revenue) carries zero ad spend. Isolating DTC revenue ($${fn(XERO.dtc)}) against total marketing ($${fn(XERO_MKT)}), your true MER is <strong style="color:var(--red)">${dtcMerVal.toFixed(1)}%</strong>. For every $1 of DTC revenue, you spend $${(dtcMerVal/100).toFixed(2)} on marketing. The EE benchmark is $0.35. Either dramatically improve ad efficiency, grow email share to 30%+, or reframe DTC as an acquisition channel that feeds wholesale.`,
+        {type:dtcMerVal>35?"critical":"opportunity",icon:dtcMerVal>35?"🚨":"✅",title:`DTC-Only MER at ${dtcMerVal.toFixed(1)}% — ${dtcMerVal>35?"Above":"Within"} 35% Benchmark`,
+         body:`Blended MER looks ${merPct<35?"manageable":"elevated"} at <strong>${merPct.toFixed(1)}%</strong> because wholesale (est. ${f$(estWH)}, ${whPct}% of revenue) carries zero ad spend. Isolating DTC revenue (${f$(dtcRev)}) against ad spend (${f$(metaSpend)}), your true MER is <strong style="color:${dtcMerVal>35?"var(--red)":"var(--grn)}">${dtcMerVal.toFixed(1)}%</strong>. For every $1 of DTC revenue, you spend $${(dtcMerVal/100).toFixed(2)} on marketing. The EE benchmark is $0.35.${dtcMerVal>35?" Either dramatically improve ad efficiency, grow email share to 30%+, or reframe DTC as an acquisition channel that feeds wholesale.":""}`,
          actions:[
            {week:"Week 1–2",text:"Audit Meta campaigns — pause anything below 1.5x ROAS. Reallocate to top 3 performers."},
            {week:"Week 3–4",text:"Launch email revenue push — get from "+emailAvg+"% floor to 30%+ consistent via automated flows."},
          ]},
 
-        {type:"warning",icon:"📧",title:`Email Revenue Swinging ${emailMin}–${emailMax}% — Needs to Lock in at 30–40%`,
-         body:`Email is your highest-margin channel (LER $${ler.toFixed(2)}, well above $2.00 benchmark), but wild swings between ${emailMin}% and ${emailMax}% of revenue indicate reliance on campaign blasts rather than automated flows. At ${emailMax}%, your DTC economics work beautifully. At ${emailMin}%, MER blows out because ads carry more weight. <strong>The fix isn't more campaigns — it's better flows.</strong> Automated flows (welcome, post-purchase, winback, browse abandonment) provide a stable floor.`,
+        {type:emailAvg>=30?"opportunity":"warning",icon:"📧",title:`Email Revenue ${emailMin>0?emailMin+"–":""}${emailMax}% — ${emailAvg>=30?"Healthy":"Needs to Lock in at 30–40%"}`,
+         body:`Email is your highest-margin channel (LER $${ler.toFixed(2)}${ler>=2?", well above $2.00 benchmark":""}), but ${emailMax-emailMin>15?"wild swings between "+emailMin+"% and "+emailMax+"% of revenue indicate reliance on campaign blasts rather than automated flows":"range of "+emailMin+"–"+emailMax+"% needs tightening"}. At ${emailMax}%, your DTC economics work beautifully. At ${emailMin}%, MER blows out because ads carry more weight. <strong>The fix isn't more campaigns — it's better flows.</strong> Automated flows (welcome, post-purchase, winback, browse abandonment) provide a stable floor.`,
          actions:[
            {week:"Week 1",text:"Audit Klaviyo flows — ensure Welcome, Browse Abandonment, Post-Purchase, and Winback are all live and optimized."},
            {week:"Week 2",text:"Track flow vs campaign revenue separately. Target: 60% of email revenue from flows."},
            {week:"Week 3–4",text:"Build educational nurture sequence (skin quiz → product rec → social proof) to increase subscriber-to-buyer rate."},
          ]},
 
-        {type:"warning",icon:"🏗️",title:`Fixed Costs at ${fcPct.toFixed(1)}% — Above 20% Benchmark, But Don't Cut`,
-         body:`At <strong>${fcPct.toFixed(1)}%</strong> of revenue, fixed costs are ~5pts above the 20% target. However, in Situation 1, this is a <strong>scale problem, not a cost problem</strong>. Your fixed costs (~$${fn(Math.round(XERO_FIXED/XERO.months))}/mo) include wages, software, rent, and consulting that won't grow proportionally with revenue. If you increase revenue by 40% to $${fn(Math.round(XERO.rev*1.4))}, fixed cost ratio drops to ~${(fcPct*XERO.rev/(XERO.rev*1.4)).toFixed(1)}% — below benchmark. <strong>The lever is revenue growth, not cost cutting.</strong>`,
+        {type:fcPct>20?"warning":"opportunity",icon:"🏗️",title:`Fixed Costs at ${fcPct.toFixed(1)}% — ${fcPct<=20?"Within 20% Benchmark":"Above 20% Benchmark, But Don't Cut"}`,
+         body:`At <strong>${fcPct.toFixed(1)}%</strong> of est. revenue, fixed costs are ${fcPct<=20?"within benchmark":"above the 20% target"}. ${npPct>=5?"In Situation "+situation+", this is a <strong>scale problem, not a cost problem</strong>. ":""}Your fixed costs (~${f$(fcMonthly)}/mo) include wages, software, rent, and consulting that won't grow proportionally with revenue. If you increase revenue by 40% to ${f$(estAt140)}, fixed cost ratio drops to ~${(fcPct/1.4).toFixed(1)}%. <strong>The lever is revenue growth, not cost cutting.</strong>`,
          actions:[
            {week:"This Month",text:"Resist cutting staff or tools. Set 90-day revenue target of +20% from baseline."},
            {week:"Ongoing",text:"Track fixed costs as absolute $ monthly. Only flag if they increase without corresponding revenue growth."},
          ]},
 
-        {type:metaROAS>=2.5?"opportunity":"warning",icon:"📊",title:`Meta is ${metaPctBudget}% of Ad Budget at ${metaROAS?metaROAS.toFixed(2):"~2.1"}x ROAS — Diversification Risk`,
-         body:`With <strong>$${fn(XERO.ads)}</strong> annually on Meta (${metaPctBudget}% of ad spend), you have severe platform concentration risk. A Meta algorithm change, CPM increase, or policy issue could cripple acquisition overnight. At ${metaROAS?metaROAS.toFixed(2):"~2.1"}x ROAS, the channel is ${metaROAS>=2?"performing adequately":"underperforming"} — test diversification into Google Shopping${gads?" (currently $"+fn(gads.summary.totalSpend)+" at "+gads.summary.roas+"x ROAS)":""}, TikTok, and organic/SEO as insurance.`+(bestMonth?` Best performing month was <strong>${bestMonth.month}</strong> at ${bestMonth.roas}x ROAS.`:""),
+        {type:metaROAS>=2.5?"opportunity":"warning",icon:"📊",title:`Meta is ${metaPctBudget}% of Ad Budget at ${metaROAS?metaROAS.toFixed(2):"—"}x ROAS — ${metaPctBudget>=80?"Diversification Risk":"Monitor"}`,
+         body:`With <strong>${f$(metaSpend)}</strong> on Meta in this ${days}d window (${metaPctBudget}% of ad spend), ${metaPctBudget>=80?"you have platform concentration risk":"monitor channel mix"}. At ${metaROAS?metaROAS.toFixed(2):"—"}x ROAS, the channel is ${metaROAS>=2?"performing adequately":"underperforming"} — test diversification into Google Shopping${gads?" (currently "+f$(gads.summary.totalSpend)+" at "+gads.summary.roas+"x ROAS)":""}, TikTok, and organic/SEO as insurance.`+(bestMonth?` Best performing month was <strong>${bestMonth.month}</strong> at ${bestMonth.roas}x ROAS.`:""),
          actions:[
            {week:"Week 1–2",text:"Increase Google Shopping budget — test Performance Max with product feed optimization."},
            {week:"Week 3–4",text:"Launch 2 TikTok creative tests ($50/day) — repurpose top Meta UGC."},
@@ -1023,32 +1100,32 @@ function Dashboard(){
          ]},
 
         {type:"opportunity",icon:"💰",title:`AOV at $${Math.round(currentAOV)} — Each $10 Lift Drops DTC MER by ~${Math.round(dtcMerVal - (dtcMerVal*currentAOV/(currentAOV+10)))} Points`,
-         body:`AOV is the most powerful lever for improving MER without changing ad spend. Increasing from $${Math.round(currentAOV)} to $75 through bundles and upsells means each order generates more revenue at the same CPA, pulling DTC MER toward <strong>${(dtcMerVal*currentAOV/75).toFixed(1)}%</strong> — meaningfully closer to 35%.`,
+         body:`AOV is the most powerful lever for improving MER without changing ad spend. Increasing from $${Math.round(currentAOV)} to $${Math.round(currentAOV)+15} through bundles and upsells means each order generates more revenue at the same CPA, pulling DTC MER toward <strong>${(dtcMerVal*currentAOV/(currentAOV+15)).toFixed(1)}%</strong>.`,
          actions:[
            {week:"Week 1",text:"Implement cart upsell — 'Add Bedtime Bestie' or 'Complete the Bundle' with small incentive."},
            {week:"Week 2",text:"Create Complete Care Bundle at $89 (Calm Balm + Lotion Potion + Soft Suds) on PDP and homepage."},
-           {week:"Week 3",text:"Test free shipping threshold at $80 to incentivize larger carts."},
+           {week:"Week 3",text:"Test free shipping threshold at $"+(Math.round(currentAOV/5)*5+10)+" to incentivize larger carts."},
          ]},
 
-        {type:"info",icon:"🏪",title:`Wholesale (${whPct}%) Exceeds DTC (${dtcPct}%) — Strategic Implications`,
-         body:`Channel mix: wholesale at <strong>${whPct}%</strong> vs DTC at <strong>${dtcPct}%</strong> vs international at <strong>${intlPct}%</strong>. This is unusual for a brand investing $${fn(XERO_MKT)} in digital ads. Key question: <strong>does retail drive its own demand, or does DTC marketing create awareness that converts at Farmers?</strong> If the latter, DTC ad spend is partially subsidising wholesale — making true DTC MER even worse.`,
+        {type:"info",icon:"🏪",title:`Wholesale (${whPct}%) vs DTC (${dtcPct}%) — Strategic Implications`,
+         body:`Channel mix (Xero ratio): wholesale at <strong>${whPct}%</strong> vs DTC at <strong>${dtcPct}%</strong> vs international at <strong>${intlPct}%</strong>. This ${whPct>dtcPct?"is unusual for a brand investing "+f$(metaSpend)+" in digital ads":"reflects your channel strategy"}. Key question: <strong>does retail drive its own demand, or does DTC marketing create awareness that converts at Farmers?</strong> If the latter, DTC ad spend is partially subsidising wholesale — making true DTC MER even worse.`,
          actions:[
            {week:"Week 1",text:"Survey 50 recent Farmers customers: 'How did you first hear about Noody?' — quantify DTC→Retail halo."},
            {week:"Week 2",text:"Geographic test: pause Meta in one region for 2 weeks, track if Farmers sales there decline."},
          ]},
 
-        {type:"opportunity",icon:"✅",title:`Variable Costs at ${vcPct.toFixed(1)}% — Healthy, Room to Fine-Tune`,
-         body:`Variable costs are <strong>below the 40% benchmark</strong>. Product margins are solid, giving room to absorb some marketing inefficiency. COGS at ${fp(XERO.cogs/XERO.rev*100)}, shipping at ${fp(XERO.postage/XERO.rev*100)}, packaging at ${fp(XERO.pkg/XERO.rev*100)}. Minor optimisation: negotiate courier rates at your volume, and review Afterpay merchant fees.`,
+        {type:vcPct<=40?"opportunity":"warning",icon:vcPct<=40?"✅":"⚠️",title:`Variable Costs at ${vcPct.toFixed(1)}% — ${vcPct<=40?"Healthy, Room to Fine-Tune":"Above 40% Benchmark"}`,
+         body:`Variable costs are <strong>${vcPct<=40?"below":"above"} the 40% benchmark</strong>. Product margins are ${vcPct<=40?"solid, giving room to absorb some marketing inefficiency":"tight — needs attention"}. COGS at ${fp(XERO.cogs/XERO.rev*100)}, shipping at ${fp(XERO.postage/XERO.rev*100)}, packaging at ${fp(XERO.pkg/XERO.rev*100)} (Xero ratios). Minor optimisation: negotiate courier rates at your volume, and review Afterpay merchant fees.`,
          actions:[
            {week:"This Month",text:"Review courier contract — at your shipment volume, negotiate rates or test NZ Post vs CourierPost."},
          ]},
 
-        {type:"opportunity",icon:"🎯",title:`Situation 1: Profitable at ${npPct.toFixed(1)}% — Calibrate Session Roadmap`,
-         body:`You're in <strong>Situation 1</strong> (profitable). The playbook: Calibrate → Scale → Optimise. Profit margin of ${npPct.toFixed(1)}% is above the 10% minimum. However, <strong>DTC MER at ${dtcMerVal.toFixed(1)}%</strong> and <strong>fixed costs at ${fcPct.toFixed(1)}%</strong> mean you need revenue growth more than cost cutting. The EE framework says: when profitable with high fixed %, the answer is almost always SCALE — grow revenue to leverage the fixed cost base. LER at ${ler.toFixed(2)} confirms wages are generating sufficient gross margin.`,
+        {type:npPct>=10?"opportunity":npPct>=5?"warning":"critical",icon:"🎯",title:`Situation ${situation}: ${npPct>=10?"Profitable":npPct>=0?"Near Breakeven":"Unprofitable"} at ${npPct.toFixed(1)}% — ${npPct>=10?"Scale":"Fix"} Roadmap`,
+         body:`You're in <strong>Situation ${situation}</strong>. The playbook: Calibrate → Scale → Optimise. Profit margin of ${npPct.toFixed(1)}% is ${npPct>=10?"above the 10% minimum":"below target"}. ${dtcMerVal>35||fcPct>20?"<strong>DTC MER at "+dtcMerVal.toFixed(1)+"%</strong> and <strong>fixed costs at "+fcPct.toFixed(1)+"%</strong> mean you need revenue growth more than cost cutting.":""} The EE framework says: when profitable with high fixed %, the answer is almost always SCALE — grow revenue to leverage the fixed cost base. LER at ${ler.toFixed(2)} ${ler>=2?"confirms wages are generating sufficient gross margin":"needs improvement"}.`,
          actions:[
            {week:"Week 1: Calibrate",text:"Lock in all EE inputs with live data. Verify Xero P&L matches tracking. Set 90-day targets."},
            {week:"Week 2: Stabilise Email",text:"Get email revenue floor above 25% of DTC revenue. Activate all automated flows."},
-           {week:"Week 3: AOV Push",text:"Launch bundle strategy and cart upsell. Target AOV $"+Math.round(currentAOV)+" → $75."},
+           {week:"Week 3: AOV Push",text:"Launch bundle strategy and cart upsell. Target AOV $"+Math.round(currentAOV)+" → $"+(Math.round(currentAOV)+15)+"."},
            {week:"Week 4: Scale Test",text:"Increase Meta spend by 15% on top 3 campaigns. Monitor weekly — if DTC MER doesn't worsen, continue."},
          ]},
       ];
@@ -1065,8 +1142,8 @@ function Dashboard(){
       return <>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
           <div>
-            <h2 style={{fontSize:20,fontWeight:700,margin:0,color:"#a78bfa"}}>✦ Strategic Insights</h2>
-            <div style={{fontSize:11,color:"var(--t3)",marginTop:2}}>Auto-generated from live data × Ecommerce Equation benchmarks</div>
+            <h2 style={{fontSize:20,fontWeight:700,margin:0,color:"#a78bfa"}}>✦ Strategic Insights — {days} Days</h2>
+            <div style={{fontSize:11,color:"var(--t3)",marginTop:2}}>Auto-generated from {a.startDate} → {a.endDate} × Ecommerce Equation benchmarks</div>
           </div>
           <div style={{fontSize:10,color:"var(--t3)"}}>{(shopLive?"Shopify ✓ ":"")+(metaLive?"Meta ✓ ":"")+(gads?"Google ✓ ":"")+(xeroLive?"Xero ✓":"")}</div>
         </div>
