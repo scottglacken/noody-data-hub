@@ -241,6 +241,7 @@ function Dashboard(){
   const saveWh=(d)=>{setWhData(d);lsSet("noody_wholesale",d);};
 
   const [showPeriodComp,setShowPeriodComp]=useState(false);
+  const [show7dSnapshot,setShow7dSnapshot]=useState(false);
   const [gads,setGads]=useState(null);
   const [gadsLoading,setGadsLoading]=useState(false);
   const [gadsError,setGadsError]=useState(null);
@@ -793,6 +794,39 @@ function Dashboard(){
         })()}
       </div>
 
+      {/* CURRENT 7-DAY SNAPSHOT (hidden when viewing 7d already) */}
+      {range!==7&&c7&&(()=>{
+        const _fv=(v,f)=>v==null?"\u2014":f==="$"?f$(v):f==="%"?fp(v):f==="x"?(v||0).toFixed(2)+"x":fn(v);
+        const _rows=[
+          {l:"DTC Revenue",v:c7.tr,pv:dtcRev,f:"$"},
+          {l:"Orders",v:c7.to,pv:orders,f:"n"},
+          {l:"AOV",v:c7.aov,pv:aov,f:"$"},
+          {l:"Meta Spend",v:c7.tms,pv:metaSpend,f:"$",inv:true},
+          {l:"DTC MER",v:c7.mer,pv:mer,f:"%",inv:true},
+          {l:"Meta ROAS",v:c7.metaROAS,pv:roas,f:"x"},
+          {l:"Conv Rate",v:c7.cr,pv:agg.cr,f:"%"},
+          {l:"Rev/Session",v:c7.rps,pv:agg.rps,f:"$"},
+        ];
+        return <div style={{marginBottom:16}}>
+          <button onClick={()=>setShow7dSnapshot(!show7dSnapshot)} style={{background:"none",border:"1px solid var(--bdr)",borderRadius:8,padding:"6px 14px",cursor:"pointer",fontSize:12,color:"var(--t2)",display:"flex",alignItems:"center",gap:6,marginBottom:show7dSnapshot?10:0}}>
+            <span>{show7dSnapshot?"\u25B4":"\u25BE"}</span> Current 7-Day Snapshot
+          </button>
+          {show7dSnapshot&&<div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:16,overflowX:"auto"}}>
+            <div style={{fontSize:11,color:"var(--t3)",marginBottom:10}}>Last 7 days vs {days}d period average (daily rate comparison)</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:8}}>
+              {_rows.map((r,i)=>{
+                const t=trend7d(r.v,r.pv,r.inv);
+                return <div key={i} style={{textAlign:"center",padding:10,background:"rgba(0,0,0,0.02)",borderRadius:8}}>
+                  <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",marginBottom:3}}>{r.l}</div>
+                  <div style={{fontSize:16,fontWeight:700,color:t.color,fontFamily:"'JetBrains Mono',monospace"}}>{_fv(r.v,r.f)}</div>
+                  <div style={{fontSize:10,color:t.color}}>{t.arrow} vs {_fv(r.pv,r.f)} ({days}d)</div>
+                </div>;
+              })}
+            </div>
+          </div>}
+        </div>;
+      })()}
+
       {/* THE EQUATION */}
       <div style={{marginBottom:20}}>
         <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:10}}>
@@ -1043,17 +1077,17 @@ function Dashboard(){
       </div>
       <AiSummary text={tabAi[_dailyAiKey]} loading={tabAiLoading.daily} label={"AI Daily Analysis — "+_days+"d"}/>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:7,marginBottom:14}}>
-        <MC l="Revenue" v={agg.tr} fmt="$" big/>
-        <MC l="Meta Spend" v={agg.tms} fmt="$"/>
-        <MC l="MER" v={agg.mer} fmt="%" bm={BM.mer}/>
-        <MC l="Avg AOV" v={agg.aov} fmt="$"/>
-        <MC l="Orders" v={agg.to} fmt="n"/>
-        <MC l="Meta ROAS" v={agg.metaROAS} fmt="n" sub="last-click"/>
-        <MC l="Sessions" v={agg.useSess||null} fmt="n" sub={agg.sessSource==="ga4"?agg.ga4Days+"d GA4":agg.sessDays>0?agg.sessDays+"d manual":"enter below"}/>
-        <MC l="Conv Rate" v={agg.cr} fmt="%" bm={{h:[2.5,100],w:[1.5,2.5]}} sub={"orders/sessions"+(agg.sessSource==="ga4"?" (GA4)":"")}/>
-        <MC l="Rev/Session" v={agg.rps} fmt="$" sub={"RPV = CR x AOV"+(agg.sessSource==="ga4"?" (GA4)":"")}/>
-        <MC l="Avg CPP" v={agg.cpp} fmt="$"/>
-        <MC l="Shipping %" v={agg.shipPct} fmt="%"/>
+        <MC l="Revenue" v={agg.tr} fmt="$" big v7d={current7d?current7d.tr:null} showBm={showBenchmarks}/>
+        <MC l="Meta Spend" v={agg.tms} fmt="$" inv v7d={current7d?current7d.tms:null} showBm={showBenchmarks}/>
+        <MC l="MER" v={agg.mer} fmt="%" bm={BM.mer} inv v7d={current7d?current7d.mer:null} showBm={showBenchmarks} bmLabel="<35%"/>
+        <MC l="Avg AOV" v={agg.aov} fmt="$" v7d={current7d?current7d.aov:null} showBm={showBenchmarks} bmLabel=">$70"/>
+        <MC l="Orders" v={agg.to} fmt="n" v7d={current7d?current7d.to:null} showBm={showBenchmarks}/>
+        <MC l="Meta ROAS" v={agg.metaROAS} fmt="x" sub="last-click" v7d={current7d?current7d.metaROAS:null} showBm={showBenchmarks} bmLabel=">2.5x"/>
+        <MC l="Sessions" v={agg.useSess||null} fmt="n" sub={agg.sessSource==="ga4"?agg.ga4Days+"d GA4":agg.sessDays>0?agg.sessDays+"d manual":"enter below"} v7d={current7d?current7d.useSess:null} showBm={showBenchmarks}/>
+        <MC l="Conv Rate" v={agg.cr} fmt="%" bm={{h:[2.5,100],w:[1.5,2.5]}} sub={"orders/sessions"+(agg.sessSource==="ga4"?" (GA4)":"")} v7d={current7d?current7d.cr:null} showBm={showBenchmarks}/>
+        <MC l="Rev/Session" v={agg.rps} fmt="$" sub={"RPV = CR x AOV"+(agg.sessSource==="ga4"?" (GA4)":"")} v7d={current7d?current7d.rps:null} showBm={showBenchmarks}/>
+        <MC l="Avg CPP" v={agg.cpp} fmt="$" inv v7d={current7d?current7d.cpp:null} showBm={showBenchmarks}/>
+        <MC l="Shipping %" v={agg.shipPct} fmt="%" v7d={current7d?current7d.shipPct:null} showBm={showBenchmarks}/>
       </div>
       {chartData.length>1&&<>
         <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:10}}>
@@ -1234,12 +1268,12 @@ function Dashboard(){
 
       {/* Top Metrics - with frequency & MER */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:7,marginBottom:14}}>
-        <MC l={_days+"d Spend"} v={agg.tms||0} fmt="$" big/>
-        <MC l="Purchases" v={agg.tmp||0} fmt="n"/>
-        <MC l="Avg CPP" v={agg.cpp||0} fmt="$" bm={agg.cpp?{h:[0,agg.cpp*0.8],w:[agg.cpp*0.8,agg.cpp*1.5]}:null}/>
-        <MC l="Meta ROAS" v={agg.metaROAS||0} fmt="n" bm={{h:[2.5,100],w:[1.5,2.5]}} sub="last-click"/>
-        <MC l="True MER" v={agg.mer||0} fmt="%" bm={{h:[0,25],w:[25,35]}}/>
-        <MC l="Daily Avg" v={agg.tms/_days} fmt="$"/>
+        <MC l={_days+"d Spend"} v={agg.tms||0} fmt="$" big v7d={current7d?current7d.tms:null} inv showBm={showBenchmarks}/>
+        <MC l="Purchases" v={agg.tmp||0} fmt="n" v7d={current7d?current7d.tmp:null} showBm={showBenchmarks}/>
+        <MC l="Avg CPP" v={agg.cpp||0} fmt="$" bm={agg.cpp?{h:[0,agg.cpp*0.8],w:[agg.cpp*0.8,agg.cpp*1.5]}:null} inv v7d={current7d?current7d.cpp:null} showBm={showBenchmarks} bmLabel="<$15"/>
+        <MC l="Meta ROAS" v={agg.metaROAS||0} fmt="x" bm={{h:[2.5,100],w:[1.5,2.5]}} sub="last-click" v7d={current7d?current7d.metaROAS:null} showBm={showBenchmarks} bmLabel=">2.5x"/>
+        <MC l="True MER" v={agg.mer||0} fmt="%" bm={{h:[0,25],w:[25,35]}} inv v7d={current7d?current7d.mer:null} showBm={showBenchmarks} bmLabel="<25%"/>
+        <MC l="Daily Avg" v={agg.tms/_days} fmt="$" showBm={showBenchmarks}/>
       </div>
 
       {/* Targets */}
@@ -1601,14 +1635,14 @@ function Dashboard(){
 
       {gads&&!gadsLoading&&<>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:7,marginBottom:14}}>
-          <MC l="Total Spend" v={gads.summary.totalSpend} fmt="$" big/>
-          <MC l="Clicks" v={gads.summary.totalClicks} fmt="n"/>
-          <MC l="Impressions" v={gads.summary.totalImpressions} fmt="n"/>
-          <MC l="CTR" v={gads.summary.avgCtr} fmt="%" bm={{h:[1.5,100],w:[0.8,1.5]}}/>
-          <MC l="Conversions" v={gads.summary.totalConversions} fmt="n"/>
-          <MC l="Conv Value" v={gads.summary.totalConversionValue} fmt="$"/>
-          <MC l="Cost/Conv" v={gads.summary.costPerConversion} fmt="$" bm={{h:[0,15],w:[15,30]}}/>
-          <MC l="ROAS" v={gads.summary.roas} fmt="n" sub="conv value / spend" bm={{h:[5,100],w:[2,5]}}/>
+          <MC l="Total Spend" v={gads.summary.totalSpend} fmt="$" big showBm={showBenchmarks}/>
+          <MC l="Clicks" v={gads.summary.totalClicks} fmt="n" showBm={showBenchmarks}/>
+          <MC l="Impressions" v={gads.summary.totalImpressions} fmt="n" showBm={showBenchmarks}/>
+          <MC l="CTR" v={gads.summary.avgCtr} fmt="%" bm={{h:[1.5,100],w:[0.8,1.5]}} showBm={showBenchmarks} bmLabel=">1.5%"/>
+          <MC l="Conversions" v={gads.summary.totalConversions} fmt="n" showBm={showBenchmarks}/>
+          <MC l="Conv Value" v={gads.summary.totalConversionValue} fmt="$" showBm={showBenchmarks}/>
+          <MC l="Cost/Conv" v={gads.summary.costPerConversion} fmt="$" bm={{h:[0,15],w:[15,30]}} inv showBm={showBenchmarks} bmLabel="<$15"/>
+          <MC l="ROAS" v={gads.summary.roas} fmt="x" sub="conv value / spend" bm={{h:[5,100],w:[2,5]}} showBm={showBenchmarks} bmLabel=">5x"/>
         </div>
         <AiSummary text={tabAi[_gadsAiKey]} loading={tabAiLoading.gads} label={"AI Google Ads Analysis — "+gadsDays+"d"}/>
 
@@ -2165,7 +2199,8 @@ function Dashboard(){
         {!loading&&(wd||ga)&&<div style={{...cardS,textAlign:"center",padding:24,background:"linear-gradient(135deg,rgba(59,91,219,0.04),rgba(21,128,61,0.04))"}}>
           <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Revenue Per Visit — The Grand Equalizer</div>
           <div style={{fontSize:42,fontWeight:800,color:rpvColor,fontFamily:"'JetBrains Mono',monospace"}}>{"$"+rpv.toFixed(2)}</div>
-          <div style={{fontSize:12,color:rpvColor,fontWeight:600,marginBottom:12}}>{rpvLabel}</div>
+          <div style={{fontSize:12,color:rpvColor,fontWeight:600,marginBottom:4}}>{rpvLabel}</div>
+          {current7d&&current7d.rps&&range!==7&&(()=>{const t=trend7d(current7d.rps,rpv);return <div style={{fontSize:12,color:t.color,marginBottom:8,fontFamily:"'JetBrains Mono',monospace"}}>7d: {"$"+(current7d.rps).toFixed(2)} {t.arrow} {t.label}</div>;})()}
           <div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:8,fontSize:13,color:"var(--t2)"}}>
             <span style={{padding:"4px 12px",background:"rgba(0,0,0,0.04)",borderRadius:6}}>CR {cr.toFixed(2)}%</span>
             <span style={{fontSize:16,color:"var(--t3)"}}>×</span>
