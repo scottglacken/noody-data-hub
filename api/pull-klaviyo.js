@@ -190,129 +190,104 @@ export default async function handler(req, res) {
     if (wantDetail) {
       var detail = {};
 
-      // 1) Flows list + revenue via $flow grouping on Placed Order
+      // 1) Flow performance via Klaviyo reporting API
       try {
-        var rawFlows = await fetchAll('https://a.klaviyo.com/api/flows/');
-        var flowNameMap = {};
-        rawFlows.forEach(function(f) { flowNameMap[f.id] = f; });
-
-        // Query Placed Order grouped by $flow — returns flow IDs as dimension values
-        var flowAgg = await queryAggregate(metricId, ['$flow']);
-        var flowPerf = [];
-        var totalFlowRev = 0;
-        if (flowAgg && flowAgg.data) {
-          for (var fi = 0; fi < flowAgg.data.length; fi++) {
-            var fg = flowAgg.data[fi];
-            var dimVal = fg.dimensions && fg.dimensions[0] || '';
-            if (!dimVal) continue; // skip empty (non-flow attributed)
-            var fRev = arrSum(fg.measurements && fg.measurements.sum_value);
-            var fCnt = arrSum(fg.measurements && fg.measurements.count);
-            var fUniq = arrSum(fg.measurements && fg.measurements.unique);
-            totalFlowRev += fRev;
-            // Try to find flow name from list
-            var flowInfo = flowNameMap[dimVal];
-            flowPerf.push({
-              id: dimVal,
-              name: flowInfo ? flowInfo.attributes.name : dimVal,
-              status: flowInfo ? flowInfo.attributes.status : 'unknown',
-              revenue: Math.round(fRev * 100) / 100,
-              conversions: fCnt,
-              recipients: fUniq,
-              revenuePerRecipient: fUniq > 0 ? Math.round(fRev / fUniq * 100) / 100 : 0,
-            });
-          }
-        }
-        // Add flows with no revenue from the list
-        var usedIds = {};
-        flowPerf.forEach(function(f) { usedIds[f.id] = true; });
-        rawFlows.forEach(function(f) {
-          if (!usedIds[f.id]) {
-            flowPerf.push({
-              id: f.id,
-              name: f.attributes.name || 'Unnamed',
-              status: f.attributes.status || 'unknown',
-              revenue: 0, conversions: 0, recipients: 0, revenuePerRecipient: 0,
-            });
-          }
+        var flowReportBody = {
+          data: {
+            type: 'flow-values-report',
+            attributes: {
+              statistics: ['conversion_value', 'conversions', 'recipients', 'received', 'opened', 'clicked'],
+              timeframe: { start: sinceDate + 'T00:00:00Z', end: untilDate + 'T23:59:59Z' },
+              conversion_metric_id: metricId,
+            },
+          },
+        };
+        var flowReportRes = await fetch('https://a.klaviyo.com/api/flow-values-reports/', {
+          method: 'POST', headers: headers, body: JSON.stringify(flowReportBody),
         });
-        flowPerf.sort(function(a, b) { return b.revenue - a.revenue; });
-        detail.flows = flowPerf;
-        detail.totalFlowRevenue = Math.round(totalFlowRev * 100) / 100;
+        if (flowReportRes.ok) {
+          var flowReportData = await flowReportRes.json();
+          var flowResults = flowReportData.data && flowReportData.data.attributes && flowReportData.data.attributes.results || [];
+          var totalFlowRev = 0;
+          detail.flows = flowResults.map(function(fr) {
+            var stats = fr.statistics || {};
+            var rev = stats.conversion_value || 0;
+            var conv = stats.conversions || 0;
+            var recip = stats.recipients || 0;
+            totalFlowRev += rev;
+            return {
+              id: fr.groupings && fr.groupings.flow_id || '',
+              name: fr.groupings && fr.groupings.flow_name || 'Unknown',
+              status: fr.groupings && fr.groupings.flow_status || 'unknown',
+              revenue: Math.round(rev * 100) / 100,
+              conversions: conv,
+              recipients: recip,
+              received: stats.received || 0,
+              opened: stats.opened || 0,
+              clicked: stats.clicked || 0,
+              openRate: (stats.received || 0) > 0 ? Math.round((stats.opened || 0) / stats.received * 10000) / 100 : 0,
+              clickRate: (stats.received || 0) > 0 ? Math.round((stats.clicked || 0) / stats.received * 10000) / 100 : 0,
+              revenuePerRecipient: recip > 0 ? Math.round(rev / recip * 100) / 100 : 0,
+            };
+          });
+          detail.flows.sort(function(a, b) { return b.revenue - a.revenue; });
+          detail.totalFlowRevenue = Math.round(totalFlowRev * 100) / 100;
+        } else {
+          var flowReportErr = await flowReportRes.text();
+          detail.flowError = 'Flow report ' + flowReportRes.status + ': ' + flowReportErr.slice(0, 200);
+          detail.flows = [];
+        }
       } catch (e) { detail.flowError = e.message; detail.flows = []; }
 
-      // 2) Campaigns + revenue via $message grouping
+      // 2) Campaign performance via Klaviyo reporting API
       try {
-        var rawCampaigns = await fetchAll(
-          'https://a.klaviyo.com/api/campaigns/?filter=equals(messages.channel,%27email%27)&sort=-updated_at',
-          50
-        );
-
-        // Query Placed Order grouped by $message
-        var msgAgg = await queryAggregate(metricId, ['$message']);
-        var msgRevMap = {};
-        var totalCampRev = 0;
-        if (msgAgg && msgAgg.data) {
-          for (var mi2 = 0; mi2 < msgAgg.data.length; mi2++) {
-            var mg = msgAgg.data[mi2];
-            var msgDim = mg.dimensions && mg.dimensions[0] || '';
-            if (!msgDim) continue;
-            var mRev = arrSum(mg.measurements && mg.measurements.sum_value);
-            var mCnt = arrSum(mg.measurements && mg.measurements.count);
-            var mUniq = arrSum(mg.measurements && mg.measurements.unique);
-            msgRevMap[msgDim] = { revenue: Math.round(mRev * 100) / 100, conversions: mCnt, recipients: mUniq };
-          }
-        }
-
-        // Fetch campaign message IDs in parallel (only for sent campaigns, max 20)
-        var sentCampaigns = rawCampaigns.filter(function(c) {
-          return c.attributes.status === 'Sent' || c.attributes.status === 'sent';
-        }).slice(0, 20);
-        var msgLookups = await Promise.all(sentCampaigns.map(function(camp) {
-          return fetch('https://a.klaviyo.com/api/campaigns/' + camp.id + '/campaign-messages/', { headers: headers })
-            .then(function(r) { return r.ok ? r.json() : { data: [] }; })
-            .then(function(d) { return { campId: camp.id, messages: d.data || [] }; })
-            .catch(function() { return { campId: camp.id, messages: [] }; });
-        }));
-        // Build campaign-to-message mapping
-        var campMsgMap = {};
-        msgLookups.forEach(function(l) { campMsgMap[l.campId] = l.messages.map(function(m) { return m.id; }); });
-
-        var campPerf = [];
-        for (var ci = 0; ci < rawCampaigns.length; ci++) {
-          var camp = rawCampaigns[ci];
-          var campName = camp.attributes.name || 'Unnamed';
-          var campStatus = camp.attributes.status || 'unknown';
-          var sendTime = camp.attributes.send_time || camp.attributes.scheduled_at || null;
-
-          var campRev = 0, campConv = 0, campRecip = 0;
-          // Try direct ID match
-          if (msgRevMap[camp.id]) {
-            campRev = msgRevMap[camp.id].revenue;
-            campConv = msgRevMap[camp.id].conversions;
-            campRecip = msgRevMap[camp.id].recipients;
-          }
-          // Try message ID match
-          if (campRev === 0 && campMsgMap[camp.id]) {
-            campMsgMap[camp.id].forEach(function(msgId) {
-              var mr = msgRevMap[msgId];
-              if (mr) { campRev += mr.revenue; campConv += mr.conversions; campRecip += mr.recipients; }
-            });
-          }
-
-          totalCampRev += campRev;
-          campPerf.push({
-            id: camp.id,
-            name: campName,
-            status: campStatus,
-            sendTime: sendTime,
-            revenue: campRev,
-            conversions: campConv,
-            recipients: campRecip,
+        var campReportBody = {
+          data: {
+            type: 'campaign-values-report',
+            attributes: {
+              statistics: ['conversion_value', 'conversions', 'recipients', 'received', 'opened', 'clicked', 'bounced', 'unsubscribed', 'spam_complaints'],
+              timeframe: { start: sinceDate + 'T00:00:00Z', end: untilDate + 'T23:59:59Z' },
+              conversion_metric_id: metricId,
+            },
+          },
+        };
+        var campReportRes = await fetch('https://a.klaviyo.com/api/campaign-values-reports/', {
+          method: 'POST', headers: headers, body: JSON.stringify(campReportBody),
+        });
+        if (campReportRes.ok) {
+          var campReportData = await campReportRes.json();
+          var campResults = campReportData.data && campReportData.data.attributes && campReportData.data.attributes.results || [];
+          var totalCampRev = 0;
+          detail.campaigns = campResults.map(function(cr) {
+            var stats = cr.statistics || {};
+            var rev = stats.conversion_value || 0;
+            var conv = stats.conversions || 0;
+            var recip = stats.recipients || 0;
+            totalCampRev += rev;
+            return {
+              id: cr.groupings && cr.groupings.campaign_id || '',
+              name: cr.groupings && cr.groupings.campaign_name || 'Unknown',
+              status: cr.groupings && cr.groupings.send_status || 'unknown',
+              sendTime: cr.groupings && cr.groupings.send_time || null,
+              revenue: Math.round(rev * 100) / 100,
+              conversions: conv,
+              recipients: recip,
+              received: stats.received || 0,
+              opened: stats.opened || 0,
+              clicked: stats.clicked || 0,
+              bounced: stats.bounced || 0,
+              unsubscribed: stats.unsubscribed || 0,
+              openRate: (stats.received || 0) > 0 ? Math.round((stats.opened || 0) / stats.received * 10000) / 100 : 0,
+              clickRate: (stats.received || 0) > 0 ? Math.round((stats.clicked || 0) / stats.received * 10000) / 100 : 0,
+            };
           });
+          detail.campaigns.sort(function(a, b) { return b.revenue - a.revenue; });
+          detail.totalCampaignRevenue = Math.round(totalCampRev * 100) / 100;
+        } else {
+          var campReportErr = await campReportRes.text();
+          detail.campaignError = 'Campaign report ' + campReportRes.status + ': ' + campReportErr.slice(0, 200);
+          detail.campaigns = [];
         }
-        campPerf.sort(function(a, b) { return b.revenue - a.revenue; });
-        detail.campaigns = campPerf;
-        detail.totalCampaignRevenue = Math.round(totalCampRev * 100) / 100;
       } catch (e) { detail.campaignError = e.message; detail.campaigns = []; }
 
       // 3) Lists
