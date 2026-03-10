@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     // Query metric aggregates for "Placed Order" attributed to email
     // First find the "Placed Order" metric ID - list all and search
     var allMetrics = [];
-    var metricsUrl = 'https://a.klaviyo.com/api/metrics/?page[size]=50';
+    var metricsUrl = 'https://a.klaviyo.com/api/metrics/';
     while (metricsUrl) {
       var metricsRes = await fetch(metricsUrl, { headers: headers });
       if (!metricsRes.ok) {
