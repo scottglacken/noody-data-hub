@@ -95,6 +95,10 @@ function TargetBar({label,current,target,fmt,inv}){
   </div>;
 }
 
+// localStorage helpers for manual data
+function lsGet(k,def){try{const v=localStorage.getItem(k);return v?JSON.parse(v):def;}catch(e){return def;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+
 function Dashboard(){
   const [tab,setTab]=useState("equation");
   const [theme,setTheme]=useState("dark");
@@ -121,6 +125,14 @@ function Dashboard(){
     }catch(e){setTabAi(p=>({...p,[key]:"Error: "+e.message}));}
     setTabAiLoading(p=>({...p,[tabName]:false}));
   },[rangeKey,tabAi]);
+  // Manual sessions data (localStorage-persisted, keyed by date)
+  const [sessData,setSessData]=useState(()=>lsGet("noody_sessions",{}));
+  const saveSess=(d)=>{setSessData(d);lsSet("noody_sessions",d);};
+
+  // Wholesale tracking (localStorage-persisted, keyed by YYYY-MM)
+  const [whData,setWhData]=useState(()=>lsGet("noody_wholesale",{}));
+  const saveWh=(d)=>{setWhData(d);lsSet("noody_wholesale",d);};
+
   const [gads,setGads]=useState(null);
   const [gadsLoading,setGadsLoading]=useState(false);
   const [gadsError,setGadsError]=useState(null);
@@ -252,19 +264,22 @@ function Dashboard(){
   // Compute aggregates for any data slice
   const computeAgg=(data)=>{
     if(!data||!data.length)return null;
-    let tr=0,to=0,ti=0,ts=0,te=0,tms=0,tmp=0,tmv=0;
-    data.forEach(d=>{tr+=d.r;to+=d.o;ti+=d.i;ts+=d.s;te+=d.e;tms+=d.ms;tmp+=d.mp;tmv+=d.mv;});
-    return {d:data.length,tr,to,ti,ts,te,tms,tmp,tmv,
+    let tr=0,to=0,ti=0,ts=0,te=0,tms=0,tmp=0,tmv=0,tsess=0,sessDays=0;
+    data.forEach(d=>{tr+=d.r;to+=d.o;ti+=d.i;ts+=d.s;te+=d.e;tms+=d.ms;tmp+=d.mp;tmv+=d.mv;
+      const sd=sessData[d.d];if(sd&&sd>0){tsess+=sd;sessDays++;}
+    });
+    return {d:data.length,tr,to,ti,ts,te,tms,tmp,tmv,tsess,sessDays,
       aov:to>0?tr/to:0,mer:tr>0&&tms>0?(tms/tr)*100:null,
       avgRev:tr/data.length,avgOrd:to/data.length,
       shipPct:tr>0?(ts/tr)*100:0,emailPct:tr>0?(te/tr)*100:null,
       metaROAS:tms>0?tmv/tms:null,cpp:tmp>0?tms/tmp:null,
+      cr:tsess>0?(to/tsess)*100:null,rps:tsess>0?tr/tsess:null,
       startDate:data[0]?.d,endDate:data[data.length-1]?.d,
     };
   };
 
-  const agg=useMemo(()=>computeAgg(vis),[vis]);
-  const prevAgg=useMemo(()=>computeAgg(prevVis),[prevVis]);
+  const agg=useMemo(()=>computeAgg(vis),[vis,sessData]);
+  const prevAgg=useMemo(()=>computeAgg(prevVis),[prevVis,sessData]);
 
   // Change indicator helper
   const pctChange=(curr,prev)=>{
@@ -448,6 +463,9 @@ function Dashboard(){
             {l:"Meta ROAS",v:roas,pv:pRoas,f:"n",sub:"last-click"},
             {l:"CPP",v:cpp,f:"$",inv:true,sub:"cost per purchase"},
             {l:"Email Rev %",v:emailPct,f:"%",bm:BM.em,sub:"benchmark 30-40%"},
+            {l:"Sessions",v:a.tsess||null,f:"n",sub:a.sessDays>0?a.sessDays+"d of data":"paste in Daily tab"},
+            {l:"Conv Rate",v:a.cr,f:"%",bm:{h:[2.5,100],w:[1.5,2.5]},sub:"orders / sessions"},
+            {l:"Rev/Session",v:a.rps,f:"$",sub:"RPV = CR \u00D7 AOV"},
             {l:"Shipping %",v:a.shipPct,f:"%",sub:"of DTC revenue"},
           ].map((m,i)=>{
             const dv=m.f==="$"?f$(m.v):m.f==="%"?fp(m.v):m.v!=null?m.v.toFixed(2):"\u2014";
@@ -706,6 +724,9 @@ function Dashboard(){
         <MC l="Avg AOV" v={agg.aov} fmt="$"/>
         <MC l="Orders" v={agg.to} fmt="n"/>
         <MC l="Meta ROAS" v={agg.metaROAS} fmt="n" sub="last-click"/>
+        <MC l="Sessions" v={agg.tsess||null} fmt="n" sub={agg.sessDays>0?agg.sessDays+"d of data":"enter below"}/>
+        <MC l="Conv Rate" v={agg.cr} fmt="%" bm={{h:[2.5,100],w:[1.5,2.5]}} sub="orders/sessions"/>
+        <MC l="Rev/Session" v={agg.rps} fmt="$" sub="RPV = CR x AOV"/>
         <MC l="Avg CPP" v={agg.cpp} fmt="$"/>
         <MC l="Shipping %" v={agg.shipPct} fmt="%"/>
       </div>
@@ -749,6 +770,104 @@ function Dashboard(){
           </div>
         </div>
       </>}
+
+      {/* SESSION INPUT */}
+      <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginTop:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+          <div>
+            <div style={{fontSize:14,fontWeight:600,color:"var(--t1)"}}>Session Data</div>
+            <div style={{fontSize:11,color:"var(--t3)"}}>Paste daily sessions from Shopify Analytics. Enables CR & RPS tracking.</div>
+          </div>
+          <div style={{fontSize:10,color:"var(--t3)"}}>{Object.keys(sessData).length} days stored</div>
+        </div>
+        <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
+          <textarea id="sess-paste" placeholder={"Paste CSV: date,sessions (one per line)\ne.g.\n2026-03-01,98\n2026-03-02,112\n2026-03-03,95"} style={{flex:1,minWidth:240,minHeight:80,padding:10,fontSize:12,fontFamily:"'JetBrains Mono',monospace",background:"var(--bg)",border:"1px solid var(--bdr)",borderRadius:8,color:"var(--t1)",resize:"vertical"}}/>
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            <button onClick={()=>{
+              const ta=document.getElementById("sess-paste");
+              if(!ta||!ta.value.trim())return;
+              const lines=ta.value.trim().split("\n");
+              const updated={...sessData};let count=0;
+              lines.forEach(line=>{
+                const parts=line.split(",").map(s=>s.trim());
+                if(parts.length>=2){
+                  const date=parts[0];const sess=parseInt(parts[1]);
+                  if(date.match(/^\d{4}-\d{2}-\d{2}$/)&&sess>0){updated[date]=sess;count++;}
+                }
+              });
+              if(count>0){saveSess(updated);ta.value="";alert("Saved "+count+" days of session data");}
+            }} style={{padding:"10px 16px",fontSize:12,borderRadius:8,cursor:"pointer",background:"var(--acc)",color:"#fff",border:"none",fontWeight:600}}>Save Sessions</button>
+            <button onClick={()=>{
+              const today=new Date().toISOString().split("T")[0];
+              const sess=prompt("Sessions for "+today+":");
+              if(sess&&parseInt(sess)>0){const updated={...sessData};updated[today]=parseInt(sess);saveSess(updated);}
+            }} style={{padding:"10px 16px",fontSize:12,borderRadius:8,cursor:"pointer",background:"var(--card)",color:"var(--t2)",border:"1px solid var(--bdr)"}}>Quick Add Today</button>
+          </div>
+        </div>
+        {agg.tsess>0&&<div style={{fontSize:12,color:"var(--t2)",padding:"8px 12px",background:"rgba(79,110,247,0.06)",borderRadius:8}}>
+          {fn(agg.tsess)} sessions across {agg.sessDays} days = <strong style={{color:"var(--acc)"}}>{agg.cr.toFixed(2)}% CR</strong> ({fn(agg.to)} orders) · <strong>{f$(agg.rps)}/session</strong> · Avg {fn(Math.round(agg.tsess/agg.sessDays))}/day
+        </div>}
+        {agg.cr!=null&&agg.cr>0&&<div style={{fontSize:11,color:"var(--t3)",marginTop:8}}>
+          Revenue change diagnosis: {agg.cr<1.5?"LOW CONVERSION — fix site experience/offers":agg.tsess/agg.sessDays<80?"LOW TRAFFIC — increase ad spend or organic":agg.aov<60?"LOW AOV — add bundles/upsells":"Balanced — monitor all three levers"}
+        </div>}
+      </div>
+
+      {/* WHOLESALE TRACKER */}
+      <div style={{background:"linear-gradient(135deg,rgba(124,58,237,0.06),rgba(37,99,235,0.04))",border:"1px solid rgba(124,58,237,0.2)",borderRadius:14,padding:18,marginTop:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+          <div>
+            <div style={{fontSize:14,fontWeight:600,color:"var(--t1)"}}>Wholesale Tracker</div>
+            <div style={{fontSize:11,color:"var(--t3)"}}>~45% of revenue ({f$(XERO.wh)}/yr) with zero dashboard visibility. Track monthly.</div>
+          </div>
+          <button onClick={()=>{
+            const mo=prompt("Month (YYYY-MM):",new Date().toISOString().slice(0,7));
+            if(!mo||!mo.match(/^\d{4}-\d{2}$/))return;
+            const rev=prompt("Wholesale revenue for "+mo+":",whData[mo]?.rev||"");
+            const accts=prompt("Active accounts:",whData[mo]?.accts||"");
+            const notes=prompt("Notes:",whData[mo]?.notes||"");
+            if(rev!=null){
+              const updated={...whData};
+              updated[mo]={rev:parseFloat(rev)||0,accts:parseInt(accts)||0,notes:notes||""};
+              saveWh(updated);
+            }
+          }} style={{padding:"8px 16px",fontSize:12,borderRadius:8,cursor:"pointer",background:"#7c3aed",color:"#fff",border:"none",fontWeight:600}}>+ Add Month</button>
+        </div>
+        {(()=>{
+          const months=Object.entries(whData).sort((a,b)=>b[0].localeCompare(a[0]));
+          if(!months.length)return <div style={{fontSize:12,color:"var(--t3)",textAlign:"center",padding:12}}>No wholesale data yet. Click "+ Add Month" to start tracking.</div>;
+          const totalRev=months.reduce((s,m)=>s+(m[1].rev||0),0);
+          const avgRev=months.length?totalRev/months.length:0;
+          return <>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:7,marginBottom:10}}>
+              <MC l="Total Tracked" v={totalRev} fmt="$"/>
+              <MC l="Avg/Month" v={avgRev} fmt="$"/>
+              <MC l="Months" v={months.length} fmt="n"/>
+              <MC l="Xero Annual" v={XERO.wh} fmt="$" sub={f$(Math.round(XERO.wh/12))+"/mo"}/>
+            </div>
+            <div style={{overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,fontFamily:"'JetBrains Mono',monospace"}}>
+                <thead><tr style={{borderBottom:"1px solid var(--bdr)"}}>
+                  {["Month","Revenue","Accounts","vs Xero Avg","Notes",""].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:"var(--t3)",fontWeight:500,fontSize:10,textTransform:"uppercase"}}>{h}</th>)}
+                </tr></thead>
+                <tbody>{months.map(([mo,d])=>{
+                  const xAvg=XERO.wh/12;const pct=xAvg>0?Math.round(d.rev/xAvg*100):0;
+                  return <tr key={mo} style={{borderBottom:"1px solid var(--bg)"}}>
+                    <td style={{padding:"6px 8px",color:"var(--t2)"}}>{mo}</td>
+                    <td style={{padding:"6px 8px",fontWeight:600}}>{f$(d.rev)}</td>
+                    <td style={{padding:"6px 8px"}}>{d.accts||"—"}</td>
+                    <td style={{padding:"6px 8px",color:pct>=100?"var(--grn)":pct>=80?"var(--ylw)":"var(--red)"}}>{pct}%</td>
+                    <td style={{padding:"6px 8px",color:"var(--t3)",fontSize:11,fontFamily:"'DM Sans',sans-serif",maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.notes||""}</td>
+                    <td style={{padding:"6px 8px"}}><button onClick={()=>{
+                      const updated={...whData};delete updated[mo];saveWh(updated);
+                    }} style={{fontSize:10,color:"var(--red)",background:"none",border:"none",cursor:"pointer"}}>x</button></td>
+                  </tr>;
+                })}</tbody>
+              </table>
+            </div>
+          </>;
+        })()}
+      </div>
+
     </>;
     })()}
 
