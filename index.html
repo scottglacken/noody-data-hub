@@ -13,6 +13,18 @@
   ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
   button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
   div,span,td,th{transition:background .2s,color .2s,border-color .2s}
+  @keyframes pulse-red{0%,100%{opacity:1}50%{opacity:.7}}
+  .pulse-pill-red{animation:pulse-red 2s ease-in-out infinite}
+  .tab-sep{width:1px;height:28px;background:var(--bdr);margin:0 2px;flex-shrink:0;align-self:center}
+  .tab-bar{display:flex;gap:2px;flex-wrap:wrap;align-items:center}
+  @media(max-width:768px){.tab-bar{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}.tab-bar::-webkit-scrollbar{display:none}}
+  .pulse-bar{display:flex;gap:8px;flex-wrap:wrap;padding:8px 20px;border-bottom:1px solid var(--bdr)}
+  .pulse-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;font-family:'JetBrains Mono',monospace;border:1px solid transparent;white-space:nowrap}
+  .pulse-pill[data-s="h"]{background:rgba(16,185,129,0.1);border-color:rgba(16,185,129,0.25);color:#10b981}
+  .pulse-pill[data-s="w"]{background:rgba(245,158,11,0.1);border-color:rgba(245,158,11,0.25);color:#f59e0b}
+  .pulse-pill[data-s="c"]{background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.25);color:#ef4444}
+  .pulse-pill[data-s="n"]{background:rgba(107,114,128,0.06);border-color:rgba(107,114,128,0.15);color:#6b7280}
+  @media(max-width:768px){.pulse-bar{flex-wrap:wrap}.pulse-pill{font-size:11px;padding:4px 10px}}
 </style>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
@@ -93,6 +105,37 @@ function TargetBar({label,current,target,fmt,inv}){
     <div style={{height:4,background:"var(--bdr)",borderRadius:2,overflow:"hidden"}}>
       <div style={{height:"100%",width:Math.min(pct,100)+"%",background:col,borderRadius:2,transition:"width .4s"}}/>
     </div>
+  </div>;
+}
+
+function PulseBar({agg,xeroChannels,klavLive}){
+  if(!agg)return null;
+  const dtcRev=agg.tr;const metaSpend=agg.tms;const days=agg.d;
+  const dtcRatio=xeroChannels.dtc/xeroChannels.rev;
+  const estTotalRev=dtcRatio>0?dtcRev/dtcRatio:dtcRev;
+  const varRatio=XERO_VAR/XERO.rev;
+  const fixedMonthly=XERO_FIXED/XERO.months;
+  const estVariable=estTotalRev*varRatio;
+  const estFixed=fixedMonthly*(days/30);
+  const estProfit=estTotalRev-estVariable-metaSpend-estFixed;
+  const profPct=estTotalRev>0?estProfit/estTotalRev*100:0;
+  const dtcMer=dtcRev>0?metaSpend/dtcRev*100:null;
+  const emailPct=klavLive?agg.emailPct:null;
+  const fcPct=estTotalRev>0?estFixed/estTotalRev*100:0;
+  const aov=agg.aov;
+  const pills=[
+    {l:"Profit",v:profPct,fmt:"%",s:gs(profPct,BM.np)},
+    {l:"DTC MER",v:dtcMer,fmt:"%",s:dtcMer!=null?gs(dtcMer,BM.mer):"n"},
+    {l:"Email",v:emailPct,fmt:"%",s:emailPct!=null?gs(emailPct,BM.em):"n"},
+    {l:"Fixed",v:fcPct,fmt:"%",s:gs(fcPct,BM.fc)},
+    {l:"AOV",v:aov,fmt:"$",s:aov>=70?"h":aov>=50?"w":"c"},
+  ];
+  return <div className="pulse-bar">
+    {pills.map((p,i)=>{
+      const val=p.fmt==="%"?fp(p.v):f$(p.v);
+      const icon=p.s==="h"?"✅":p.s==="w"?"⚠️":p.s==="c"?"🔴":"—";
+      return <span key={i} className={"pulse-pill"+(p.s==="c"?" pulse-pill-red":"")} data-s={p.s}>{p.l}: {val} {icon}</span>;
+    })}
   </div>;
 }
 
@@ -407,20 +450,25 @@ function Dashboard(){
         <div><div style={{fontSize:17,fontWeight:700,letterSpacing:"-0.02em",color:"var(--t1)"}}>NOODY SKINCARE</div>
         <div style={{fontSize:10,color:"var(--t3)"}}>Shopify + Meta + Google Ads + Xero · {mergedD.length} days{(shopLive||metaLive)?" (live)":""}</div></div>
       </div>
-      <div style={{display:"flex",gap:2,flexWrap:"wrap"}}>
+      <div className="tab-bar">
         <Tab a={tab==="equation"} onClick={()=>setTab("equation")} icon="💰">Equation</Tab>
         <Tab a={tab==="daily"} onClick={()=>setTab("daily")} icon="📊">Daily</Tab>
+        <div className="tab-sep"/>
         <Tab a={tab==="meta"} onClick={()=>setTab("meta")} icon="📢">Meta Ads</Tab>
-        <Tab a={tab==="diagnose"} onClick={()=>setTab("diagnose")} icon="🔬">Diagnose</Tab>
-        <Tab a={tab==="scale"} onClick={()=>setTab("scale")} icon="🚀">Scale Model</Tab>
         <Tab a={tab==="gads"} onClick={()=>setTab("gads")} icon="🎯">Google Ads</Tab>
-        <Tab a={tab==="xero"} onClick={()=>setTab("xero")} icon="📋">Xero P&L</Tab>
         <Tab a={tab==="klaviyo"} onClick={()=>setTab("klaviyo")} icon="📧">Klaviyo</Tab>
         <Tab a={tab==="social"} onClick={()=>setTab("social")} icon="📱">Social</Tab>
+        <div className="tab-sep"/>
+        <Tab a={tab==="xero"} onClick={()=>setTab("xero")} icon="📋">Xero P&L</Tab>
+        <Tab a={tab==="diagnose"} onClick={()=>setTab("diagnose")} icon="🔬">Diagnose</Tab>
+        <Tab a={tab==="scale"} onClick={()=>setTab("scale")} icon="🚀">Scale Model</Tab>
+        <div className="tab-sep"/>
         <Tab a={tab==="insights"} onClick={()=>setTab("insights")} icon="✦" accent="#7c3aed">Insights</Tab>
       </div>
       <button onClick={toggleTheme} style={{padding:"10px",background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,cursor:"pointer",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",width:44,height:44,transition:"all .2s",color:"var(--t2)",flexShrink:0}} title={theme==="dark"?"Light mode":"Dark mode"}>{theme==="dark"?"☀️":"🌙"}</button>
     </div>
+
+    <PulseBar agg={agg} xeroChannels={xeroChannels} klavLive={klavLive}/>
 
     {(tab==="equation"||tab==="daily"||tab==="meta"||tab==="insights"||tab==="diagnose"||tab==="scale"||tab==="klaviyo"||tab==="social")&&<div style={{padding:"6px 20px",display:"flex",gap:3,alignItems:"center",flexWrap:"wrap"}}>
       {[7,14,30,90,180,365].map(r=><button key={r} onClick={()=>{setRange(r);setCustomFrom("");setCustomTo("");}} style={{padding:"8px 16px",fontSize:13,borderRadius:8,minHeight:36,cursor:"pointer",background:!customFrom&&range===r?"var(--acc)":"var(--card)",color:!customFrom&&range===r?"#fff":"var(--t2)",border:!customFrom&&range===r?"1px solid var(--acc)":"1px solid var(--bdr)"}}>{r}d</button>)}
