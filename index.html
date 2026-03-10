@@ -213,6 +213,7 @@ function Dashboard(){
   const [whData,setWhData]=useState(()=>lsGet("noody_wholesale",{}));
   const saveWh=(d)=>{setWhData(d);lsSet("noody_wholesale",d);};
 
+  const [showPeriodComp,setShowPeriodComp]=useState(false);
   const [gads,setGads]=useState(null);
   const [gadsLoading,setGadsLoading]=useState(false);
   const [gadsError,setGadsError]=useState(null);
@@ -790,43 +791,42 @@ function Dashboard(){
         </div>
       </div>
 
-      {/* PERIOD-OVER-PERIOD COMPARISON */}
+      {/* PERIOD-OVER-PERIOD COMPARISON — collapsed by default (inline arrows on cards above) */}
       {prevAgg&&<div style={{marginBottom:20}}>
-        <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:10}}>
-          <h2 style={{fontSize:16,fontWeight:700,color:"var(--t1)"}}>Period Comparison</h2>
-          <Src s="SHOPIFY + META"/>
-        </div>
-        <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,overflowX:"auto"}}>
-          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,fontFamily:"'JetBrains Mono',monospace"}}>
-            <thead><tr style={{borderBottom:"2px solid var(--bdr)"}}>
-              <th style={{padding:"8px",textAlign:"left",color:"var(--t3)",fontSize:10,fontWeight:500}}>METRIC</th>
-              <th style={{padding:"8px",textAlign:"right",color:"var(--t3)",fontSize:10}}>PRIOR ({prevAgg.d}d)</th>
-              <th style={{padding:"8px",textAlign:"right",color:"var(--t3)",fontSize:10}}>CURRENT ({a.d}d)</th>
-              <th style={{padding:"8px",textAlign:"right",color:"var(--t3)",fontSize:10}}>CHANGE</th>
-            </tr></thead>
-            <tbody>{[
-              {l:"DTC Revenue",c:dtcRev,pv:pDtcRev,f:"$"},
-              {l:"Orders",c:orders,pv:pOrders,f:"n"},
-              {l:"AOV",c:aov,pv:pAov,f:"$"},
-              {l:"Meta Spend",c:metaSpend,pv:pMetaSpend,f:"$",inv:true},
-              {l:"DTC MER",c:mer,pv:pMer,f:"%",inv:true},
-              {l:"Meta ROAS",c:roas,pv:pRoas,f:"x"},
-              {l:"CPP",c:cpp,pv:p?p.cpp:null,f:"$",inv:true},
-              ...(emailPct!=null?[{l:"Email Rev %",c:emailPct,pv:p?p.emailPct:null,f:"%"}]:[]),
-            ].map((row,i)=>{
-              const ch=pctChange(row.c,row.pv);
-              const good=ch!=null?(row.inv?ch<0:ch>0):null;
-              const chCol=ch==null?"var(--t3)":Math.abs(ch)<2?"var(--t3)":good?"var(--grn)":"var(--red)";
-              const fv=v=>v==null?"\u2014":row.f==="$"?f$(v):row.f==="%"?fp(v):row.f==="x"?(v||0).toFixed(2)+"x":fn(v);
-              return <tr key={i} style={{borderBottom:"1px solid var(--bdr)"}}>
-                <td style={{padding:"8px",color:"var(--t2)",fontFamily:"'DM Sans',sans-serif"}}>{row.l}</td>
-                <td style={{padding:"8px",textAlign:"right",color:"var(--t3)"}}>{fv(row.pv)}</td>
-                <td style={{padding:"8px",textAlign:"right",color:"var(--t1)",fontWeight:600}}>{fv(row.c)}</td>
-                <td style={{padding:"8px",textAlign:"right",color:chCol,fontWeight:600}}>{ch!=null?(ch>0?"+":"")+ch.toFixed(1)+"%":"\u2014"}</td>
-              </tr>;
-            })}</tbody>
-          </table>
-        </div>
+          <button onClick={()=>setShowPeriodComp(!showPeriodComp)} style={{background:"none",border:"1px solid var(--bdr)",borderRadius:8,padding:"6px 14px",cursor:"pointer",fontSize:12,color:"var(--t2)",display:"flex",alignItems:"center",gap:6,marginBottom:showPeriodComp?10:0}}>
+            <span>{showPeriodComp?"▴":"▾"}</span> Period Comparison Table <Src s="SHOPIFY + META"/>
+          </button>
+          {showPeriodComp&&<div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,fontFamily:"'JetBrains Mono',monospace"}}>
+              <thead><tr style={{borderBottom:"2px solid var(--bdr)"}}>
+                <th style={{padding:"8px",textAlign:"left",color:"var(--t3)",fontSize:10,fontWeight:500}}>METRIC</th>
+                <th style={{padding:"8px",textAlign:"right",color:"var(--t3)",fontSize:10}}>PRIOR ({prevAgg.d}d)</th>
+                <th style={{padding:"8px",textAlign:"right",color:"var(--t3)",fontSize:10}}>CURRENT ({a.d}d)</th>
+                <th style={{padding:"8px",textAlign:"right",color:"var(--t3)",fontSize:10}}>CHANGE</th>
+              </tr></thead>
+              <tbody>{[
+                {l:"DTC Revenue",c:dtcRev,pv:pDtcRev,f:"$"},
+                {l:"Orders",c:orders,pv:pOrders,f:"n"},
+                {l:"AOV",c:aov,pv:pAov,f:"$"},
+                {l:"Meta Spend",c:metaSpend,pv:pMetaSpend,f:"$",inv:true},
+                {l:"DTC MER",c:mer,pv:pMer,f:"%",inv:true},
+                {l:"Meta ROAS",c:roas,pv:pRoas,f:"x"},
+                {l:"CPP",c:cpp,pv:p?p.cpp:null,f:"$",inv:true},
+                ...(emailPct!=null?[{l:"Email Rev %",c:emailPct,pv:p?p.emailPct:null,f:"%"}]:[]),
+              ].map((row,i)=>{
+                const ch=pctChange(row.c,row.pv);
+                const good=ch!=null?(row.inv?ch<0:ch>0):null;
+                const chCol=ch==null?"var(--t3)":Math.abs(ch)<2?"var(--t3)":good?"var(--grn)":"var(--red)";
+                const fv=v=>v==null?"\u2014":row.f==="$"?f$(v):row.f==="%"?fp(v):row.f==="x"?(v||0).toFixed(2)+"x":fn(v);
+                return <tr key={i} style={{borderBottom:"1px solid var(--bdr)"}}>
+                  <td style={{padding:"8px",color:"var(--t2)",fontFamily:"'DM Sans',sans-serif"}}>{row.l}</td>
+                  <td style={{padding:"8px",textAlign:"right",color:"var(--t3)"}}>{fv(row.pv)}</td>
+                  <td style={{padding:"8px",textAlign:"right",color:"var(--t1)",fontWeight:600}}>{fv(row.c)}</td>
+                  <td style={{padding:"8px",textAlign:"right",color:chCol,fontWeight:600}}>{ch!=null?(ch>0?"+":"")+ch.toFixed(1)+"%":"\u2014"}</td>
+                </tr>;
+              })}</tbody>
+            </table>
+          </div>}
       </div>}
 
       {/* COST BREAKDOWN */}
