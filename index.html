@@ -339,6 +339,16 @@ function Dashboard(){
     }catch(e){console.error("WebGA4:",e);}
     setWebGa4Loading(false);
   },[]);
+  const [clarityData,setClarityData]=useState(null);
+  const [clarityLoading,setClarityLoading]=useState(false);
+  const fetchClarity=useCallback(async(d)=>{
+    setClarityLoading(true);
+    try{
+      const r=await fetch('/api/pull-shopify?type=clarity&days='+(d||30),{headers:{"x-api-key":"noody-eq-2026-datahub"}});
+      if(r.ok){const data=await r.json();if(!data.error)setClarityData(data);else setClarityData(data);}
+    }catch(e){console.error("Clarity:",e);}
+    setClarityLoading(false);
+  },[]);
 
   // Klaviyo detail data (flows, campaigns, deliverability)
   const [klavDetail,setKlavDetail]=useState(null);
@@ -366,6 +376,7 @@ function Dashboard(){
     if((tab==="equation"||tab==="daily")&&!ga4&&!ga4Loading)fetchGa4();
     if(tab==="website"&&!webData&&!webLoading)fetchWebData(range);
     if(tab==="website"&&!webGa4&&!webGa4Loading)fetchWebGa4(range);
+    if(tab==="website"&&!clarityData&&!clarityLoading)fetchClarity(range);
   },[tab]);
 
   // Merge hardcoded D with live Shopify+Meta+Klaviyo+GA4 data
@@ -2042,7 +2053,8 @@ function Dashboard(){
           "TOP PRODUCTS:\n"+_prodLine+"\n\n"+
           "TRAFFIC SOURCES:\n"+_trafficLine+"\n\n"+
           "DEVICE BREAKDOWN:\n"+_deviceLine+"\n\n"+
-          "Analyse using the RPV = CR x AOV framework. Compare against Conversion Catalyst benchmarks (594 brands). Identify whether CR or AOV is the bigger lever for improvement. Give 4-5 specific, actionable recommendations with numbers.";
+          (clarityData&&clarityData.metrics?"UX HEALTH (Microsoft Clarity):\n- Rage Click Rate: "+clarityData.metrics.rageClickRate+"% (benchmark: <2% healthy)\n- Dead Click Rate: "+clarityData.metrics.deadClickRate+"% (benchmark: <5% healthy)\n- Scroll Depth: "+clarityData.metrics.avgScrollDepth+"% (benchmark: >50%)\n- Quick-back Rate: "+clarityData.metrics.quickbackRate+"% (benchmark: <15%)\n- Avg Engagement Time: "+clarityData.metrics.avgEngagementTime+"s\n- Pages/Session: "+clarityData.metrics.pagesPerSession+"\n\n":"")+
+          "Analyse using the RPV = CR x AOV framework. Compare against Conversion Catalyst benchmarks (594 brands). Identify whether CR or AOV is the bigger lever for improvement. Give 4-5 specific, actionable recommendations with numbers."+(clarityData&&clarityData.metrics?" Include UX health insights from Clarity data — flag any friction issues.":"");
         setTimeout(()=>fetchTabAi("website",prompt,["website","shopify"]),0);
       }
 
@@ -2050,7 +2062,8 @@ function Dashboard(){
         <div style={{fontSize:20,fontWeight:700,marginBottom:4}}>Website Performance</div>
         <div style={{fontSize:12,color:"var(--t3)",marginBottom:16}}>
           {_days}-day view · {wd?<span style={{fontSize:10,background:"rgba(21,128,61,0.08)",color:"var(--grn)",padding:"2px 6px",borderRadius:4,marginRight:4}}>SHOPIFY</span>:null}
-          {ga?<span style={{fontSize:10,background:"rgba(26,86,219,0.08)",color:"#1a56db",padding:"2px 6px",borderRadius:4}}>GA4</span>:null}
+          {ga?<span style={{fontSize:10,background:"rgba(26,86,219,0.08)",color:"#1a56db",padding:"2px 6px",borderRadius:4,marginRight:4}}>GA4</span>:null}
+          {clarityData&&!clarityData.error?<span style={{fontSize:10,background:"rgba(124,58,237,0.08)",color:"#7c3aed",padding:"2px 6px",borderRadius:4}}>CLARITY</span>:null}
         </div>
 
         {loading&&<div style={{...cardS,textAlign:"center",color:"var(--t3)",fontSize:13}}>Loading website data...</div>}
@@ -2159,6 +2172,54 @@ function Dashboard(){
             })}
           </div>
         </div>}
+
+        {/* Section 6b: UX Health (Clarity) */}
+        {(()=>{
+          const cl=clarityData;
+          const clErr=cl&&cl.error;
+          const clOk=cl&&!clErr&&cl.metrics;
+          const clMissing=clErr==='missing_config';
+          if(clarityLoading)return <div style={{...cardS,textAlign:"center",color:"var(--t3)",fontSize:13}}>Loading Clarity data...</div>;
+          if(clMissing)return <div style={{...cardS,borderColor:"var(--bdr)",background:"rgba(0,0,0,0.02)"}}>
+            <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>UX Health — Microsoft Clarity</div>
+            <div style={{fontSize:12,color:"var(--t3)"}}>Clarity is not configured yet. Set <code>CLARITY_API_TOKEN</code> and <code>CLARITY_PROJECT_ID</code> env vars in Vercel.</div>
+            <div style={{fontSize:11,color:"var(--t3)",marginTop:4}}>Get your API token from <a href="https://clarity.microsoft.com" target="_blank" rel="noopener" style={{color:"var(--acc)"}}>clarity.microsoft.com</a> → Settings → API Access</div>
+          </div>;
+          if(clErr)return <div style={{...cardS,borderColor:"var(--ylw)",background:"rgba(234,179,8,0.06)"}}>
+            <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>UX Health — Clarity Error</div>
+            <div style={{fontSize:12,color:"var(--t2)"}}>{cl.message||"Failed to load Clarity data"}</div>
+          </div>;
+          if(!clOk)return null;
+          const m=cl.metrics;
+          const rageWarn=m.rageClickRate>3;
+          const deadWarn=m.deadClickRate>7;
+          const hasUxAlert=rageWarn||deadWarn;
+          const uxCards=[
+            {l:"Rage Clicks",v:m.rageClickRate.toFixed(1)+"%",color:m.rageClickRate<2?"var(--grn)":m.rageClickRate<=5?"var(--ylw)":"var(--red)",sub:"<2% healthy"},
+            {l:"Dead Clicks",v:m.deadClickRate.toFixed(1)+"%",color:m.deadClickRate<5?"var(--grn)":m.deadClickRate<=10?"var(--ylw)":"var(--red)",sub:"<5% healthy"},
+            {l:"Scroll Depth",v:m.avgScrollDepth.toFixed(0)+"%",color:m.avgScrollDepth>=50?"var(--grn)":m.avgScrollDepth>=30?"var(--ylw)":"var(--red)",sub:">50% for product pages"},
+            {l:"Quick-back Rate",v:m.quickbackRate.toFixed(1)+"%",color:m.quickbackRate<15?"var(--grn)":m.quickbackRate<=25?"var(--ylw)":"var(--red)",sub:"<15% healthy"},
+            {l:"Engagement Time",v:m.avgEngagementTime>=60?Math.floor(m.avgEngagementTime/60)+"m "+Math.round(m.avgEngagementTime%60)+"s":Math.round(m.avgEngagementTime)+"s",color:m.avgEngagementTime>=30?"var(--grn)":m.avgEngagementTime>=15?"var(--ylw)":"var(--red)",sub:">30s for product pages"},
+            {l:"Pages/Session",v:m.pagesPerSession.toFixed(1),color:m.pagesPerSession>=3?"var(--grn)":m.pagesPerSession>=2?"var(--ylw)":"var(--red)",sub:"3+ for ecommerce"},
+          ];
+          return <div style={cardS}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={{fontSize:13,fontWeight:600}}>UX Health <span style={{fontSize:10,background:"rgba(124,58,237,0.08)",color:"#7c3aed",padding:"2px 6px",borderRadius:4,marginLeft:6}}>CLARITY</span></div>
+              <a href={"https://clarity.microsoft.com/projects/view/"+cl.projectId+"/dashboard"} target="_blank" rel="noopener" style={{fontSize:11,color:"var(--acc)",textDecoration:"none"}}>View recordings →</a>
+            </div>
+            {hasUxAlert&&<div style={{background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:12,color:"var(--red)",fontWeight:500}}>
+              {"\u26A0\uFE0F UX friction detected"}{rageWarn?" — "+m.rageClickRate.toFixed(1)+"% rage clicks":""}{deadWarn?(rageWarn?", ":"")+m.deadClickRate.toFixed(1)+"% dead clicks":""}. Check Clarity recordings for specific issues.
+            </div>}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginBottom:cl.popularPages&&cl.popularPages.length?14:0}}>
+              {uxCards.map(function(c,i){return <div key={i} style={{textAlign:"center",padding:10,background:"rgba(0,0,0,0.02)",borderRadius:8}}>
+                <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:4}}>{c.l}</div>
+                <div style={{fontSize:18,fontWeight:700,color:c.color,fontFamily:"'JetBrains Mono',monospace"}}>{c.v}</div>
+                <div style={{fontSize:10,color:"var(--t3)",marginTop:2}}>{c.sub}</div>
+              </div>;})}
+            </div>
+            <div style={{fontSize:10,color:"var(--t3)",marginTop:4}}>Sessions: {fn(m.totalSessions)} · Users: {fn(m.distinctUsers)} · {cl.dateRange?.start} → {cl.dateRange?.end}</div>
+          </div>;
+        })()}
 
         {/* Section 7: Top Products */}
         {wd&&wd.topProducts&&wd.topProducts.length>0&&<div style={cardS}>

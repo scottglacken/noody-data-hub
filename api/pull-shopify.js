@@ -13,6 +13,70 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Invalid API key' });
   }
 
+  // Microsoft Clarity mode — no Shopify needed
+  if (req.query.type === 'clarity') {
+    var clarityToken = process.env.CLARITY_API_TOKEN;
+    var clarityProject = process.env.CLARITY_PROJECT_ID;
+    if (!clarityToken || !clarityProject) {
+      return res.status(200).json({
+        error: 'missing_config',
+        message: 'Clarity not configured. Set CLARITY_API_TOKEN and CLARITY_PROJECT_ID env vars.',
+        setup: 'Get your API token from clarity.microsoft.com → Settings → API Access'
+      });
+    }
+    var cDays = parseInt(req.query.days) || 30;
+    var cEnd = new Date().toISOString().split('T')[0];
+    var cStart = new Date(Date.now() - cDays * 86400000).toISOString().split('T')[0];
+    var cBase = 'https://www.clarity.ms/export-data/api/v1/project/' + clarityProject;
+    var cHeaders = { 'Authorization': 'Bearer ' + clarityToken, 'Content-Type': 'application/json' };
+    try {
+      var cResults = await Promise.all([
+        fetch(cBase + '/metrics?startDate=' + cStart + '&endDate=' + cEnd, { headers: cHeaders }),
+        fetch(cBase + '/popular-pages?startDate=' + cStart + '&endDate=' + cEnd + '&count=10', { headers: cHeaders })
+      ]);
+      var metricsRes = cResults[0];
+      var pagesRes = cResults[1];
+      if (!metricsRes.ok) {
+        var mErr = await metricsRes.text();
+        return res.status(200).json({ error: 'clarity_api_error', message: 'Clarity metrics API returned ' + metricsRes.status, detail: mErr.slice(0, 300) });
+      }
+      var metricsData = await metricsRes.json();
+      var pagesData = pagesRes.ok ? await pagesRes.json() : [];
+      var popularPages = [];
+      if (Array.isArray(pagesData)) {
+        for (var pi = 0; pi < pagesData.length; pi++) {
+          var pg = pagesData[pi];
+          popularPages.push({
+            url: pg.url || pg.page || '',
+            sessions: pg.sessions || pg.totalSessions || 0,
+            avgScrollDepth: pg.scrollDepth || pg.avgScrollDepth || 0,
+            avgEngagementTime: pg.engagementTime || pg.avgEngagementTime || 0,
+            rageClicks: pg.rageClickRate || pg.rageClicks || 0
+          });
+        }
+      }
+      return res.status(200).json({
+        projectId: clarityProject,
+        pulledAt: new Date().toISOString(),
+        dateRange: { start: cStart, end: cEnd },
+        metrics: {
+          totalSessions: metricsData.totalSessions || 0,
+          distinctUsers: metricsData.distinctUsers || 0,
+          pagesPerSession: Math.round((metricsData.pagesPerSession || 0) * 100) / 100,
+          avgScrollDepth: Math.round((metricsData.scrollDepth || 0) * 100) / 100,
+          avgEngagementTime: Math.round((metricsData.engagementTime || 0) * 100) / 100,
+          deadClickRate: Math.round((metricsData.deadClickRate || 0) * 100) / 100,
+          rageClickRate: Math.round((metricsData.rageClickRate || 0) * 100) / 100,
+          quickbackRate: Math.round((metricsData.quickbackRate || 0) * 100) / 100,
+          excessiveScrollRate: Math.round((metricsData.excessiveScrollRate || 0) * 100) / 100
+        },
+        popularPages: popularPages
+      });
+    } catch (cErr) {
+      return res.status(500).json({ error: 'clarity_fetch_failed', message: cErr.message });
+    }
+  }
+
   var shop = req.query.shop || process.env.SHOPIFY_STORE;
   var days = parseInt(req.query.days) || 30;
 
