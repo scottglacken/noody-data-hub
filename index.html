@@ -677,6 +677,9 @@ function Dashboard(){
       else if(estProfPct<5){situation=3;sitLabel="BREAKEVEN ZONE";sitColor="var(--ylw)";}
       else if(estProfPct<10||estDtcMer>45||estFcPct>25){situation=2;sitLabel="PROFITABLE \u2014 CONSTRAINED";sitColor="var(--ylw)";}
 
+      // 7d snapshot values
+      const c7=current7d;
+
       return <>
 
       {/* SITUATION BANNER */}
@@ -732,9 +735,6 @@ function Dashboard(){
           <Src s="SHOPIFY + META \u00B7 LIVE"/>
         </div>
         <div style={{fontSize:11,color:"var(--t3)",marginBottom:10}}>Online store only. {agg.startDate} \u2192 {agg.endDate}{prevAgg?" \u00B7 vs prior "+prevAgg.d+"d ("+prevAgg.startDate+" \u2192 "+prevAgg.endDate+")":""}</div>
-
-        // 7d snapshot values
-      const c7=current7d;
 
       {(()=>{
           const renderCards=(cards)=>cards.map((m,i)=>{
