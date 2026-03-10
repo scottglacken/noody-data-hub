@@ -1,28 +1,37 @@
 # Google Ads — Noody Skincare Context
 
 ## Business Context
-- Google Ads is the secondary paid channel (currently ~20% of ad budget)
+- Google Ads is the secondary paid channel (~20-25% of ad budget)
 - Complements Meta by capturing high-intent search traffic
 - NZ market: smaller search volume but higher intent
+- Currently dramatically outperforming Meta: 9.06x ROAS vs Meta's ~2.4x ROAS
 
-## Campaign Types
-### Performance Max (PMax)
-- Feed-based campaign covering Shopping, Display, YouTube, Discover, Gmail
-- Best for: product-level targeting, broad reach across Google surfaces
-- Requires: optimized product feed with titles, descriptions, images
-- Target ROAS: >5x (higher than Meta due to intent)
+## Active Campaigns
+### NZ_PMax_FeedOnly_AllProducts
+- Feed-only PMax across all products
+- Highest spend (~$2,257/30d), variable ROAS (0x-15.5x per asset group)
+- 30 asset group entries aggregated
+- ROAS: 5.8x overall — carries the bulk of Google spend
 
-### Search
-- Keyword-based campaigns for high-intent queries
-- Best for: brand defense, competitor conquesting, problem-based queries
-- Key queries: "children's eczema cream NZ", "natural baby skincare", "Noody skincare"
-- Target ROAS: >3x for non-brand, >8x for brand terms
+### NZ_PMax_FeedOnly_Brand
+- Brand-focused PMax
+- Lower spend (~$698/30d), moderate ROAS (~3.2x)
+- Potential cannibalization with brand search — monitor overlap
 
-## Budget Allocation
-- Current: Relatively small compared to Meta
-- Target: Scale to 20-30% of total ad budget
-- Start with PMax + Brand Search, add non-brand Search as data grows
-- Budget should grow as Meta diversification strategy progresses
+### NZ_Search_Brand_Core
+- Brand keyword search (highest efficiency)
+- Spend: ~$344/30d, ROAS: 23.7-110x (exceptional but expected for brand terms)
+- Captures existing brand demand at very low cost
+- Key defensive campaign — always keep running
+
+### NZ_Search_NonBrand_EczemaSolutions
+- Non-brand eczema/skincare queries
+- Spend: ~$441/30d, ROAS: ~10x
+- Captures high-intent problem-aware searchers
+- Key queries: "children's eczema cream NZ", "natural baby skincare", "eczema treatment NZ"
+
+## Key Insight
+Google captures high-intent searches while Meta drives awareness — they serve different funnel stages. Google's 9.06x ROAS vs Meta's ~2.4x doesn't mean Google is "better" — it means Google captures demand that Meta (and organic) creates. Track blended ROAS and total cost of acquisition.
 
 ## ROAS Targets
 - PMax: >5x ROAS (higher due to Shopping intent)
@@ -31,16 +40,16 @@
 - Overall Google: >5x ROAS
 - Cost per conversion: <$15 ideal, <$25 acceptable
 
+## Budget Allocation
+- Current: $3,741/30d (~20% of total ad budget)
+- Target: Scale to 25-30% of total ad budget as ROAS holds
+- Priority: Increase non-brand Search if CPA stays below $15
+- Monitor PMax asset group performance — pause any consistently 0x ROAS groups
+
 ## CTR Benchmarks
 - Search ads: >3% (brand), >1.5% (non-brand)
 - Shopping/PMax: >1%
 - Display: >0.5%
-
-## Strategic Notes
-- Google captures demand that Meta creates — they work together
-- If Meta builds awareness, Google captures the search that follows
-- Track blended ROAS across both platforms, not just individually
-- Seasonal: eczema-related searches peak in winter (Jun-Aug)
 
 ## Optimization Priorities
 1. Product feed quality (titles, descriptions, images)
