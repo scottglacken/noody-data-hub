@@ -177,7 +177,8 @@ export default async function handler(req, res) {
         var wo = validOrders[wi];
         var woPrice = parseFloat(wo.total_price) || 0;
         var woDisc = parseFloat(wo.total_discounts) || 0;
-        var woIsNew = !wo.customer || !wo.customer.orders_count || parseInt(wo.customer.orders_count) <= 1;
+        var woOrdCount = wo.customer && wo.customer.orders_count != null ? parseInt(wo.customer.orders_count) : -1;
+        var woIsNew = woOrdCount <= 1;
 
         wTotalRev += woPrice;
 
@@ -281,7 +282,8 @@ export default async function handler(req, res) {
           new: { orders: wNewOrders, revenue: Math.round(wNewRev * 100) / 100, aov: wNewOrders > 0 ? Math.round((wNewRev / wNewOrders) * 100) / 100 : 0 },
           returning: { orders: wRetOrders, revenue: Math.round(wRetRev * 100) / 100, aov: wRetOrders > 0 ? Math.round((wRetRev / wRetOrders) * 100) / 100 : 0 }
         },
-        daily: wDaily
+        daily: wDaily,
+        _debug: validOrders.slice(0, 3).map(function(o) { return { id: o.id, hasCustomer: !!o.customer, ordersCount: o.customer ? o.customer.orders_count : 'no_customer', keys: o.customer ? Object.keys(o.customer).slice(0, 10) : [] }; })
       });
     }
 
@@ -303,7 +305,8 @@ export default async function handler(req, res) {
       d.totalDiscounts += parseFloat(order.total_discounts) || 0;
       var shipAmt = order.total_shipping_price_set && order.total_shipping_price_set.shop_money ? order.total_shipping_price_set.shop_money.amount : 0;
       d.totalShipping += parseFloat(shipAmt);
-      if (!order.customer || !order.customer.orders_count || parseInt(order.customer.orders_count) <= 1) d.newCustomers += 1;
+      var ordCount2 = order.customer && order.customer.orders_count != null ? parseInt(order.customer.orders_count) : -1;
+      if (ordCount2 <= 1) d.newCustomers += 1;
       else d.returningCustomers += 1;
       if (order.line_items) {
         for (var j = 0; j < order.line_items.length; j++) {
