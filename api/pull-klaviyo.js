@@ -214,32 +214,41 @@ export default async function handler(req, res) {
           var flowReportData = await flowReportRes.json();
           var flowResults = flowReportData.data && flowReportData.data.attributes && flowReportData.data.attributes.results || [];
           var totalFlowRev = 0;
-          var reportedFlowIds = {};
-          detail.flows = flowResults.map(function(fr) {
+          // Aggregate per-message results by flow_id
+          var flowAggMap = {};
+          for (var fi = 0; fi < flowResults.length; fi++) {
+            var fr = flowResults[fi];
             var stats = fr.statistics || {};
             var rev = stats.conversion_value || 0;
             var conv = stats.conversions || 0;
             var fId = fr.groupings && fr.groupings.flow_id || '';
-            var flowInfo = flowNameMap[fId];
-            reportedFlowIds[fId] = true;
+            if (!flowAggMap[fId]) {
+              var flowInfo = flowNameMap[fId];
+              flowAggMap[fId] = {
+                id: fId,
+                name: flowInfo ? flowInfo.name : (fId || 'Unknown'),
+                status: flowInfo ? flowInfo.status : 'unknown',
+                revenue: 0, conversions: 0, messages: 0,
+              };
+            }
+            flowAggMap[fId].revenue += rev;
+            flowAggMap[fId].conversions += conv;
+            flowAggMap[fId].messages++;
             totalFlowRev += rev;
-            return {
-              id: fId,
-              name: flowInfo ? flowInfo.name : (fId || 'Unknown'),
-              status: flowInfo ? flowInfo.status : 'unknown',
-              revenue: Math.round(rev * 100) / 100,
-              conversions: conv,
-              recipients: 0,
-              revenuePerRecipient: stats.revenue_per_recipient ? Math.round(stats.revenue_per_recipient * 100) / 100 : 0,
-            };
+          }
+          detail.flows = Object.values(flowAggMap).map(function(f) {
+            f.revenue = Math.round(f.revenue * 100) / 100;
+            return f;
           });
-          // Add flows not in report (no revenue in period)
+          // Add flows not in report
+          var reportedFlowIds = {};
+          detail.flows.forEach(function(f) { reportedFlowIds[f.id] = true; });
           rawFlows.forEach(function(f) {
             if (!reportedFlowIds[f.id]) {
               detail.flows.push({
                 id: f.id, name: f.attributes.name || 'Unnamed',
                 status: f.attributes.status || 'unknown',
-                revenue: 0, conversions: 0, recipients: 0, revenuePerRecipient: 0,
+                revenue: 0, conversions: 0, messages: 0,
               });
             }
           });
