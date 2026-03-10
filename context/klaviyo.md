@@ -48,11 +48,13 @@
 - At-risk: No engagement in 60-90 days
 - Sunset: No engagement in 120+ days (suppress to protect deliverability)
 
-## Email Benchmarks
+## Klaviyo Benchmarks (from Klaviyo industry data, skincare/ecommerce)
+- Open rate: 44% median (>57% = Excellent, >35% = Good)
+- Click rate: 0.86% median (>1.12% = Excellent, >0.69% = Good)
+- Bounce rate: 0.43% median (<0.30% = Excellent, <0.56% = Acceptable)
+- Unsubscribe rate: 0.29% median (<0.20% = Excellent, <0.38% = Acceptable)
+- Spam complaint rate: 0.02% median (<0.01% = Excellent, <0.03% = Acceptable)
 - Email as % of DTC revenue: 30-40% target
-- Open rate: >35% (industry avg ~20%)
-- Click rate: >3% (industry avg ~2.5%)
-- Revenue per recipient: Track and optimize
 - List growth rate: >5% monthly net growth
 
 ## Key Issues

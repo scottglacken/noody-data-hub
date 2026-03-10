@@ -1298,7 +1298,9 @@ function Dashboard(){
     {tab==="klaviyo"&&(()=>{
       if(!agg)return <div style={{padding:40,textAlign:"center",color:"var(--t3)"}}>Loading data...</div>;
       const a=agg;const p=prevAgg;
-      const emailRev=a.te;const dtcRev=a.tr;
+      // Prefer live klavDetail totalRevenue over agg.te (which may have stale D array values)
+      const emailRev=klavDetail?.totalRevenue||a.te;
+      const dtcRev=a.tr;
       const emailPct=dtcRev>0?(emailRev/dtcRev)*100:0;
       const prevEmailRev=p?p.te:null;
       const prevEmailPct=p&&p.tr>0?(p.te/p.tr)*100:null;
@@ -1312,7 +1314,6 @@ function Dashboard(){
       const flows=det.flows||[];
       const camps=det.campaigns||[];
       const deliv=det.deliverability||{};
-      const lists=det.lists||[];
       const totalFlowRev=det.totalFlowRevenue||0;
       const totalCampRev=det.totalCampaignRevenue||0;
       const flowPct=(totalFlowRev+totalCampRev)>0?(totalFlowRev/(totalFlowRev+totalCampRev))*100:50;
@@ -1335,9 +1336,12 @@ function Dashboard(){
       const aiText=tabAi[aiKey];
       const aiLoad=tabAiLoading.klaviyo;
       if(!aiText&&!aiLoad&&klavDetail){
+        const liveEmailRev=klavDetail.totalRevenue||0;
+        const liveEmailPct=dtcRev>0?(liveEmailRev/dtcRev*100).toFixed(1):0;
         const flowSummary=flows.filter(f=>f.revenue>0).map(f=>f.name+": $"+f.revenue+" ("+f.conversions+" conv, "+f.messages+" msgs)").join("; ");
+        const campSummary=camps.filter(c=>c.revenue>0).map(c=>c.name+": $"+c.revenue+" ("+c.conversions+" conv)").join("; ");
         const delivSummary="Open "+deliv.openRate+"%, Click "+deliv.clickRate+"%, Bounce "+deliv.bounceRate+"%, Unsub "+deliv.unsubRate+"%, Spam "+deliv.spamRate+"%";
-        const prompt="Analyse this Klaviyo email performance for Noody Skincare (NZ eczema/baby skincare DTC brand). "+a.d+" day period: Email attributed revenue $"+Math.round(emailRev)+" ("+emailPct.toFixed(1)+"% of DTC $"+Math.round(dtcRev)+"). Flow revenue: $"+Math.round(totalFlowRev)+". Campaign revenue: $"+Math.round(totalCampRev)+". Top flows: "+flowSummary+". Deliverability: "+delivSummary+" (benchmarks: Open 44%, Click 0.86%, Bounce 0.43%, Unsub 0.29%). Lists: "+lists.length+" lists. Give 3-4 specific actionable insights with numbers.";
+        const prompt="Analyse Klaviyo email performance for Noody Skincare (NZ eczema/baby skincare DTC). "+klavDetailDays+" day period. Total email attributed revenue: $"+Math.round(liveEmailRev)+" ("+liveEmailPct+"% of DTC $"+Math.round(dtcRev)+"). Flow revenue: $"+Math.round(totalFlowRev)+" — "+flowSummary+". Campaign revenue: $"+Math.round(totalCampRev)+" — "+campSummary+". Deliverability (vs Klaviyo benchmarks): "+delivSummary+". Klaviyo benchmarks: Open 44%, Click 0.86%, Bounce 0.43%, Unsub 0.29%, Spam 0.02%. Note: Flow+Campaign total may not equal email total due to attribution windows. Give 3-4 specific actionable insights with numbers. Focus on what to improve.";
         fetchTabAi("klaviyo",prompt,["klaviyo"]);
       }
 
@@ -1486,7 +1490,7 @@ function Dashboard(){
             })}
           </div>
 
-          {/* Emails sent volume */}
+          {/* Volume + Signup Forms */}
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginBottom:14}}>
             <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,padding:14}}>
               <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Emails Sent</div>
@@ -1502,18 +1506,33 @@ function Dashboard(){
             </div>
             <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,padding:14}}>
               <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>New Subscribers</div>
-              <div style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{fn(deliv.subscribed||0)}</div>
+              <div style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"var(--grn)"}}>{fn(deliv.subscribed||0)}</div>
             </div>
           </div>
 
-          {/* Lists */}
-          <div style={{fontSize:12,fontWeight:600,marginBottom:8,color:"var(--t2)"}}>Lists & Segments ({lists.length})</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8}}>
-            {lists.map((l,i)=><div key={i} style={{fontSize:12,padding:"8px 12px",background:"rgba(79,110,247,0.04)",border:"1px solid var(--bdr)",borderRadius:8}}>
-              <span style={{fontWeight:500}}>{l.name}</span>
-              <span style={{fontSize:10,color:"var(--t3)",marginLeft:6}}>updated {l.updated||"—"}</span>
-            </div>)}
-          </div>
+          {/* Signup Form Performance */}
+          {(deliv.formViews>0||deliv.formSubmissions>0)&&<div style={{marginBottom:14}}>
+            <div style={{fontSize:12,fontWeight:600,marginBottom:8,color:"var(--t2)"}}>Signup Form Performance</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10}}>
+              <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,padding:14}}>
+                <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Form Views</div>
+                <div style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{fn(deliv.formViews||0)}</div>
+              </div>
+              <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,padding:14}}>
+                <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Form Submissions</div>
+                <div style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"var(--grn)"}}>{fn(deliv.formSubmissions||0)}</div>
+              </div>
+              <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,padding:14}}>
+                <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Form Conv Rate</div>
+                <div style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:deliv.formConvRate>=3?"var(--grn)":deliv.formConvRate>=1.5?"var(--ylw)":"var(--red)"}}>{deliv.formConvRate?deliv.formConvRate.toFixed(1)+"%":"—"}</div>
+                <div style={{fontSize:10,color:"var(--t3)",marginTop:2}}>Benchmark: 2-4%</div>
+              </div>
+              <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:10,padding:14}}>
+                <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Active on Site</div>
+                <div style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{fn(deliv.activeOnSite||0)}</div>
+              </div>
+            </div>
+          </div>}
         </div>
 
         {/* Reload button */}

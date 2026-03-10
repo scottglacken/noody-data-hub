@@ -314,36 +314,13 @@ export default async function handler(req, res) {
         }
       } catch (e) { detail.campaignError = e.message; detail.campaigns = []; }
 
-      // 3) Lists
-      try {
-        var rawLists = await fetchAll('https://a.klaviyo.com/api/lists/');
-        detail.lists = rawLists.map(function(l) {
-          return {
-            id: l.id,
-            name: l.attributes.name || 'Unnamed',
-            created: l.attributes.created ? l.attributes.created.split('T')[0] : null,
-            updated: l.attributes.updated ? l.attributes.updated.split('T')[0] : null,
-          };
-        });
-        // Get total profile count via profiles endpoint (single request)
-        try {
-          var profUrl = 'https://a.klaviyo.com/api/profiles/?page%5Bsize%5D=1';
-          var profRes = await fetch(profUrl, { headers: headers });
-          if (profRes.ok) {
-            var profData = await profRes.json();
-            // Total count may not be available; use link presence as indicator
-            detail.totalProfiles = profData.data ? profData.data.length : 0;
-            if (profData.links && profData.links.next) detail.totalProfilesNote = 'paginated';
-          }
-        } catch (e) { /* skip */ }
-      } catch (e) { detail.listError = e.message; detail.lists = []; }
-
-      // 4) Deliverability metrics
+      // 3) Deliverability + form metrics
       try {
         var delivMetrics = {};
         var metricNames = ['Received Email', 'Opened Email', 'Clicked Email', 'Bounced Email',
           'Unsubscribed from Email Marketing', 'Unsubscribed from List', 'Marked Email as Spam',
-          'Dropped Email', 'Subscribed to List'];
+          'Dropped Email', 'Subscribed to Email Marketing', 'Viewed Form', 'Submitted Form',
+          'Active on Site'];
         for (var mn = 0; mn < metricNames.length; mn++) {
           var metricObj = allMetrics.find(function(m) { return m.attributes && m.attributes.name === metricNames[mn]; });
           if (!metricObj) continue;
@@ -367,7 +344,11 @@ export default async function handler(req, res) {
           dropped: delivMetrics['Dropped Email'] || 0,
           unsubscribed: unsubTotal,
           spamComplaints: delivMetrics['Marked Email as Spam'] || 0,
-          subscribed: delivMetrics['Subscribed to List'] || 0,
+          subscribed: delivMetrics['Subscribed to Email Marketing'] || 0,
+          formViews: delivMetrics['Viewed Form'] || 0,
+          formSubmissions: delivMetrics['Submitted Form'] || 0,
+          formConvRate: (delivMetrics['Viewed Form'] || 0) > 0 ? Math.round((delivMetrics['Submitted Form'] || 0) / delivMetrics['Viewed Form'] * 10000) / 100 : 0,
+          activeOnSite: delivMetrics['Active on Site'] || 0,
           openRate: received > 0 ? Math.round((delivMetrics['Opened Email'] || 0) / received * 10000) / 100 : 0,
           clickRate: received > 0 ? Math.round((delivMetrics['Clicked Email'] || 0) / received * 10000) / 100 : 0,
           bounceRate: received > 0 ? Math.round((delivMetrics['Bounced Email'] || 0) / received * 10000) / 100 : 0,
