@@ -194,6 +194,18 @@ function Dashboard(){
   // Live Meta data
   const [metaLive,setMetaLive]=useState(null);
   const [metaLoading,setMetaLoading]=useState(false);
+  // Campaign-level data for Meta tab
+  const [campaignData,setCampaignData]=useState(null);
+  const [campaignLoading,setCampaignLoading]=useState(false);
+  const fetchCampaigns=useCallback(async()=>{
+    setCampaignLoading(true);
+    try{
+      const r=await fetch('/api/pull-meta?days='+range+'&level=campaign',{headers:{'x-api-key':'noody-eq-2026-datahub'}});
+      if(r.ok){const d=await r.json();setCampaignData(d);}
+    }catch(e){console.log('Campaign fetch:',e);}
+    setCampaignLoading(false);
+  },[range]);
+
   const fetchMeta=useCallback(async()=>{
     setMetaLoading(true);
     try{
@@ -244,6 +256,7 @@ function Dashboard(){
   useEffect(()=>{
     if((tab==="daily"||tab==="equation"||tab==="meta"||tab==="diagnose"||tab==="scale"||tab==="insights"||tab==="social")&&!shopLive&&!shopLoading)fetchShop();
     if((tab==="daily"||tab==="meta"||tab==="insights")&&!metaLive&&!metaLoading)fetchMeta();
+    if(tab==="meta"&&!campaignData&&!campaignLoading)fetchCampaigns();
     if((tab==="equation"||tab==="diagnose"||tab==="scale"||tab==="insights")&&!xeroLive&&!xeroLoading)fetchXero(xeroMonths);
     if((tab==="gads"||tab==="insights")&&!gads&&!gadsLoading)fetchGads(gadsDays);
     if((tab==="equation"||tab==="daily"||tab==="insights"||tab==="klaviyo")&&!klavLive&&!klavLoading)fetchKlav();
@@ -949,28 +962,133 @@ function Dashboard(){
       const _days=agg.d;const _mo=_days/30;
       const _metaAiKey="meta_"+rangeKey;
       if(!tabAi[_metaAiKey]&&!tabAiLoading.meta){
-        const _p="Analyse Meta Ads performance for "+agg.startDate+" to "+agg.endDate+" ("+_days+"d). Give 3-5 sentences with specific numbers, highlight best/worst trends, and one clear recommendation.\n\nMeta Spend: $"+fn(agg.tms)+"\nPurchases: "+fn(agg.tmp)+"\nCPP: $"+Math.round(agg.cpp||0)+"\nROAS: "+(agg.metaROAS?agg.metaROAS.toFixed(2):"—")+"x (target: "+TARGETS.metaROAS+"x)\nMER: "+(agg.mer?agg.mer.toFixed(1):"—")+"%\nDTC Revenue: $"+fn(agg.tr)+(prevAgg?"\n\nPrior period: Spend $"+fn(prevAgg.tms)+", ROAS "+(prevAgg.metaROAS?prevAgg.metaROAS.toFixed(2):"—")+"x, CPP $"+Math.round(prevAgg.cpp||0):"");
+        const _p="Analyse Meta Ads performance using the Ecommerce Equation framework for "+agg.startDate+" to "+agg.endDate+" ("+_days+"d). Use Marvel Math terminology. Reference Traffic Light System benchmarks. Give situation classification, campaign health assessment, and specific actions.\n\nMeta Spend: $"+fn(agg.tms)+"\nPurchases: "+fn(agg.tmp)+"\nCPP: $"+Math.round(agg.cpp||0)+"\nROAS: "+(agg.metaROAS?agg.metaROAS.toFixed(2):"—")+"x (target: "+TARGETS.metaROAS+"x)\nMER: "+(agg.mer?agg.mer.toFixed(1):"—")+"%\nDTC Revenue: $"+fn(agg.tr)+(prevAgg?"\n\nPrior period: Spend $"+fn(prevAgg.tms)+", ROAS "+(prevAgg.metaROAS?prevAgg.metaROAS.toFixed(2):"—")+"x, CPP $"+Math.round(prevAgg.cpp||0):"")+(campaignData?"\n\nCampaign breakdown:\n"+JSON.stringify((campaignData.data||campaignData.campaigns||[]).map(c=>({name:c.campaign_name,spend:c.spend,cpp:c.cpp,roas:c.roas,freq:c.frequency,purchases:c.purchases,reach:c.reach}))):"");
         setTimeout(()=>fetchTabAi("meta",_p,["meta"]),0);
       }
+
+      const cData=campaignData?.data||campaignData?.campaigns||[];
+      const cSummary=campaignData?.summary||null;
+
+      /* Funnel detection */
+      const detectFunnel=(n)=>{const s=(n||"").toLowerCase();if(s.includes("mof")||s.includes("retarget")||s.includes("remark")||s.includes("middle")||s.includes("bot"))return"MOF";if(s.includes("asc")||s.includes("advantage")||s.includes("shopping"))return"ASC";if(s.includes("tom")||s.includes("top of mid"))return"TOM";return"TOF";};
+
+      /* Campaign freq benchmarks */
+      const campFreqBench={TOF:{g:2.0,w:2.5},TOM:{g:3.5,w:4.0},ASC:{g:2.0,w:2.5},MOF:{g:4.0,w:5.0}};
+
+      /* Funnel spend breakdown */
+      const funnelSpend={TOF:{spend:0,purchases:0,rev:0,count:0},ASC:{spend:0,purchases:0,rev:0,count:0},MOF:{spend:0,purchases:0,rev:0,count:0},TOM:{spend:0,purchases:0,rev:0,count:0}};
+      cData.forEach(c=>{const f=detectFunnel(c.campaign_name);if(funnelSpend[f]){funnelSpend[f].spend+=(c.spend||0);funnelSpend[f].purchases+=(c.purchases||0);funnelSpend[f].rev+=(c.purchase_value||0);funnelSpend[f].count++;}});
+      const totalCSpend=cData.reduce((s,c)=>s+(c.spend||0),0);
+
       return <>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <h2 style={{fontSize:20,fontWeight:700,margin:0}}>Meta Ads Performance</h2>
-        <a href="/meta-coach.html" style={{padding:"10px 20px",background:"var(--acc,#c94f8a)",color:"#fff",borderRadius:10,textDecoration:"none",fontSize:14,fontWeight:600,transition:"all .2s"}}>Open Meta Coach</a>
+        <div style={{display:"flex",gap:8}}>
+          {!campaignData&&<button onClick={fetchCampaigns} disabled={campaignLoading} style={{padding:"8px 16px",background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:8,color:"var(--t2)",fontSize:12,fontWeight:600,cursor:"pointer"}}>{campaignLoading?"Loading...":"Load Campaigns"}</button>}
+          <a href="/meta-coach.html" style={{padding:"8px 16px",background:"var(--acc,#c94f8a)",color:"#fff",borderRadius:8,textDecoration:"none",fontSize:12,fontWeight:600}}>Open Coach</a>
+        </div>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:7,marginBottom:14}}>
-        <MC l={range+"d Spend"} v={agg?agg.tms:0} fmt="$" big/>
+
+      {/* Top metrics row - now with Frequency */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:7,marginBottom:14}}>
+        <MC l={_days+"d Spend"} v={agg?agg.tms:0} fmt="$" big/>
         <MC l="Purchases" v={agg?agg.tmp:0} fmt="n"/>
-        <MC l="Avg CPP" v={agg&&agg.tmp>0?agg.tms/agg.tmp:0} fmt="$"/>
-        <MC l="Meta ROAS" v={agg&&agg.tms>0?agg.tmv/agg.tms:0} fmt="n" sub="last-click"/>
-        <MC l="% of Ad Budget" v={agg&&agg.tms>0?100:0} fmt="%" sub="Meta"/>
+        <MC l="Avg CPP" v={agg.cpp||0} fmt="$" bm={{h:[0,agg.cpp?agg.cpp*0.8:20],w:[agg.cpp?agg.cpp*0.8:20,agg.cpp?agg.cpp*1.5:40]}}/>
+        <MC l="Meta ROAS" v={agg.metaROAS||0} fmt="n" bm={{h:[2.5,100],w:[1.5,2.5]}} sub="last-click"/>
+        <MC l="MER" v={agg.mer||0} fmt="%" bm={{h:[0,25],w:[25,35]}}/>
+        <MC l="Daily Spend" v={agg.tms/_days} fmt="$" sub="avg"/>
       </div>
-      {/* Meta Targets */}
+
+      {/* Targets */}
       <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:12,padding:14,marginBottom:14}}>
         <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:8}}>Targets</div>
         <TargetBar label="Meta ROAS" current={agg.metaROAS||0} target={TARGETS.metaROAS} fmt="x"/>
         <TargetBar label="Monthly Ad Spend" current={agg.tms/_mo} target={TARGETS.monthlyAdSpend} fmt="$" inv/>
       </div>
+
+      {/* AI Analysis */}
       <AiSummary text={tabAi[_metaAiKey]} loading={tabAiLoading.meta} label={"AI Meta Analysis — "+_days+"d"}/>
+
+      {/* Campaign-Level Breakdown */}
+      {cData.length>0&&<div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em"}}>Campaign Breakdown — Traffic Light</div>
+          <button onClick={fetchCampaigns} style={{padding:"4px 10px",background:"transparent",border:"1px solid var(--bdr)",borderRadius:6,color:"var(--t3)",fontSize:10,cursor:"pointer"}}>🔄</button>
+        </div>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,fontFamily:"'JetBrains Mono',monospace"}}>
+            <thead><tr style={{borderBottom:"1px solid var(--bdr)"}}>
+              {["Campaign","Funnel","Spend","CPP","Purchases","ROAS","Freq","Reach","CTR","Health"].map(h=><th key={h} style={{padding:"8px 6px",textAlign:"left",color:"var(--t3)",fontWeight:500,fontSize:10,textTransform:"uppercase",whiteSpace:"nowrap"}}>{h}</th>)}
+            </tr></thead>
+            <tbody>{cData.sort((a,b)=>(b.spend||0)-(a.spend||0)).map((c,i)=>{
+              const funnel=detectFunnel(c.campaign_name);
+              const bench=campFreqBench[funnel]||campFreqBench.TOF;
+              const fHealth=!c.frequency?"—":c.frequency<=bench.g?"🟢":c.frequency<=bench.w?"🟡":"🔴";
+              const cppColor=!c.cpp?"inherit":c.cpp<=(agg.cpp||30)?"#10b981":c.cpp<=(agg.cpp||30)*2?"#f59e0b":"#ef4444";
+              const roasColor=!c.roas?"inherit":c.roas>=3?"#10b981":c.roas>=2?"#f59e0b":"#ef4444";
+              const freqColor=!c.frequency?"inherit":c.frequency<=bench.g?"#10b981":c.frequency<=bench.w?"#f59e0b":"#ef4444";
+              const funnelColor=funnel==="TOF"||funnel==="ASC"?"#3b82f6":funnel==="TOM"?"#a855f7":"#10b981";
+              return <tr key={i} style={{borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
+                <td style={{padding:"8px 6px",color:"var(--t1)",maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontSize:11}} title={c.campaign_name}>{c.campaign_name}</td>
+                <td style={{padding:"8px 6px"}}><span style={{color:funnelColor,fontWeight:600,fontSize:10}}>{funnel}</span></td>
+                <td style={{padding:"8px 6px",color:"#a855f7"}}>${fn(Math.round(c.spend||0))}</td>
+                <td style={{padding:"8px 6px",color:cppColor}}>{c.cpp?"$"+Math.round(c.cpp):"—"}</td>
+                <td style={{padding:"8px 6px"}}>{c.purchases||0}</td>
+                <td style={{padding:"8px 6px",color:roasColor}}>{c.roas?c.roas.toFixed(2)+"x":"—"}</td>
+                <td style={{padding:"8px 6px",color:freqColor}}>{c.frequency?c.frequency.toFixed(2):"—"}</td>
+                <td style={{padding:"8px 6px",color:"var(--t2)"}}>{c.reach?fn(c.reach):"—"}</td>
+                <td style={{padding:"8px 6px",color:"var(--t2)"}}>{c.ctr?c.ctr.toFixed(2)+"%":"—"}</td>
+                <td style={{padding:"8px 6px",textAlign:"center"}}>{fHealth}</td>
+              </tr>;
+            })}</tbody>
+          </table>
+        </div>
+      </div>}
+
+      {/* Funnel Spend Allocation */}
+      {cData.length>0&&totalCSpend>0&&<div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:14}}>
+        <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:12}}>Funnel Spend Allocation vs Framework</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:8}}>
+          {[["TOF","#3b82f6",45],["ASC","#a855f7",35],["MOF","#10b981",20]].map(([f,col,ideal])=>{
+            const actual=totalCSpend>0?((funnelSpend[f]?.spend||0)+(f==="TOF"?(funnelSpend.TOM?.spend||0):0))/totalCSpend*100:0;
+            const diff=actual-ideal;
+            const isOk=Math.abs(diff)<10;
+            return <div key={f} style={{background:"rgba(255,255,255,0.03)",border:"1px solid var(--bdr)",borderRadius:10,padding:12}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                <span style={{color:col,fontWeight:700,fontSize:13,fontFamily:"'JetBrains Mono',monospace"}}>{f}</span>
+                <span style={{fontSize:10,color:isOk?"#10b981":"#f59e0b"}}>{isOk?"✓":"⚠"} {diff>0?"+":""}{diff.toFixed(0)}pp</span>
+              </div>
+              <div style={{height:8,background:"rgba(255,255,255,0.06)",borderRadius:4,marginBottom:4,position:"relative"}}>
+                <div style={{height:"100%",width:Math.min(actual,100)+"%",background:col,borderRadius:4,transition:"width .5s"}}/>
+                <div style={{position:"absolute",left:ideal+"%",top:-2,bottom:-2,width:2,background:"var(--t3)"}}/>
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:10}}>
+                <span style={{color:"var(--t1)"}}>{actual.toFixed(0)}% actual</span>
+                <span style={{color:"var(--t3)"}}>{ideal}% target</span>
+              </div>
+              <div style={{fontSize:10,color:"var(--t3)",marginTop:4}}>{(funnelSpend[f]?.count||0)+(f==="TOF"?(funnelSpend.TOM?.count||0):0)} campaigns · ${fn(Math.round(funnelSpend[f]?.spend||0)+(f==="TOF"?(funnelSpend.TOM?.spend||0):0))}</div>
+            </div>;
+          })}
+        </div>
+      </div>}
+
+      {/* Daily Meta Trend */}
+      <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:10}}>
+        <div style={{fontSize:11,color:"var(--t3)",marginBottom:8}}>DAILY META SPEND & CPP TREND</div>
+        <ResponsiveContainer width="100%" height={200}>
+          <ComposedChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e"/>
+            <XAxis dataKey="d" tick={{fill:"#6b7280",fontSize:9}}/>
+            <YAxis yAxisId="spend" tick={{fill:"#6b7280",fontSize:9}}/>
+            <YAxis yAxisId="cpp" orientation="right" tick={{fill:"#6b7280",fontSize:9}}/>
+            <Tooltip contentStyle={{background:"var(--bdr)",border:"1px solid #2d2d44",borderRadius:8,fontSize:11}}/>
+            <Bar yAxisId="spend" dataKey="meta" fill="#a855f755" radius={[3,3,0,0]} name="Meta Spend ($)"/>
+            <Line yAxisId="cpp" type="monotone" dataKey="cpp" stroke="#f59e0b" strokeWidth={2} dot={false} name="CPP ($)" connectNulls/>
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Monthly chart */}
       <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:10}}>
         <div style={{fontSize:11,color:"var(--t3)",marginBottom:8}}>MONTHLY META SPEND & MER</div>
         <ResponsiveContainer width="100%" height={200}>
@@ -986,6 +1104,8 @@ function Dashboard(){
           </ComposedChart>
         </ResponsiveContainer>
       </div>
+
+      {/* Monthly breakdown table */}
       <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18}}>
         <div style={{fontSize:11,color:"var(--t3)",marginBottom:8}}>MONTHLY BREAKDOWN</div>
         <div style={{overflowX:"auto"}}>
