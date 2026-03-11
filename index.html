@@ -1424,6 +1424,58 @@ function Dashboard(){
         <MC l="Daily Avg" v={agg.tms/_days} fmt="$" showBm={showBenchmarks}/>
       </div>
 
+      {/* Creative Health Score (Marvel Math) — TOP POSITION */}
+      {cData.length>0&&(()=>{
+        const avgCpp=agg.cpp||30;
+        let heroes=[],sidekicks=[],villains=[],civilians=[];
+        cData.forEach(function(c){
+          const fun=_funnel(c.campaign_name);const fb=_freqBench[fun]||_freqBench.TOF;
+          const roasOk=c.roas&&c.roas>=TARGETS.metaROAS;
+          const cppOk=c.cpp&&c.cpp<=avgCpp*1.5;
+          const freqOk=c.frequency&&c.frequency<=fb.w;
+          const score=(roasOk?1:0)+(cppOk?1:0)+(freqOk?1:0);
+          const entry={name:c.campaign_name,spend:c.spend||0,roas:c.roas,cpp:c.cpp,freq:c.frequency};
+          if(score>=3)heroes.push(entry);else if(score>=2)sidekicks.push(entry);else if(c.purchases>0)villains.push(entry);else civilians.push(entry);
+        });
+        const total=heroes.length+sidekicks.length+villains.length;
+        if(total===0)return null;
+        const healthPct=total>0?Math.round((heroes.length*100+sidekicks.length*50)/total):0;
+        const healthCol=healthPct>=70?"#15803d":healthPct>=40?"#92400e":"#b91c1c";
+        const healthLabel=healthPct>=70?"HEALTHY CREATIVE MIX":healthPct>=40?"CREATIVE NEEDS ATTENTION":"CREATIVE REFRESH URGENT";
+        const villainSpend=villains.reduce((s,v)=>s+v.spend,0);
+        const heroSpend=heroes.reduce((s,h)=>s+h.spend,0);
+        return <div style={{background:"linear-gradient(135deg,"+healthCol+"10,"+healthCol+"04)",border:"2px solid "+healthCol+"44",borderRadius:14,padding:18,marginBottom:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <div>
+              <div style={{fontSize:15,fontWeight:700,color:"var(--t1)"}}>Marvel Math \u2014 Creative Health</div>
+              <div style={{fontSize:12,color:healthCol,fontWeight:600}}>{healthLabel}</div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontSize:32,fontWeight:800,color:healthCol,fontFamily:"'JetBrains Mono',monospace"}}>{healthPct}<span style={{fontSize:16}}>%</span></div>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:10}}>
+            {[
+              {label:"Heroes",icon:"\uD83E\uDDB8",count:heroes.length,col:"#15803d",bg:"rgba(21,128,61,0.06)",desc:"Green CPA, high reach, freq ~1.0 \u2014 SCALE"},
+              {label:"Sidekicks",icon:"\uD83E\uDDB9",count:sidekicks.length,col:"#1d4ed8",bg:"rgba(29,78,216,0.06)",desc:"Green CPA, limited reach \u2014 MONITOR"},
+              {label:"Civilians",icon:"\uD83D\uDC64",count:civilians.length,col:"#6b7280",bg:"rgba(107,114,128,0.06)",desc:"No purchases yet \u2014 TEST MORE"},
+              {label:"Villains",icon:"\uD83E\uDDB9\u200D\u2642\uFE0F",count:villains.length,col:"#b91c1c",bg:"rgba(185,28,28,0.06)",desc:"Red CPA, wasting spend \u2014 KILL"},
+            ].map((m,i)=><div key={i} style={{textAlign:"center",padding:10,background:m.bg,borderRadius:10,border:m.count>0?"1px solid "+m.col+"33":"1px solid transparent"}}>
+              <div style={{fontSize:22}}>{m.icon}</div>
+              <div style={{fontSize:22,fontWeight:800,color:m.col,fontFamily:"'JetBrains Mono',monospace"}}>{m.count}</div>
+              <div style={{fontSize:11,color:m.col,fontWeight:700}}>{m.label}</div>
+              <div style={{fontSize:9,color:"var(--t3)",marginTop:2}}>{m.desc}</div>
+            </div>)}
+          </div>
+          {villainSpend>0&&<div style={{fontSize:11,color:"#b91c1c",padding:"8px 10px",background:"rgba(185,28,28,0.05)",borderRadius:6,marginBottom:6}}>
+            Villain spend: {f$(villainSpend)} wasted ({totalCSpend>0?(villainSpend/totalCSpend*100).toFixed(0)+"% of budget":""}). Redirect to Heroes.
+          </div>}
+          {heroes.length>0&&<div style={{fontSize:11,color:"#15803d",padding:"8px 10px",background:"rgba(21,128,61,0.05)",borderRadius:6}}>
+            Hero spend: {f$(heroSpend)} ({totalCSpend>0?(heroSpend/totalCSpend*100).toFixed(0)+"% of budget":""}). EE recommends 60%+ to Heroes.
+          </div>}
+        </div>;
+      })()}
+
       {/* Targets */}
       <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:12,padding:14,marginBottom:14}}>
         <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:8}}>Targets</div>
@@ -1480,57 +1532,6 @@ function Dashboard(){
           </table>
         </div>
       </div>}
-
-      {/* Creative Health Score (EE Framework) */}
-      {cData.length>0&&(()=>{
-        var heroes=0,sidekicks=0,villains=0;
-        cData.forEach(function(c){
-          var fun=_funnel(c.campaign_name);var fb=_freqBench[fun]||_freqBench.TOF;
-          var avgCpp=agg.cpp||30;
-          var roasOk=c.roas&&c.roas>=TARGETS.metaROAS;
-          var cppOk=c.cpp&&c.cpp<=avgCpp*1.5;
-          var freqOk=c.frequency&&c.frequency<=fb.w;
-          var score=(roasOk?1:0)+(cppOk?1:0)+(freqOk?1:0);
-          if(score>=3)heroes++;else if(score>=2)sidekicks++;else if(c.purchases>0)villains++;
-        });
-        var total=heroes+sidekicks+villains;
-        if(total===0)return null;
-        var healthPct=total>0?Math.round((heroes*100+sidekicks*50)/total):0;
-        var healthCol=healthPct>=70?"#15803d":healthPct>=40?"#92400e":"#b91c1c";
-        var healthLabel=healthPct>=70?"Healthy":"Needs Work";
-        return <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:14}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-            <div>
-              <div style={{fontSize:14,fontWeight:600}}>Creative Health Score</div>
-              <div style={{fontSize:11,color:"var(--t3)"}}>EE Hero/Sidekick/Villain classification</div>
-            </div>
-            <div style={{textAlign:"right"}}>
-              <div style={{fontSize:24,fontWeight:800,color:healthCol,fontFamily:"'JetBrains Mono',monospace"}}>{healthPct}</div>
-              <div style={{fontSize:10,color:healthCol,fontWeight:600}}>{healthLabel}</div>
-            </div>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
-            <div style={{textAlign:"center",padding:10,background:"rgba(21,128,61,0.06)",borderRadius:8}}>
-              <div style={{fontSize:20,fontWeight:700,color:"#15803d"}}>{heroes}</div>
-              <div style={{fontSize:11,color:"#15803d",fontWeight:600}}>Heroes</div>
-              <div style={{fontSize:10,color:"var(--t3)"}}>Scale these</div>
-            </div>
-            <div style={{textAlign:"center",padding:10,background:"rgba(146,64,14,0.06)",borderRadius:8}}>
-              <div style={{fontSize:20,fontWeight:700,color:"#92400e"}}>{sidekicks}</div>
-              <div style={{fontSize:11,color:"#92400e",fontWeight:600}}>Sidekicks</div>
-              <div style={{fontSize:10,color:"var(--t3)"}}>Monitor</div>
-            </div>
-            <div style={{textAlign:"center",padding:10,background:"rgba(185,28,28,0.06)",borderRadius:8}}>
-              <div style={{fontSize:20,fontWeight:700,color:"#b91c1c"}}>{villains}</div>
-              <div style={{fontSize:11,color:"#b91c1c",fontWeight:600}}>Villains</div>
-              <div style={{fontSize:10,color:"var(--t3)"}}>Kill or refresh</div>
-            </div>
-          </div>
-          {villains>heroes&&<div style={{marginTop:8,fontSize:11,color:"#b91c1c",padding:"6px 10px",background:"rgba(185,28,28,0.06)",borderRadius:6}}>
-            More villains than heroes — creative refresh urgently needed. EE recommends 3-5 new creatives in testing at all times.
-          </div>}
-        </div>;
-      })()}
 
       {/* Funnel Spend Allocation */}
       {cData.length>0&&totalCSpend>0&&<div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:14}}>
