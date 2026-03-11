@@ -63,7 +63,7 @@ var CONTEXT_FILES = {
   gads: ['google-ads.md'],
   xero: ['xero.md', 'demand-planning.md'],
   social: ['social.md', 'tiktok-ads.md'],
-  website: ['website.md', 'high-conversion-website.md', 'offer-strategy.md'],
+  website: ['website.md', 'high-conversion-website.md', 'offer-strategy.md', 'website-seo.md'],
   equation: ['ecommerce-equation-kb.md', 'demand-planning.md'],
   diagnose: ['ecommerce-equation-kb.md', 'scale-challenge.md'],
   scale: ['scale-challenge.md', 'ecommerce-equation-kb.md'],
