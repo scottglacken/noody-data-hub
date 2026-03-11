@@ -44,18 +44,31 @@ CPP is more actionable than ROAS because it tells you the actual cost to acquire
 - **MOF good:** AOV x MER (warm retargeting)
 - **BOF good:** AOV x MER x 0.75 (hot, ready to buy)
 
-## Campaign Structure (2025 Meta)
-### Three Campaign Types
-- **ASC-RS**: Advantage+ Sales Campaign ON + Recommended Setup (Meta controls targeting)
-- **ASC-LS**: Advantage+ ON + Limited Setup (you suggest targeting)
-- **NASC-LS**: Advantage+ OFF, full control over targeting
+## Campaign Structure — $100M Meta Ad Framework
 
-### Budget Allocation
-| Funnel Stage | Budget % | Example ($50/day) |
-|-------------|----------|-------------------|
-| TOF | 45% | $22.50 |
-| TOM (ASC) | 35% | $17.50 |
-| MOF | 20% | $10.00 |
+### The Architecture (2025 Meta)
+Three campaign types mapped to funnel stages:
+
+| Campaign | Type | Control Level | Best For |
+|----------|------|--------------|----------|
+| **ASC-RS** | Advantage+ ON + Recommended Setup | Meta controls targeting | Broad TOF prospecting, scale phase |
+| **ASC-LS** | Advantage+ ON + Limited Setup | You suggest targeting | TOF with audience guidance, testing phase |
+| **NASC-LS** | Advantage+ OFF | Full manual control | MOF/BOF retargeting, specific audiences |
+
+### Full Funnel Budget Allocation
+| Funnel Stage | Budget % | Example ($50/day) | Objective |
+|-------------|----------|-------------------|-----------|
+| TOF (Cold) | 45% | $22.50 | New eyeballs, hero ad scale |
+| TOM (ASC) | 35% | $17.50 | Broad reach, algorithm optimization |
+| MOF (Retarget) | 20% | $10.00 | Website visitors, engagers, cart abandoners |
+
+### Campaign Setup Rules
+1. **One campaign per objective** — don't mix prospecting and retargeting
+2. **3-5 ad sets per campaign** — enough for testing, not so many budget fragments
+3. **3-5 ads per ad set** — algorithm needs options but not overwhelm
+4. **Broad targeting for TOF** — let the algorithm find your audience (2025 best practice)
+5. **Existing customer exclusion** — always exclude purchasers from TOF campaigns
+6. **7-day click, 1-day view** attribution — standard for DTC
 
 ## Traffic Light System
 Daily assessment tool for CPA, reach, and frequency:
@@ -75,12 +88,47 @@ Daily assessment tool for CPA, reach, and frequency:
 | **Psychic** | Best CPA in campaign but may not reach as many people |
 | **Turn Off** | Red CPA and poor reach/frequency — turn off immediately |
 
-## Creative Testing
-- Always have 3-5 active creative tests running
-- Hero ad identification: high reach + low frequency + acceptable CPA sustained over 14+ days
-- **Fatigue detection:** CPA rising across date range comparisons (14d → 7d → 3-4d) = creative fatigue
-- **Refresh cadence:** Replace fatigued creative every 2-3 weeks before performance collapses
-- Best performers for Noody: UGC testimonials from NZ parents, before/after skin results, product-in-use lifestyle
+## Creative Testing & Refresh System
+
+### Marvel Math — Creative Classification
+Every ad gets classified after 7-14 days of spend:
+
+| Classification | Criteria | Action |
+|---------------|----------|--------|
+| **Hero** | Highest reach, green frequency (~1.0), acceptable CPA, sucks budget | PROTECT — never turn off, scale budget |
+| **Sidekick** | Good CPA but limited reach, higher frequency | KEEP — supports hero, don't scale |
+| **Psychic** | Best CPA in campaign but low spend/reach | WATCH — may become hero with more budget |
+| **Villain** | Red CPA, poor reach/frequency, wasting spend | KILL — turn off immediately |
+
+### Creative Refresh System
+**The #1 cause of declining Meta performance is creative fatigue, not audience saturation.**
+
+**Fatigue Detection Protocol (run weekly):**
+1. Compare CPA across date ranges: 14d → 7d → 3-4d
+2. If CPA is rising across shorter windows = fatigue starting
+3. If frequency exceeds 2.0 in 14-day window = audience saturation
+4. If CTR dropping while CPM stable = creative fatigue (not market change)
+
+**Refresh Cadence:**
+- TOF creative: refresh every 2-3 weeks
+- MOF creative: refresh every 3-4 weeks (smaller audience, less fatigue)
+- Always have 2-3 ads in testing while heroes run
+- Never let creative pipeline go empty — schedule new shoots/UGC monthly
+
+**Refresh Rules:**
+1. Never turn off a hero ad to test new creative — add new ads alongside
+2. Kill villains immediately to free budget for testing
+3. New creative should test ONE variable vs current hero (hook, format, angle)
+4. Minimum 3 days / $50 spend before judging new creative
+5. A new hero must beat current hero on CPA for 7+ days before replacing
+
+### Creative Types That Work (DTC Skincare)
+- **UGC testimonials**: NZ parents showing real results (highest trust)
+- **Before/after**: Skin transformation content (highest conversion)
+- **Product-in-use lifestyle**: Morning routine, bath time (highest reach)
+- **Problem-first hook**: Lead with the eczema struggle, then solution
+- **Social proof compilation**: Multiple reviews/testimonials in one ad
+- Video outperforms static 2:1; ideal length 15-30s for TOF, 30-60s for MOF
 
 ## Revenue Per Visit — The Grand Equalizer
 **RPV = Conversion Rate x AOV**
@@ -92,17 +140,36 @@ If RPV is $3.00 and CPC is $1.50, each click generates $1.50 of gross value. Imp
 - CR: better product pages, social proof, simplified checkout
 - Email: capture more visitors → convert via flows (zero ad cost)
 
-## Scale Decision
-- **Only scale when equation is profitable** (Situation 1)
-- **NEVER scale in Situation 5** — fix the equation first
-- Scale test: increase spend 20-30% for 7-14 days, monitor equation daily
-- If ratios hold, lock in new baseline. If not, revert.
+## Scale Decision Framework
 
-### Greenlight to Scale Checkpoints
-1. Campaign performance consistently green-light (CPA, frequency, reach)
-2. Your own traffic light benchmarks established
-3. Frequency under control in 14-day window
-4. CPA stable across date range comparisons (14d, 7d, 3-4d)
+### Pre-Scale Checklist (ALL must be green)
+1. ✅ Equation profitable (Situation 1 or 2 only)
+2. ✅ Hero ad identified with 14+ days green performance
+3. ✅ Traffic light benchmarks established for YOUR brand
+4. ✅ Frequency under 2.0 in 14-day window
+5. ✅ CPA stable across date ranges (14d → 7d → 3-4d all similar)
+6. ✅ RPV supports the target CPA at scale
+7. ✅ Fresh creative pipeline ready (fatigue hits faster at higher spend)
+
+### Scale Protocol
+- **Step 1**: Increase spend 20-30% (not more)
+- **Step 2**: Monitor equation daily for 7-14 days
+- **Step 3**: If ratios hold → lock in as new baseline, repeat
+- **Step 4**: If CPA rises >20% → revert immediately, diagnose
+- **NEVER scale in Situation 5** — fix the equation first
+
+### Why Scaling Fails
+- Scaling without a hero ad → budget spreads across mediocre creative
+- Scaling too fast (>30% jump) → algorithm resets learning phase
+- Scaling without creative pipeline → hero fatigues faster at higher frequency
+- Scaling with broken unit economics → losing money faster
+
+### Audience Expansion at Scale
+- Start: NZ only, narrow interests
+- Scale 1: NZ broad (remove interest targeting, let algorithm find)
+- Scale 2: Add AU as separate campaign
+- Scale 3: Lookalike audiences from purchaser list
+- Each geo expansion = separate campaign, separate creative testing
 
 ## Noody Current Performance
 | Metric | Current | Benchmark | Status |
