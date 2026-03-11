@@ -24,6 +24,37 @@
 <script type="text/babel">
 const {useState,useEffect,useCallback,useRef,useMemo}=React;
 
+// --- AUTH ---
+const AUTH_HASH="a79f6ebca16b6b22e3fa7f1677375e9a735dae50774a88955182ce5ab8f71924";
+const AUTH_KEY="noody_auth";
+async function hashPw(pw){const enc=new TextEncoder().encode(pw);const buf=await crypto.subtle.digest("SHA-256",enc);return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");}
+function LoginScreen({onAuth}){
+  const [pw,setPw]=useState("");
+  const [err,setErr]=useState(false);
+  const [checking,setChecking]=useState(false);
+  const handleSubmit=async(e)=>{
+    e.preventDefault();setChecking(true);setErr(false);
+    const h=await hashPw(pw);
+    if(h===AUTH_HASH){sessionStorage.setItem(AUTH_KEY,"1");onAuth();}
+    else{setErr(true);setChecking(false);}
+  };
+  return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"var(--bg)",fontFamily:"'DM Sans',-apple-system,sans-serif"}}>
+    <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:16,padding:40,width:360,textAlign:"center",boxShadow:"0 4px 24px rgba(0,0,0,0.1)"}}>
+      <div style={{fontSize:32,marginBottom:8}}>&#x1F510;</div>
+      <h1 style={{fontSize:20,fontWeight:700,color:"var(--t1)",marginBottom:4}}>Meta Ads Coach</h1>
+      <p style={{fontSize:13,color:"var(--t3)",marginBottom:24}}>Enter password to access</p>
+      <form onSubmit={handleSubmit}>
+        <input type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="Password" autoFocus
+          style={{width:"100%",padding:"12px 16px",fontSize:15,border:"1px solid "+(err?"var(--red)":"var(--bdr)"),borderRadius:10,marginBottom:12,fontFamily:"'JetBrains Mono',monospace",outline:"none",background:err?"rgba(185,28,28,0.04)":"var(--bg)",color:"var(--t1)"}}/>
+        {err&&<div style={{fontSize:12,color:"var(--red)",marginBottom:10}}>Incorrect password</div>}
+        <button type="submit" disabled={checking||!pw} style={{width:"100%",padding:"12px",fontSize:15,fontWeight:600,borderRadius:10,border:"none",background:checking?"var(--bdr)":"var(--acc)",color:"#fff",cursor:checking?"wait":"pointer",opacity:checking?0.6:1}}>
+          {checking?"Checking...":"Sign In"}
+        </button>
+      </form>
+    </div>
+  </div>;
+}
+
 const API_KEY="noody-eq-2026-datahub";
 const FUNNEL={TOF:0.45,ASC:0.35,MOF:0.20};
 const BRACKETS=[
@@ -707,7 +738,12 @@ function MetaCoach(){
   </div>;
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(MetaCoach));
+function MetaCoachApp(){
+  const [authed,setAuthed]=useState(()=>sessionStorage.getItem(AUTH_KEY)==="1");
+  if(!authed)return <LoginScreen onAuth={()=>setAuthed(true)}/>;
+  return <MetaCoach/>;
+}
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(MetaCoachApp));
 </script>
 </body>
 </html>
