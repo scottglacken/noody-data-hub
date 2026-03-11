@@ -1908,6 +1908,27 @@ function Dashboard(){
       </div>}
 
       {gads&&!gadsLoading&&<>
+        {/* EE MER Impact */}
+        {agg&&(()=>{
+          const totalAdSpend=gads.summary.totalSpend+agg.tms;
+          const trueMer=agg.tr>0?totalAdSpend/agg.tr*100:0;
+          const metaOnlyMer=agg.tr>0?agg.tms/agg.tr*100:0;
+          const merImpact=trueMer-metaOnlyMer;
+          const googlePctBudget=totalAdSpend>0?(gads.summary.totalSpend/totalAdSpend*100):0;
+          return <div style={{background:"linear-gradient(135deg,rgba(26,86,219,0.06),rgba(52,168,83,0.04))",border:"1px solid rgba(26,86,219,0.2)",borderRadius:14,padding:14,marginBottom:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{fontSize:12,fontWeight:700,color:"var(--t1)"}}>EE MER Impact \u2014 True Marketing Cost</div>
+                <div style={{fontSize:11,color:"var(--t3)"}}>Adding Google spend pushes DTC MER from {fp(metaOnlyMer)} to <span style={{color:trueMer>35?"var(--red)":"var(--grn)",fontWeight:700}}>{fp(trueMer)}</span> (+{merImpact.toFixed(1)}pp)</div>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontSize:18,fontWeight:700,color:"#1a56db",fontFamily:"'JetBrains Mono',monospace"}}>{googlePctBudget.toFixed(0)}%</div>
+                <div style={{fontSize:9,color:"var(--t3)"}}>of ad budget</div>
+              </div>
+            </div>
+          </div>;
+        })()}
+
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:7,marginBottom:14}}>
           <MC l="Total Spend" v={gads.summary.totalSpend} fmt="$" big showBm={showBenchmarks}/>
           <MC l="Clicks" v={gads.summary.totalClicks} fmt="n" showBm={showBenchmarks}/>
@@ -2026,6 +2047,31 @@ function Dashboard(){
       </div>}
 
       {xeroLive&&!xeroLoading&&<>
+        {/* EE Cost Structure Assessment */}
+        {(()=>{
+          const s=xeroLive.profitAndLoss?.summary;
+          if(!s||!s.revenue)return null;
+          const gm=s.grossMargin||0;
+          const nm=s.netMargin||0;
+          const cogsPct=s.revenue>0?(s.cogs/s.revenue*100):0;
+          const expPct=s.revenue>0?(s.totalExpenses/s.revenue*100):0;
+          const eqHealthy=gm>=50&&nm>=10;
+          const col=eqHealthy?"var(--grn)":nm>=5?"var(--ylw)":"var(--red)";
+          return <div style={{background:col+"08",border:"1px solid "+col+"33",borderRadius:14,padding:14,marginBottom:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:700,color:"var(--t1)"}}>EE Cost Structure Check</div>
+                <div style={{fontSize:11,color:"var(--t3)"}}>
+                  Gross margin {fp(gm)} {gm>=50?"\u2705":"\u274C"} (target >50%) \u00B7 Net margin {fp(nm)} {nm>=10?"\u2705":"\u274C"} (target >10%)
+                </div>
+              </div>
+              <div style={{fontSize:11,fontWeight:600,color:col,padding:"4px 10px",border:"1px solid "+col+"33",borderRadius:6}}>
+                {eqHealthy?"Equation Healthy":"Needs Attention"}
+              </div>
+            </div>
+          </div>;
+        })()}
+
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12,marginBottom:18}}>
           <MC l="Revenue" v={xeroLive.profitAndLoss?.summary?.revenue} fmt="$" big/>
           <MC l="COGS" v={xeroLive.profitAndLoss?.summary?.cogs} fmt="$"/>
