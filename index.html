@@ -2998,6 +2998,34 @@ function Dashboard(){
       return <>
         <div style={{fontSize:20,fontWeight:700,marginBottom:16}}>Social Media</div>
 
+        {/* EE Social Channel Assessment */}
+        {hasData&&<div style={{background:"linear-gradient(135deg,rgba(168,85,247,0.06),rgba(59,91,219,0.04))",border:"1px solid rgba(168,85,247,0.2)",borderRadius:14,padding:16,marginBottom:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div>
+              <div style={{fontSize:14,fontWeight:700,color:"var(--t1)"}}>EE Channel Assessment \u2014 Social</div>
+              <div style={{fontSize:11,color:"var(--t3)"}}>Social as a revenue channel vs brand builder</div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontSize:20,fontWeight:700,color:socialRevPct>=3?"var(--grn)":socialRevPct>=1?"var(--ylw)":"var(--red)",fontFamily:"'JetBrains Mono',monospace"}}>{socialRevPct.toFixed(1)}%</div>
+              <div style={{fontSize:10,color:"var(--t3)"}}>of DTC revenue</div>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+            {[
+              {label:"Revenue Role",value:socialRevPct>=5?"Revenue Driver":socialRevPct>=2?"Supporting Channel":"Brand Only",col:socialRevPct>=5?"var(--grn)":socialRevPct>=2?"var(--ylw)":"var(--red)",detail:"Benchmark: 3-8% of DTC"},
+              {label:"Content Velocity",value:(cs.postsPerWeek||0)>=5?"High":(cs.postsPerWeek||0)>=3?"Medium":"Low",col:(cs.postsPerWeek||0)>=5?"var(--grn)":(cs.postsPerWeek||0)>=3?"var(--ylw)":"var(--red)",detail:(cs.postsPerWeek||0).toFixed(1)+"/week (target: 5+)"},
+              {label:"Audience Quality",value:postEngRate>=3?"High Engagement":postEngRate>=1?"Moderate":"Low Engagement",col:postEngRate>=3?"var(--grn)":postEngRate>=1?"var(--ylw)":"var(--red)",detail:fp(postEngRate)+" eng rate (3-6% target)"},
+            ].map(function(m,i){return <div key={i} style={{padding:10,background:"rgba(255,255,255,0.5)",borderRadius:8,textAlign:"center"}}>
+              <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>{m.label}</div>
+              <div style={{fontSize:13,fontWeight:700,color:m.col}}>{m.value}</div>
+              <div style={{fontSize:9,color:"var(--t3)",marginTop:2}}>{m.detail}</div>
+            </div>;})}
+          </div>
+          {socialRevPct<3&&<div style={{marginTop:8,fontSize:11,color:"var(--ylw)",padding:"6px 10px",background:"rgba(146,64,14,0.05)",borderRadius:6}}>
+            Social below 3% of DTC revenue. EE framework: social is currently a brand-building channel, not a revenue channel. Focus on content that drives traffic to site (link in bio, stories with product links) rather than pure engagement.
+          </div>}
+        </div>}
+
         <AiSummary text={aiText} loading={aiLoad} label="Social Media Analysis" />
 
         {!hasData&&!socialLoading&&<div style={{...cardS,borderColor:"var(--ylw)",background:"rgba(234,179,8,0.06)"}}>
@@ -3348,6 +3376,27 @@ function Dashboard(){
             <div style={{fontSize:11,color:"var(--t3)",marginTop:2}}>Auto-generated from {a.startDate} → {a.endDate} × Ecommerce Equation benchmarks</div>
           </div>
           <div style={{fontSize:10,color:"var(--t3)"}}>{(shopLive?"Shopify ✓ ":"")+(metaLive?"Meta ✓ ":"")+(gads?"Google ✓ ":"")+(xeroLive?"Xero ✓":"")}</div>
+        </div>
+
+        {/* EE Equation Health at a Glance */}
+        <div style={{background:"var(--card)",border:"2px solid "+(situation===1?"var(--grn)":situation<=2?"var(--ylw)":"var(--red)")+"44",borderRadius:14,padding:16,marginBottom:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{fontSize:13,fontWeight:700,color:"var(--t1)"}}>EE Equation Health — S{situation}</div>
+            <div style={{fontSize:22,fontWeight:800,color:npPct>=10?"var(--grn)":npPct>=5?"var(--ylw)":"var(--red)",fontFamily:"'JetBrains Mono',monospace"}}>{fp(npPct)}</div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6}}>
+            {[
+              {l:"VC %",v:vcPct,ok:vcPct<=40,target:"<40%"},
+              {l:"MER",v:dtcMerVal,ok:dtcMerVal<=35,target:"<35%"},
+              {l:"FC %",v:fcPct,ok:fcPct<=20,target:"<20%"},
+              {l:"Email",v:emailAvg||0,ok:emailAvg>=30,target:">30%"},
+              {l:"LER",v:ler,ok:ler>=2,target:">$2"},
+            ].map(function(m,i){return <div key={i} style={{textAlign:"center",padding:6,background:m.ok?"rgba(21,128,61,0.06)":"rgba(185,28,28,0.06)",borderRadius:6}}>
+              <div style={{fontSize:9,color:"var(--t3)",textTransform:"uppercase"}}>{m.l}</div>
+              <div style={{fontSize:14,fontWeight:700,color:m.ok?"var(--grn)":"var(--red)",fontFamily:"'JetBrains Mono',monospace"}}>{m.l==="LER"?m.v.toFixed(2):fp(m.v)}</div>
+              <div style={{fontSize:8,color:"var(--t3)"}}>{m.target} {m.ok?"\u2705":"\u274C"}</div>
+            </div>;})}
+          </div>
         </div>
 
         {/* Summary pills */}
