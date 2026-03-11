@@ -69,12 +69,17 @@ export default async function handler(req, res) {
         '?fields=id,caption,media_type,like_count,comments_count,timestamp,permalink' +
         '&limit=20&access_token=' + token;
 
+      // IG profile endpoint — returns REAL total follower count (not daily delta)
+      var igProfileUrl = 'https://graph.facebook.com/v19.0/' + igId +
+        '?fields=followers_count,media_count,name,biography&access_token=' + token;
+
       var fetches = [
         fbUrl ? fetch(fbUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }) : Promise.resolve({ _skipped: true }),
         fetch(igDailyUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }),
         fetch(igTotalUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }),
         fetch(igMediaUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }),
         fetch(fbPageUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }),
+        fetch(igProfileUrl).then(function(r) { return r.json(); }).catch(function(e) { return { _error: e.message }; }),
       ];
       var results = await Promise.all(fetches);
 
@@ -83,6 +88,7 @@ export default async function handler(req, res) {
       var igTotalInsights = results[2];
       var igMedia = results[3];
       var fbPageInfo = results[4];
+      var igProfile = results[5];
 
       // Parse Facebook Page info
       var facebook = { pageLikes: 0, engagedUsers: 0, impressions: 0, daily: [] };
@@ -107,17 +113,33 @@ export default async function handler(req, res) {
       }
       if (!facebook.error) delete facebook.error;
 
-      // Parse Instagram daily insights (reach, follower_count)
-      var instagram = { followers: 0, reach: 0, avgDailyReach: 0, profileViews: 0, accountsEngaged: 0, totalInteractions: 0, daily: [] };
+      // Parse Instagram daily insights (reach, follower_count delta)
+      var instagram = { followers: 0, reach: 0, avgDailyReach: 0, profileViews: 0, accountsEngaged: 0, totalInteractions: 0, daily: [], mediaCount: 0 };
+      var followerCountSource = 'unknown';
       var igDailyError = null;
+
+      // Step A: Get REAL follower count from profile endpoint (absolute total, not delta)
+      if (igProfile && !igProfile._error && !igProfile.error && igProfile.followers_count) {
+        instagram.followers = igProfile.followers_count;
+        instagram.mediaCount = igProfile.media_count || 0;
+        followerCountSource = 'profile_endpoint';
+      }
+
       if (igDailyInsights._error || igDailyInsights.error) {
         igDailyError = igDailyInsights._error || (igDailyInsights.error ? igDailyInsights.error.message : 'IG daily insights failed');
       } else {
         var igDailyMetrics = igDailyInsights.data || [];
         var igReach = igDailyMetrics.find(function(m) { return m.name === 'reach'; });
-        var igFollowers = igDailyMetrics.find(function(m) { return m.name === 'follower_count'; });
-        if (igFollowers && igFollowers.values && igFollowers.values.length > 0) {
-          instagram.followers = igFollowers.values[igFollowers.values.length - 1].value || 0;
+        // follower_count from insights is daily DELTA — only use as fallback
+        if (instagram.followers === 0) {
+          var igFollowers = igDailyMetrics.find(function(m) { return m.name === 'follower_count'; });
+          if (igFollowers && igFollowers.values && igFollowers.values.length > 0) {
+            // Sum the deltas — this is NOT a total count, but better than 0
+            var followerDeltaSum = igFollowers.values.reduce(function(s, v) { return s + (v.value || 0); }, 0);
+            instagram.followers = followerDeltaSum;
+            instagram._followerDeltaWarning = true;
+            followerCountSource = 'insights_daily_delta';
+          }
         }
         var igReachValues = igReach ? (igReach.values || []) : [];
         var totalReach = igReachValues.reduce(function(s, v) { return s + (v.value || 0); }, 0);
@@ -173,23 +195,82 @@ export default async function handler(req, res) {
         instagram.mediaError = igMedia._error || (igMedia.error ? igMedia.error.message : 'Unknown error');
       }
 
-      // Follower estimation fallback
+      // Follower estimation fallback — only if profile endpoint AND insights both failed
       if (instagram.followers === 0 && recentPosts.length > 0) {
         var maxLikes = recentPosts.reduce(function(mx, p) { return p.likes > mx ? p.likes : mx; }, 0);
         if (maxLikes > 0) {
           instagram.followersEstimated = true;
           instagram.followers = Math.round(maxLikes / 0.07);
+          followerCountSource = 'estimated';
         }
       }
 
-      // Post-level engagement stats
+      // Post-level engagement stats (using correct follower count now)
       if (recentPosts.length > 0) {
         var postTotalEng = recentPosts.reduce(function(s, p) { return s + p.likes + p.comments; }, 0);
         instagram.postAvgEngagement = Math.round(postTotalEng / recentPosts.length * 10) / 10;
         instagram.postEngagementRate = instagram.followers > 0
           ? Math.round(postTotalEng / recentPosts.length / instagram.followers * 10000) / 100
           : 0;
+        instagram.avgLikesPerPost = Math.round(recentPosts.reduce(function(s, p) { return s + p.likes; }, 0) / recentPosts.length * 10) / 10;
+        instagram.avgCommentsPerPost = Math.round(recentPosts.reduce(function(s, p) { return s + p.comments; }, 0) / recentPosts.length * 10) / 10;
       }
+
+      // Content strategy scoring
+      var contentStrategy = {};
+      if (recentPosts.length > 0) {
+        // Posting frequency: posts in last 30 days
+        var postsIn30d = recentPosts.filter(function(p) { return p.date >= sinceDate; }).length;
+        var postsPerWeek = Math.round(postsIn30d / (days / 7) * 10) / 10;
+        var freqGrade = postsPerWeek >= 5 ? 'A' : postsPerWeek >= 3 ? 'B' : postsPerWeek >= 1 ? 'C' : 'D';
+        contentStrategy.postsIn30d = postsIn30d;
+        contentStrategy.postsPerWeek = postsPerWeek;
+        contentStrategy.frequencyGrade = freqGrade;
+
+        // Best performing format
+        var formatStats = {};
+        recentPosts.forEach(function(p) {
+          var t = p.type === 'CAROUSEL_ALBUM' ? 'Carousel' : p.type === 'VIDEO' ? 'Reel/Video' : 'Static';
+          if (!formatStats[t]) formatStats[t] = { count: 0, totalEng: 0 };
+          formatStats[t].count++;
+          formatStats[t].totalEng += p.likes + p.comments;
+        });
+        var bestFormat = null;
+        var bestRate = 0;
+        Object.keys(formatStats).forEach(function(t) {
+          var avgEng = formatStats[t].totalEng / formatStats[t].count;
+          var rate = instagram.followers > 0 ? (avgEng / instagram.followers * 100) : 0;
+          if (rate > bestRate) { bestRate = rate; bestFormat = t; }
+        });
+        contentStrategy.bestFormat = bestFormat;
+        contentStrategy.bestFormatRate = Math.round(bestRate * 10) / 10;
+
+        // Engagement trend: compare first half vs second half of posts
+        var halfIdx = Math.floor(recentPosts.length / 2);
+        if (recentPosts.length >= 4) {
+          // Posts are newest-first from API
+          var recentHalf = recentPosts.slice(0, halfIdx);
+          var olderHalf = recentPosts.slice(halfIdx);
+          var recentAvg = recentHalf.reduce(function(s, p) { return s + p.likes + p.comments; }, 0) / recentHalf.length;
+          var olderAvg = olderHalf.reduce(function(s, p) { return s + p.likes + p.comments; }, 0) / olderHalf.length;
+          contentStrategy.recentAvgEng = Math.round(recentAvg * 10) / 10;
+          contentStrategy.olderAvgEng = Math.round(olderAvg * 10) / 10;
+          contentStrategy.engagementTrend = recentAvg > olderAvg * 1.1 ? 'improving' : recentAvg < olderAvg * 0.9 ? 'declining' : 'stable';
+        }
+      }
+
+      // Revenue per follower (from hardcoded social rev data for now)
+      if (instagram.followers > 0) {
+        contentStrategy.revPerFollower = null; // Computed on frontend with actual Shopify data
+      }
+
+      // Validation checks
+      var warnings = [];
+      var acctEngRate = instagram.followers > 0 ? (instagram.accountsEngaged / instagram.followers * 100) : 0;
+      if (instagram.postEngagementRate > 100) warnings.push('Post engagement rate ' + instagram.postEngagementRate + '% exceeds 100% — follower count may be wrong');
+      if (acctEngRate > 100) warnings.push('Account engagement rate ' + acctEngRate.toFixed(1) + '% exceeds 100% — follower count may be wrong');
+      if (instagram.followers < 10 && recentPosts.length > 0 && !instagram.followersEstimated) warnings.push('Follower count ' + instagram.followers + ' suspiciously low for account with ' + recentPosts.length + ' posts — may be returning delta not total');
+      if (instagram.reach > instagram.followers * 5 && instagram.followers > 0) warnings.push('Reach (' + instagram.reach + ') is ' + Math.round(instagram.reach / instagram.followers) + 'x followers — includes paid reach');
 
       return res.status(200).json({
         success: true,
@@ -198,6 +279,13 @@ export default async function handler(req, res) {
         instagram: instagram,
         facebook: facebook,
         recentPosts: recentPosts,
+        contentStrategy: contentStrategy,
+        _validation: {
+          followerCountSource: followerCountSource,
+          engagementRateSane: instagram.postEngagementRate <= 100 && acctEngRate <= 100,
+          followerCount: instagram.followers,
+          warnings: warnings,
+        },
       });
     } catch (err) {
       return res.status(500).json({

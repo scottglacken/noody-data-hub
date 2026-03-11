@@ -2583,26 +2583,21 @@ function Dashboard(){
       const posts=socialData?.recentPosts||[];
       const hasData=socialData&&socialData.success;
       const topPosts=[...posts].sort((a,b)=>(b.likes+b.comments)-(a.likes+a.comments));
+      const cs=socialData?.contentStrategy||{};
+      const val=socialData?._validation||{};
 
-      // Computed benchmark metrics
+      // Computed benchmark metrics — followers from profile endpoint (real total)
       const followers=ig.followers||0;
       const profileViews=ig.profileViews||0;
       const accountsEngaged=ig.accountsEngaged||0;
       const totalInteractions=ig.totalInteractions||0;
-      // Two engagement metrics: post-level (likes+comments/followers) and account-level (engaged accounts/followers)
+      // Post engagement rate: (avg likes+comments per post) / followers × 100
       const postEngRate=ig.postEngagementRate||0;
-      const acctEngRate=followers>0?(accountsEngaged/followers*100):0;
-      const avgDailyReach=ig.avgDailyReach||( ig.daily?.length>0?Math.round((ig.reach||0)/ig.daily.length):0);
+      // Account engagement: show as raw number, not percentage (30d aggregate)
+      const avgDailyReach=ig.avgDailyReach||(ig.daily?.length>0?Math.round((ig.reach||0)/ig.daily.length):0);
       const igProfileRate=(ig.reach||0)>0?(profileViews/(ig.reach||1)*100):0;
-
-      // Growth tracking
-      const igDaily=ig.daily||[];
-      const followerStart=igDaily.length>1&&igDaily[0].followers?igDaily[0].followers:0;
-      const followerEnd=followers;
-      const growthAbs=followerEnd-followerStart;
-      const growthPct=followerStart>0?((followerEnd-followerStart)/followerStart*100):0;
-      const monthlyGrowthPct=igDaily.length>7?(growthPct/(igDaily.length/30)):growthPct;
-      const monthsTo10K=followers>0&&followers<10000&&monthlyGrowthPct>0?Math.ceil(((10000-followers)/followers*100)/monthlyGrowthPct):null;
+      // Revenue per follower
+      const revPerFollower=followers>0?igRev/followers:0;
 
       // Content type performance
       const typeStats={};
@@ -2623,20 +2618,20 @@ function Dashboard(){
       const aiText=tabAi[socialAiKey];
       const aiLoad=tabAiLoading.social;
       if(hasData&&!aiText&&!aiLoad){
-        var _growthLine="";
-        if(monthlyGrowthPct>0){
-          _growthLine="GROWTH: "+monthlyGrowthPct.toFixed(1)+"%/month.";
-          if(monthsTo10K)_growthLine+=" ~"+monthsTo10K+" months to 10K followers at current rate.";
-          _growthLine+="\n\n";
-        }
         var _contentLine=typeRows.map(function(t){return t.type+": "+t.count+" posts, avg "+t.avgEng.toFixed(0)+" engagement ("+t.engRate.toFixed(1)+"% rate)";}).join("\n");
-        const prompt="Analyse Noody Skincare organic social media performance (NZ eczema/baby skincare DTC brand). 30-day data from Instagram and Facebook.\n\n"+
-          "INSTAGRAM:\n- Followers: "+fn(followers)+(ig.followersEstimated?" (estimated from post engagement)":"")+"\n- Total Reach (incl. paid): "+fn(ig.reach||0)+" (avg "+fn(avgDailyReach)+"/day — mostly paid ad reach)\n- Profile Views: "+fn(profileViews)+"\n- Engaged Accounts: "+fn(accountsEngaged)+"\n- Total Interactions: "+fn(totalInteractions)+"\n- Account Engagement Rate: "+acctEngRate.toFixed(1)+"% (engaged accounts/followers, benchmark: 3-6%)\n- Post Engagement Rate: "+postEngRate.toFixed(1)+"% (avg likes+comments/followers, benchmark: 3-6%)\n- Profile Visit Rate: "+igProfileRate.toFixed(1)+"% of reach (benchmark: 2-5%)\n\n"+
-          "FACEBOOK PAGE:\n- Page Likes: "+fn(fb.pageLikes||0)+"\n- Impressions/Engagements: not available (page token required)\n\n"+
+        var _stratLine="";
+        if(cs.postsPerWeek!=null)_stratLine+="CONTENT STRATEGY:\n- Posting: "+cs.postsPerWeek+" posts/week (Grade: "+cs.frequencyGrade+", target: 5/week)\n";
+        if(cs.bestFormat)_stratLine+="- Best format: "+cs.bestFormat+" ("+cs.bestFormatRate+"% eng rate)\n";
+        if(cs.engagementTrend)_stratLine+="- Trend: "+cs.engagementTrend+" (recent avg "+cs.recentAvgEng+" vs older avg "+cs.olderAvgEng+")\n";
+        _stratLine+="\n";
+        const prompt="Analyse Noody Skincare organic social media performance (NZ eczema/baby skincare DTC brand). "+range+"-day data from Instagram and Facebook.\n\n"+
+          "INSTAGRAM:\n- Followers: "+fn(followers)+" (source: "+val.followerCountSource+")"+(ig.followersEstimated?" (estimated)":"")+"\n- Total Reach (incl. paid): "+fn(ig.reach||0)+" (avg "+fn(avgDailyReach)+"/day — includes paid ad reach)\n- Profile Views: "+fn(profileViews)+"\n- Engaged Accounts (30d total): "+fn(accountsEngaged)+"\n- Total Interactions: "+fn(totalInteractions)+"\n- Post Engagement Rate: "+postEngRate.toFixed(1)+"% (avg likes+comments/followers, benchmark: 3-6%)\n- Avg Likes/Post: "+(ig.avgLikesPerPost||0).toFixed(1)+" (benchmark for <1K: 20-50)\n- Avg Comments/Post: "+(ig.avgCommentsPerPost||0).toFixed(1)+" (benchmark: 2-5)\n- Profile Visit Rate: "+igProfileRate.toFixed(1)+"% of reach (benchmark: 2-5%)\n\n"+
+          "FACEBOOK PAGE:\n- Page Likes: "+fn(fb.pageLikes||0)+"\n\n"+
           "CONTENT ("+posts.length+" recent posts):\n"+_contentLine+"\n\n"+
-          "REVENUE ATTRIBUTION (Shopify referrers):\n- Instagram: $"+igRev+" from "+igSess+" sessions ($"+igRps.toFixed(2)+"/session)\n- Facebook: $"+fbRev+" from "+fbSess+" sessions ($"+fbRps.toFixed(2)+"/session)\n- Social as % of DTC: "+socialRevPct.toFixed(1)+"% (benchmark: 3-8%)\n- Rev/session benchmark: $0.50-$2.00\n\n"+
-          _growthLine+
-          "Compare each metric against the benchmarks for DTC skincare brands with under 10K followers. Give 4-5 specific, actionable insights with numbers. Identify the biggest opportunity and the biggest risk. Suggest content strategy adjustments.";
+          _stratLine+
+          "REVENUE:\n- Instagram: $"+igRev+" from "+igSess+" sessions ($"+igRps.toFixed(2)+"/session)\n- Facebook: $"+fbRev+" from "+fbSess+" sessions ($"+fbRps.toFixed(2)+"/session)\n- Social as % of DTC: "+socialRevPct.toFixed(1)+"% (benchmark: 3-8%)\n- Rev per Follower (monthly): $"+revPerFollower.toFixed(2)+" (benchmark: $0.50-$2.00)\n\n"+
+          (val.warnings&&val.warnings.length>0?"DATA WARNINGS: "+val.warnings.join("; ")+"\n\n":"")+
+          "Compare each metric against benchmarks for DTC skincare brands with under 10K followers. Give 4-5 specific, actionable insights with numbers. Identify the biggest opportunity and the biggest risk. Suggest content strategy adjustments.";
         setTimeout(()=>fetchTabAi("social",prompt,["social","meta"]),0);
       }
 
@@ -2650,18 +2645,23 @@ function Dashboard(){
           {socialData?.hint&&<div style={{fontSize:12,color:"var(--t3)",marginTop:6}}>{socialData.hint}</div>}
         </div>}
 
+        {/* Validation warnings */}
+        {val.warnings&&val.warnings.length>0&&<div style={{background:"rgba(234,179,8,0.06)",border:"1px solid rgba(234,179,8,0.2)",borderRadius:10,padding:"8px 14px",marginBottom:12,fontSize:12,color:"var(--ylw)",fontWeight:500}}>
+          {val.warnings.map(function(w,i){return <div key={i}>{"\u26A0\uFE0F "}{w}</div>;})}
+        </div>}
+
         {/* A) KEY METRICS */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:14}}>
-          <MC l="IG Followers" v={followers} fmt="#" big sub={ig.followersEstimated?"Estimated from post engagement":""} />
-          <MC l="IG Total Reach (incl. paid)" v={ig.reach||0} fmt="#" sub={avgDailyReach?fn(avgDailyReach)+"/day avg — mostly paid ad reach":""} />
-          <MC l="IG Profile Views" v={profileViews} fmt="#" />
-          <MC l="IG Engaged Accounts" v={accountsEngaged} fmt="#" sub={acctEngRate>0?fp(acctEngRate)+"% of followers":""} />
-          <MC l="IG Interactions" v={totalInteractions} fmt="#" />
-          <MC l="Post Engagement" v={postEngRate} fmt="%" sub="Avg likes+comments / followers" />
-          <MC l="Account Engagement" v={acctEngRate} fmt="%" sub={"Engaged accts / followers"} bm={{h:[3,100],w:[2,3]}} />
-          <MC l="FB Page Likes" v={fb.pageLikes||0} fmt="#" big />
-          <MC l="FB Impressions" v={fb.impressions||0} fmt="#" sub={!fb.impressions&&fb.pageLikes?"Page token required":""} />
-          <MC l="FB Engagements" v={fb.engagedUsers||0} fmt="#" sub={!fb.engagedUsers&&fb.pageLikes?"Page token required":""} />
+          <MC l="IG Followers" v={followers} fmt="#" big sub={val.followerCountSource==="profile_endpoint"?"From profile API":(ig.followersEstimated?"Estimated":"Source: "+val.followerCountSource)} />
+          <MC l="Post Eng Rate" v={postEngRate} fmt="%" sub="Avg (likes+comments) / followers" bm={{h:[3,100],w:[1,3]}} />
+          <MC l="Avg Likes/Post" v={ig.avgLikesPerPost||0} fmt="#" sub={"Benchmark: 20-50 (<1K)"} />
+          <MC l="Avg Comments/Post" v={ig.avgCommentsPerPost||0} fmt="#" sub="Benchmark: 2-5" />
+          <MC l="IG Engaged Accounts" v={accountsEngaged} fmt="#" sub={range+"d total (not a rate)"} />
+          <MC l="IG Total Reach" v={ig.reach||0} fmt="#" sub={avgDailyReach?fn(avgDailyReach)+"/day avg (incl. paid)":""} />
+          <MC l="IG Profile Views" v={profileViews} fmt="#" sub={igProfileRate>0?igProfileRate.toFixed(1)+"% of reach":""} />
+          <MC l="IG Interactions" v={totalInteractions} fmt="#" sub={range+"d total"} />
+          <MC l="Rev/Follower" v={revPerFollower} fmt="$" sub="Monthly · BM: $0.50-$2.00" bm={{h:[0.5,100],w:[0.25,0.5]}} />
+          <MC l="FB Page Likes" v={fb.pageLikes||0} fmt="#" />
         </div>
 
         {ig.error&&<div style={{fontSize:12,color:"var(--ylw)",marginBottom:8}}>IG: {ig.error}</div>}
@@ -2672,23 +2672,47 @@ function Dashboard(){
           <div style={{fontSize:11,color:"var(--t3)",marginBottom:10,textTransform:"uppercase"}}>Social Benchmark Scorecard — DTC Skincare (&lt;10K Followers)</div>
           <div style={{display:"grid",gap:8}}>
             {[
-              {l:"IG Account Engagement",actual:acctEngRate,target:"3–6%",status:acctEngRate>=3?"h":acctEngRate>=2?"w":"c"},
-              {l:"IG Post Engagement",actual:postEngRate,target:"3–6%",status:postEngRate>=3?"h":postEngRate>=2?"w":"c"},
+              {l:"IG Post Engagement Rate",actual:postEngRate,target:"3–6%",status:postEngRate>=3?"h":postEngRate>=1?"w":"c"},
+              {l:"Avg Likes/Post",actual:ig.avgLikesPerPost||0,target:"20–50",status:(ig.avgLikesPerPost||0)>=20?"h":(ig.avgLikesPerPost||0)>=10?"w":"c",fmt:"n"},
+              {l:"Avg Comments/Post",actual:ig.avgCommentsPerPost||0,target:"2–5",status:(ig.avgCommentsPerPost||0)>=2?"h":(ig.avgCommentsPerPost||0)>=1?"w":"c",fmt:"n"},
               {l:"IG Profile Visit Rate",actual:igProfileRate,target:"2–5% of reach",status:igProfileRate>=2?"h":igProfileRate>=1?"w":"c"},
+              {l:"Posting Frequency",actual:cs.postsPerWeek||0,target:"5+/week",status:(cs.postsPerWeek||0)>=5?"h":(cs.postsPerWeek||0)>=3?"w":"c",fmt:"n",suffix:"/week"},
+              {l:"Rev/Follower (monthly)",actual:revPerFollower,target:"$0.50–$2.00",status:revPerFollower>=0.5?"h":revPerFollower>=0.25?"w":"c",fmt:"$"},
               {l:"IG Rev/Session",actual:igRps,target:"$0.50–$2.00",status:igRps>=0.5?"h":igRps>=0.25?"w":"c",fmt:"$"},
-              {l:"FB Rev/Session",actual:fbRps,target:"$0.50–$2.00",status:fbRps>=0.5?"h":fbRps>=0.25?"w":"c",fmt:"$"},
               {l:"Social % of DTC Rev",actual:socialRevPct,target:"3–8%",status:socialRevPct>=3?"h":socialRevPct>=1?"w":"c"},
-              ...(monthlyGrowthPct>0?[{l:"Monthly Follower Growth",actual:monthlyGrowthPct,target:"2–5%",status:monthlyGrowthPct>=2?"h":monthlyGrowthPct>=1?"w":"c"}]:[]),
-            ].map((b,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:i<8?"1px solid var(--bdr)":"none"}}>
+            ].map((b,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:i<7?"1px solid var(--bdr)":"none"}}>
               <span style={{fontSize:13,color:"var(--t2)"}}>{b.l}</span>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
                 <span style={{fontSize:9,color:"var(--t3)"}}>{b.target}</span>
-                <span style={{fontSize:14,fontWeight:700,color:SC[b.status],fontFamily:"'JetBrains Mono',monospace"}}>{b.fmt==="$"?b.actual.toFixed(2):fp(b.actual)}</span>
-                <span style={{fontSize:12}}>{b.status==="h"?"✅":b.status==="w"?"⚠️":"🔴"}</span>
+                <span style={{fontSize:14,fontWeight:700,color:SC[b.status],fontFamily:"'JetBrains Mono',monospace"}}>{b.fmt==="$"?"$"+b.actual.toFixed(2):b.fmt==="n"?b.actual.toFixed(1)+(b.suffix||""):fp(b.actual)}</span>
+                <span style={{fontSize:12}}>{b.status==="h"?"\u2705":b.status==="w"?"\u26A0\uFE0F":"\uD83D\uDD34"}</span>
               </div>
             </div>)}
           </div>
         </div>
+
+        {/* B2) CONTENT STRATEGY SCORECARD */}
+        {cs.frequencyGrade&&<div style={cardS}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Content Strategy Score</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:10}}>
+            <div style={{padding:12,background:"rgba(0,0,0,0.02)",borderRadius:8}}>
+              <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Posting Frequency</div>
+              <div style={{fontSize:20,fontWeight:700,color:cs.frequencyGrade==="A"?"var(--grn)":cs.frequencyGrade==="B"?"var(--ylw)":"var(--red)",fontFamily:"'JetBrains Mono',monospace"}}>{cs.frequencyGrade}</div>
+              <div style={{fontSize:11,color:"var(--t2)"}}>{cs.postsPerWeek} posts/week ({cs.postsIn30d} in {range}d)</div>
+              <div style={{fontSize:10,color:"var(--t3)"}}>Target: 5+/week</div>
+            </div>
+            {cs.bestFormat&&<div style={{padding:12,background:"rgba(0,0,0,0.02)",borderRadius:8}}>
+              <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Best Format</div>
+              <div style={{fontSize:16,fontWeight:700,color:"var(--acc)",fontFamily:"'JetBrains Mono',monospace"}}>{cs.bestFormat}</div>
+              <div style={{fontSize:11,color:"var(--t2)"}}>{cs.bestFormatRate}% engagement rate</div>
+            </div>}
+            {cs.engagementTrend&&<div style={{padding:12,background:"rgba(0,0,0,0.02)",borderRadius:8}}>
+              <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Engagement Trend</div>
+              <div style={{fontSize:16,fontWeight:700,color:cs.engagementTrend==="improving"?"var(--grn)":cs.engagementTrend==="declining"?"var(--red)":"var(--t3)",fontFamily:"'JetBrains Mono',monospace"}}>{cs.engagementTrend==="improving"?"\u2191 Improving":cs.engagementTrend==="declining"?"\u2193 Declining":"\u2192 Stable"}</div>
+              <div style={{fontSize:11,color:"var(--t2)"}}>Recent: {cs.recentAvgEng} avg vs Older: {cs.olderAvgEng} avg</div>
+            </div>}
+          </div>
+        </div>}
 
         {/* C) CONTENT PERFORMANCE BY TYPE */}
         {typeRows.length>0&&<div style={cardS}>
@@ -2724,28 +2748,24 @@ function Dashboard(){
           </div>
         </div>}
 
-        {/* D) GROWTH TRACKING — only show when we have real follower_count data (not estimated) */}
-        {followers>0&&!ig.followersEstimated&&followerStart>0&&<div style={cardS}>
-          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Growth Tracking</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10,marginBottom:12}}>
+        {/* D) FOLLOWER INFO */}
+        {followers>0&&<div style={cardS}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Account Overview</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10}}>
             <div style={{background:"rgba(168,85,247,0.06)",border:"1px solid rgba(168,85,247,0.2)",borderRadius:10,padding:14,textAlign:"center"}}>
-              <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Current Followers</div>
+              <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Followers</div>
               <div style={{fontSize:24,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"#7c3aed"}}>{fn(followers)}</div>
+              <div style={{fontSize:10,color:"var(--t3)",marginTop:2}}>{val.followerCountSource==="profile_endpoint"?"Verified (profile API)":"Source: "+val.followerCountSource}</div>
             </div>
-            {monthlyGrowthPct>0&&<div style={{background:monthlyGrowthPct>=2?"rgba(34,197,94,0.06)":"rgba(245,158,11,0.06)",border:"1px solid "+(monthlyGrowthPct>=2?"rgba(34,197,94,0.2)":"rgba(245,158,11,0.2)"),borderRadius:10,padding:14,textAlign:"center"}}>
-              <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Monthly Growth</div>
-              <div style={{fontSize:24,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:monthlyGrowthPct>=2?"var(--grn)":"var(--ylw)"}}>{monthlyGrowthPct.toFixed(1)}%</div>
-              <div style={{fontSize:10,color:"var(--t3)",marginTop:2}}>Benchmark: 2-5%</div>
+            {ig.mediaCount>0&&<div style={{background:"rgba(79,110,247,0.06)",border:"1px solid rgba(79,110,247,0.2)",borderRadius:10,padding:14,textAlign:"center"}}>
+              <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Total Posts</div>
+              <div style={{fontSize:24,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"var(--acc)"}}>{fn(ig.mediaCount)}</div>
             </div>}
-            {monthsTo10K&&<div style={{background:"rgba(79,110,247,0.06)",border:"1px solid rgba(79,110,247,0.2)",borderRadius:10,padding:14,textAlign:"center"}}>
-              <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Months to 10K</div>
-              <div style={{fontSize:24,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"var(--acc)"}}>{monthsTo10K}</div>
-              <div style={{fontSize:10,color:"var(--t3)",marginTop:2}}>at {monthlyGrowthPct.toFixed(1)}%/mo</div>
-            </div>}
-            {growthAbs!==0&&<div style={{background:growthAbs>0?"rgba(34,197,94,0.06)":"rgba(239,68,68,0.06)",borderRadius:10,padding:14,textAlign:"center",border:"1px solid "+(growthAbs>0?"rgba(34,197,94,0.2)":"rgba(239,68,68,0.2)")}}>
-              <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Net Change (30d)</div>
-              <div style={{fontSize:24,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:growthAbs>0?"var(--grn)":"var(--red)"}}>{growthAbs>0?"+":""}{fn(growthAbs)}</div>
-            </div>}
+            <div style={{background:"rgba(21,128,61,0.06)",border:"1px solid rgba(21,128,61,0.2)",borderRadius:10,padding:14,textAlign:"center"}}>
+              <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>Engaged Accounts</div>
+              <div style={{fontSize:24,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"var(--grn)"}}>{fn(accountsEngaged)}</div>
+              <div style={{fontSize:10,color:"var(--t3)",marginTop:2}}>{range}d total</div>
+            </div>
           </div>
         </div>}
 
@@ -2823,9 +2843,10 @@ function Dashboard(){
             <MC l="IG Rev/Session" v={igRps} fmt="$" bm={{h:[0.5,100],w:[0.25,0.5]}} sub="Benchmark: $0.50–$2.00" />
             <MC l="FB Rev/Session" v={fbRps} fmt="$" bm={{h:[0.5,100],w:[0.25,0.5]}} sub="Benchmark: $0.50–$2.00" />
             <MC l="Social % of DTC" v={socialRevPct} fmt="%" bm={{h:[3,100],w:[1,3]}} sub="Benchmark: 3–8%" />
+            {followers>0&&<MC l="Rev/Follower" v={revPerFollower} fmt="$" bm={{h:[0.5,100],w:[0.25,0.5]}} sub="Monthly · BM: $0.50-$2.00" />}
           </div>
           <div style={{fontSize:11,color:"var(--t3)",lineHeight:1.6}}>
-            Revenue attributed via Shopify referrer tracking. Instagram drives higher revenue per session ({"$" + igRps.toFixed(2)}) vs Facebook ({"$" + fbRps.toFixed(2)}). Social accounts for {socialRevPct.toFixed(1)}% of DTC revenue (benchmark: 3-8% for organic social).
+            Revenue attributed via Shopify referrer tracking. Instagram drives higher revenue per session ({"$"+igRps.toFixed(2)}) vs Facebook ({"$"+fbRps.toFixed(2)}). Social accounts for {socialRevPct.toFixed(1)}% of DTC revenue (benchmark: 3-8%).{followers>0?" Revenue per follower: $"+revPerFollower.toFixed(2)+"/month (benchmark: $0.50-$2.00).":""}
           </div>
         </div>
 
