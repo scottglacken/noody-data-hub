@@ -1,390 +1,417 @@
-# Customer Nurture Playbook — Ecommerce Equation
-
-> **Source:** The Customer Nurture Playbook from the Ecommerce Equation program by Koby. Covers email marketing strategy, flows, campaigns, deliverability, segmentation, and retention.
-
----
-
-## 1. Email Marketing Overview
-
-Email is the highest-margin channel in ecommerce. Zero incremental ad cost means every dollar of email revenue directly improves MER and the equation.
-
-**North Star: Email should be 30% of TOTAL business revenue.**
-
-Not 30% of DTC. 30% of the entire business (including wholesale, international). This is the benchmark that separates brands that rely on ads from brands that own their customer relationship.
-
-### The Email Revenue Equation
-- More subscribers x better flows x more campaigns = more email revenue
-- Each component multiplies the others — a 20% improvement in each = 73% total improvement
+# Customer Nurture Playbook — Condensed Context
+Source: Ecommerce Equation / Jay Wright — 87 training modules on email, SMS, and customer lifecycle.
 
 ---
 
-## 2. The Three Pillars of Email
-
-Email success requires all three pillars working together:
+## The Three Pillars of Email Success
 
 ### Pillar 1: Growth (List Building)
-Growing your email list is the foundation. Without subscribers, flows and campaigns have no one to email.
-
-**Signup Form Targets:**
-- **3%+ submission rate** is the minimum target for your popup/signup form
-- **5-15%** is achievable with good design and incentive
-- **Best performers: 20%+** (rare, usually with strong incentive + micro-commitment)
-- **20% annual list churn** is normal — you must continuously add subscribers just to maintain list size
-
-**List Churn Math:**
-If you have 2,000 subscribers and 20% churn annually, you lose 400/year (33/month). You need 34+ new subscribers/month just to stay flat. To grow, you need significantly more.
+- Signup form target: **3-5% submission rate** (best performers hit 15-20%)
+- **20% annual list churn** is normal — must continuously add subscribers just to maintain list size
+- Fewer input fields = higher submission rate. **Max 3 fields** (email + 1-2 others)
+- Collect email + first name (for personalization) OR email + phone (for SMS)
+- Always have separate mobile and desktop form designs
 
 ### Pillar 2: Flows (Automated Revenue)
-Flows run 24/7 generating revenue on autopilot. They're the revenue floor — predictable, consistent, scalable without manual effort.
-
-**Flow revenue should be 60%+ of total email revenue.** If campaigns dominate, you're relying on manual effort instead of systems.
+- Flow revenue should be **60%+ of total email revenue**
+- Flows are the revenue floor — predictable, scalable without manual effort
+- If campaigns dominate revenue, you are relying on manual effort instead of systems
 
 ### Pillar 3: Campaigns (Manual Revenue Peaks)
-Campaigns are manually sent emails to segments of your list. They add revenue peaks on top of the flow baseline.
-
-**Minimum frequency: 2-3x per week to engaged subscribers.** Under-sending is more damaging than over-sending — engaged subscribers WANT to hear from you.
+- **Minimum 2-3x per week** to engaged subscribers
+- Under-sending is more damaging than over-sending — subscribers forget you, open rates drop
+- Campaign types rotation: Educational, Product, Social Proof, Promotional (max 1/week), Story/Brand, Seasonal
 
 ---
 
-## 3. Signup Form Optimization
+## Signup Form Strategy
 
-### Micro-Commitment Forms
-Instead of asking for the email immediately, start with a low-commitment question:
-- "What's your biggest skincare concern?" → then ask for email
-- "How old is your little one?" → then ask for email
-- This creates psychological commitment and typically increases submission rate by 3-4 percentage points
-- **70% hit rate** — 70% of people who engage with the first question complete the form
+### Incentive Types (Choose One)
+1. **Monetary discount** (10% off, $10 off) — best for competitive/price-sensitive markets, high first-purchase rate, but positions as discount brand
+2. **Giveaway** (1-in-5 win) — high signup rate, poor subscriber quality, good for fast list building
+3. **Gift with purchase** — maintains margins, high-quality subscribers, lower signup rate
+4. **Exclusive access / gated content** — maintains margins, highest-quality subscribers, lowest signup volume
+
+### Dollar vs Percentage Off Rule
+- Customers gravitate toward the **bigger number** regardless of actual value
+- High AOV ($150+): prefer dollar-off amount to protect margins (e.g., $10 off vs 10% off)
+- Low AOV: percentage-off can appear more generous
 
 ### Form Design Best Practices
-- **Timing:** Show after 5-8 seconds or 50% scroll (not immediately)
-- **Incentive:** Clear, specific value (10% off, free shipping, free guide)
-- **Design:** Match brand, large text, single CTA, mobile-optimized
-- **Copy:** Focus on benefit, not the ask ("Get your free eczema guide" not "Sign up for our newsletter")
-- **Exit intent:** Second chance popup when visitor moves to leave
-- **A/B test:** Test incentive type, timing, copy, design — never stop testing
+- Match brand colors, fonts, and identity — form is first brand interaction
+- **Incentive must be the headline** — don't bury it in body copy
+- Use high-quality imagery (lifestyle or hero product)
+- Strong CTA: avoid "Sign Up" or "Submit" — use "Unlock Your Code" / "Join the Team"
+- Add **Klaviyo teaser tab** — increases submission rate by 1.8x
+- Don't show to existing Klaviyo profiles (targeting setting)
 
-### Form Metrics to Track
-- Submission rate (views → submissions)
-- View rate (visitors → form views)
-- Effective rate (visitors → submissions)
+### Form Targeting Settings
+- Time delay: **8-15 seconds** after page load (never immediately)
+- Exit intent trigger as secondary rule
+- Re-display frequency: **14 days** after close
+- Device targeting: separate desktop-only and mobile-only forms
 
----
-
-## 4. Flow Architecture
-
-### Flow Priority Order
-Build and optimize flows in this exact order. Each flow builds on the previous:
-
-1. **Welcome Flow** — Highest priority, highest revenue potential
-2. **Abandoned Checkout** — Highest buying intent of abandonment flows
-3. **Browse Abandonment** — Lowest intent but high volume
-4. **Abandoned Cart** — Middle intent (added to cart but didn't checkout)
-5. **Post-Purchase** — Retention, cross-sell, review generation
-
-### Revenue Benchmarks by Flow
-| Flow | Revenue/Recipient Target | Role |
-|------|------------------------|------|
-| Welcome | $5.00+ per recipient | Convert subscribers to first-time buyers |
-| Abandoned Checkout | $3.00+ per recipient | Recover highest-intent abandonments |
-| Abandoned Cart | $3.00+ per recipient | Recover cart abandoners |
-| Browse Abandonment | $2.00+ per recipient | Re-engage product browsers |
-| Post-Purchase | $1.00+ per recipient | Drive repeat purchases |
+### Micro-Commitment Forms (Advanced)
+- Multi-step: Ask a question first ("What's your biggest skincare concern?") then ask for email
+- Increases submission rate by **3-4 percentage points** with ~70% completion on second step
+- Collects zero-party data for personalization
 
 ---
 
-## 5. Welcome Flow (Priority #1)
+## Flow Setup & Optimization
 
-The Welcome Flow is your highest-priority flow. It's the first impression after signup and has the highest open rates and revenue potential of any flow.
+### Priority Order
+Build and optimize in this exact sequence:
 
-### Structure
-| Email | Timing | Content | Goal |
-|-------|--------|---------|------|
-| 1 | Immediately | Deliver incentive (discount code), brand introduction | Get the click, deliver promise |
-| 2 | Day 1-2 | Brand story, founder story, why you exist | Build emotional connection |
-| 3 | Day 3-4 | Social proof, testimonials, before/after | Build trust and credibility |
-| 4 | Day 5-6 | Product education, how to use, best results | Remove purchase barriers |
-| 5 | Day 7-8 | Urgency/reminder, incentive expiring | Drive first purchase |
+### 1. Welcome Flow (Highest Revenue Potential)
+- **5-6 emails over 10-18 days**
+- Trigger: Added to list (from signup form)
+- Flow filter: Placed order zero times since starting flow (auto-exit on purchase)
+- **Email 1** (immediately, no delay): Deliver incentive + brand intro + category blocks. Keep simple.
+- **Email 2** (day 2): Address #1 purchase barrier (price justification, sizing guide, sustainability). Include discount reminder in preview text.
+- **Email 3** (day 5): Best sellers / product showcase with dynamic product feed. Discount reminder.
+- **Email 4** (day 8): Social proof / testimonials / reviews. Discount reminder.
+- **Email 5** (day 10-13): Offer expiring — urgency/countdown. "Last chance for 10% off"
+- **Email 6** (optional, day 15-18): Flash deal — **upgrade discount** (e.g., 10% to 20%) for 48 hours only. Only non-purchasers receive this.
+- Include discount reminder block in ALL mid-flow emails (top and bottom)
+- **Revenue target: $5+/recipient**
+- Time delays between emails: 2-3 days minimum
 
-### Key Principles
-- **Deliver the incentive immediately** — don't make them wait or hunt for it
-- **Set expectations** — tell them what emails to expect (frequency, content type)
-- **Brand story matters** — especially for mission-driven brands like Noody
-- **Don't just sell** — educate, build relationship, THEN sell
-- **Revenue target: $5+ per recipient**
+### 2. Abandoned Checkout Flow (Highest Buying Intent)
+- **3 emails** over 48-72 hours
+- Trigger: Started checkout (Klaviyo metric)
+- **Email 1** (1 hour): Simple reminder — "You left something behind." Show cart contents, checkout link.
+- **Email 2** (24 hours): Add social proof + reviews for the specific product
+- **Email 3** (48-72 hours): Incentive + urgency — limited-time discount or free shipping
+- Smart sending: exclude if already purchased
+- **Revenue target: $3+/recipient**
+- Advanced: Add SMS as fallback if email not opened (conditional split after 20 hours)
 
-### Noody Current Performance
-- Welcome Flow: $2.87K from 432 recipients = **$6.68/recipient** (exceeds $5.00 target)
+### 3. Abandoned Cart Flow (Medium Intent)
+- **3 emails** over 48-72 hours
+- Trigger: Added to cart, no checkout within 1 hour
+- **Email 1** (1 hour): Cart reminder with product image
+- **Email 2** (24 hours): Social proof + reviews
+- **Email 3** (48-72 hours): Incentive (discount/free shipping) + urgency
+- **Revenue target: $3+/recipient**
 
----
+### 4. Browse Abandonment Flow (Lowest Intent)
+- **3 emails** over 5-7 days
+- Trigger: Viewed product, no add-to-cart within 2 hours
+- Flow filter: Has not been in flow in last 30 days (prevent over-messaging)
+- **Don't be overly sales-pushy** — they didn't even add to cart
+- **Email 1** (2 hours): "Still thinking about [product]?" — education + value
+- **Email 2** (day 2-3): Social proof / reviews for that product category
+- **Email 3** (day 5-7): Related/complementary products
+- Ensure trigger is broad enough — if only capturing dozens, trigger is too narrow
+- **Revenue target: $2+/recipient**
 
-## 6. Abandonment Flows
+### 5. Post-Purchase Flow (Retention & Cross-sell)
+- **5 emails over 60 days**
+- Trigger: Order placed / fulfilled
+- **Email 1** (immediately): Thank you + order confirmation + what to expect
+- **Email 2** (day 3-5): Usage tips / how to get the most from your product
+- **Email 3** (day 14): Cross-sell based on purchase (complementary products)
+- **Email 4** (day 30): Review request (link to review platform)
+- **Email 5** (day 45-60): Replenishment reminder (for consumables) or new arrivals
+- Cross-sell paths should be specific: e.g., Calm Balm buyers -> Lotion Potion
+- **Revenue target: $1+/recipient**
 
-### Browse Abandonment
-**Trigger:** Product page view, no add-to-cart within 2 hours
-**Buying Intent:** Lowest of the three abandonment flows
+### 6. Sunset Flow (List Hygiene)
+- Trigger: No email engagement in 90-180 days
+- **3 emails** over 14-21 days
+- Purpose: Re-engage or suppress unengaged subscribers
+- **Email 1**: "We miss you" — compelling reason to re-engage
+- **Email 2**: Last chance offer or content highlight
+- **Email 3**: "We're removing you" — final warning with re-subscribe CTA
+- If no engagement after all 3: **suppress the profile** to protect deliverability
+- Critical for maintaining sender reputation and reducing Klaviyo costs
 
-**Key insight:** Don't be too sales-pushy. These people looked but didn't even add to cart — they need education, social proof, and value, not aggressive discounting.
-
-| Email | Timing | Content |
-|-------|--------|---------|
-| 1 | 2 hours | "Still thinking about [product]?" + product benefits, education |
-| 2 | 24 hours | Social proof, testimonials, reviews for that product |
-| 3 | 48 hours | Related products, "You might also like..." |
-
-**Revenue target: $2+ per recipient**
-
-### Abandoned Cart
-**Trigger:** Product added to cart, no checkout started within 1 hour
-**Buying Intent:** Medium — they liked it enough to add to cart
-
-| Email | Timing | Content |
-|-------|--------|---------|
-| 1 | 1 hour | Cart reminder with product image, "You left something behind" |
-| 2 | 24 hours | Social proof, reviews, address common objections |
-| 3 | 48-72 hours | Incentive (small discount or free shipping) + urgency |
-
-**Revenue target: $3+ per recipient**
-
-### Abandoned Checkout
-**Trigger:** Checkout started, no purchase within 1 hour
-**Buying Intent:** Highest — they entered their details, something stopped them
-
-This is your highest-intent abandonment flow. These people were ready to buy.
-
-| Email | Timing | Content |
-|-------|--------|---------|
-| 1 | 1 hour | Reminder — "Your order is almost complete" + cart contents |
-| 2 | 24 hours | Incentive — small discount or free shipping to push them over |
-| 3 | 48-72 hours | Final reminder — "Last chance" + incentive expiry |
-
-**3-email sequence: Reminder → Incentive → Final urgency**
-**Revenue target: $3+ per recipient**
-
-### Noody Current Performance
-- Abandoned Cart: $1.18K from 372 recipients = **$3.21/recipient** (meets $3.00 target)
-- Browse Abandonment: $198 from 36 recipients = $5.50/recipient (good per-recipient but **trigger too narrow** — only 36 recipients means the flow isn't capturing enough browsers)
-
----
-
-## 7. Post-Purchase Flow
-
-**Trigger:** Order confirmed
-**Goal:** Turn one-time buyers into repeat customers
-
-| Email | Timing | Content |
-|-------|--------|---------|
-| 1 | Immediately | Order confirmation + what to expect |
-| 2 | Day 3-5 | Product usage tips, how to get best results |
-| 3 | Day 10-14 | Cross-sell complementary products |
-| 4 | Day 21-28 | Review/testimonial request |
-| 5 | Day 45-60 | Replenishment reminder (if consumable product) |
-
-### Key Principles
-- Cross-sell based on what they bought (Calm Balm buyers → Lotion Potion)
-- Review requests drive social proof that feeds other flows and ads
-- Replenishment reminders create predictable repeat revenue
-- Revenue target: $1+ per recipient
-
-### Noody Current Performance
-- Order Confirmation: $185 from 711 recipients = $0.26/recipient (significant cross-sell opportunity being missed)
+### SMS in Flows (Advanced)
+- Use SMS as **fallback, not simultaneous** with email
+- Add conditional split: "Has opened email zero times" -> send SMS
+- Best placed in: Abandoned cart (20 hours after email), Welcome (final push)
+- Include checkout/cart URL as merge field in SMS
+- Keep SMS light-touch in flows — save heavy SMS for campaigns
 
 ---
 
-## 8. Campaign Strategy
+## Campaign Strategy
 
-### Frequency
-**Minimum: 2-3 campaigns per week to engaged subscribers.**
+### Sending Cadence
+- **Minimum 2-3 campaigns per week** to engaged segment
+- **Under-sending damages deliverability** — ISPs flag inconsistent senders
+- Weekly cadence example: Tuesday (educational), Thursday (product/promo), Saturday (story/social proof)
+- During sales: daily sends to engaged, 2x/day on launch + last chance days
 
-Under-sending is more damaging than over-sending:
-- Subscribers forget who you are
-- When you do email, open rates drop (they don't recognize you)
-- Deliverability suffers from inconsistent sending
-- Revenue from email stays low
+### Campaign Content Rotation
+- **Educational**: How-to, tips, ingredient spotlights, behind-the-scenes
+- **Product-focused**: Hero product, new arrivals, best sellers, bundles
+- **Social proof**: Customer reviews, UGC, testimonials, before/after
+- **Promotional**: Sale, discount, free shipping (max 1/week in BAU)
+- **Story/Brand**: Founder story, mission, team, community
+- **Seasonal**: Holidays, weather-driven, events
 
-### Campaign Types (Rotation)
-1. **Educational**: Ingredient spotlights, skincare tips, eczema management
-2. **Product-focused**: New launches, bestsellers, product stories
-3. **Social proof**: Customer testimonials, before/after, reviews
-4. **Promotional**: Sales, bundles, limited-time offers (use sparingly — max 1/week)
-5. **Story/Brand**: Behind the scenes, founder updates, company milestones
-6. **Seasonal**: Weather-related tips, holiday gifting guides
-
-### Subject Lines
-- **Under 50 characters** — longer subject lines get cut off on mobile
-- A/B test subject lines systematically (not randomly)
-- Test one variable at a time: length, emoji vs no emoji, question vs statement, personalization
-- Power words: "your", "new", "free", "exclusive", numbers, urgency words
-
-### Campaign Revenue Target
-- Revenue per campaign should increase over time
-- Track revenue per recipient (campaign revenue / recipients sent)
-- Benchmark: $0.05-0.15 per recipient per campaign
+### Revenue Benchmark
+- **$0.05-0.15 per recipient per campaign** (engaged segment)
 
 ---
 
-## 9. Segmentation Strategy
+## Email Design Best Practices
 
-Sending the right message to the right people is more important than sending more messages to everyone.
+### Design Rules
+- **Mobile-first**: 69%+ of traffic is mobile — design for phone screens first
+- One primary CTA per email (can repeat it multiple times)
+- CTA button: bold color, action-oriented text, above the fold AND at bottom
+- Hero image at top — lifestyle or product shot
+- Keep copy concise — scannable, not paragraphs
+- Use dynamic product feeds (best sellers, recently viewed) where possible
+- White space between sections for readability
+- Preview text is critical — craft it deliberately, don't let it auto-generate
 
-### Core Segments
-
-| Segment | Definition | Send Frequency | Content |
-|---------|-----------|---------------|---------|
-| **Engaged** | Opened or clicked in last 90 days | Every campaign (2-3x/week) | Everything |
-| **All Subscribers** | Everyone not suppressed | 1-2x/week max | Best content only |
-| **VIP** | Repeat purchasers (2+ orders) | 2-3x/week | Early access, exclusive offers |
-| **At-Risk** | No engagement 90-180 days | 1x/week | Re-engagement, win-back |
-| **Sunset** | No engagement 180+ days | Suppress | Remove from list to protect deliverability |
-
-### Segmentation Rules
-- **Never email the full list** for routine campaigns — email Engaged segment
-- **VIP customers** get early access to new products and sales
-- **At-Risk** subscribers get a re-engagement series before being sunset
-- **Sunset** unengaged subscribers after 180 days to protect deliverability
-
----
-
-## 10. Deliverability
-
-Deliverability is the foundation — if your emails don't reach the inbox, nothing else matters.
-
-### Authentication (Non-Negotiable)
-- **SPF** (Sender Policy Framework): Tells receiving servers which IPs can send on your behalf
-- **DKIM** (DomainKeys Identified Mail): Digital signature that verifies email wasn't altered
-- **DMARC** (Domain-based Message Authentication): Policy for handling failed SPF/DKIM checks
-- All three must be configured correctly. Check in Klaviyo under Settings → Domains.
-
-### Deliverability Best Practices
-1. **Sunset unengaged subscribers**: Remove people who haven't opened in 180+ days
-2. **Clean your list regularly**: Remove hard bounces, spam complainers, inactive addresses
-3. **Consistent sending**: Send regularly (not 0 emails for 2 weeks then 5 in one day)
-4. **Warm up new sending domains**: Start with small, engaged segments, gradually increase
-5. **Avoid spam triggers**: ALL CAPS, excessive punctuation!!!, "FREE", misleading subject lines
-6. **Monitor metrics**: Open rate, bounce rate, spam complaint rate
-
-### Deliverability Benchmarks
-| Metric | Excellent | Good | Warning | Critical |
-|--------|-----------|------|---------|----------|
-| Open Rate | >57% | >44% | 30-44% | <30% |
-| Click Rate | >1.12% | >0.86% | 0.5-0.86% | <0.5% |
-| Bounce Rate | <0.30% | <0.43% | 0.43-0.56% | >0.56% |
-| Spam Rate | <0.007% | <0.01% | 0.01-0.03% | >0.03% |
-| Unsub Rate | <0.20% | <0.29% | 0.29-0.38% | >0.38% |
-
-### Noody Current Deliverability
-- Open Rate: 62.3% (88th percentile — excellent)
-- Click Rate: 0.528% (26th percentile — needs significant work)
-- Bounce Rate: 0.126% (88th percentile — excellent)
-- Spam Complaint Rate: 0.019% (poor — 2.7x above 0.007% benchmark)
-- Unsubscribe Rate: 0.662% (poor — 2.3x above 0.29% median)
-- List Size: ~1,870 active subscribers
-
-### Noody Deliverability Diagnosis
-- **Opens are great** — subject lines are working, domain reputation is healthy
-- **Clicks are poor** — emails get opened but don't drive action. Needs stronger CTAs, clearer content-to-click path, more compelling offers
-- **Spam + Unsub are high** — some recipients don't want these emails. Likely cause: sending to too-broad segments, irrelevant content to some subscribers. Fix: tighten segmentation, send campaigns to Engaged segment only
+### Subject Line Framework
+- **Under 50 characters** — shorter = higher open rate on mobile
+- A/B test systematically: one variable at a time
+- Types that work: Curiosity, Benefit-driven, Urgency, Personalized ([First Name]), Question-based
+- Avoid: ALL CAPS, excessive punctuation (!!!), "FREE", misleading subjects
+- Preview text should complement (not repeat) the subject line
 
 ---
 
-## 11. A/B Testing Framework
+## Segmentation Strategy
 
-### What to Test (Priority Order)
-1. **Subject lines**: Biggest impact on open rates
-2. **Send time**: Morning vs afternoon vs evening
-3. **Content layout**: Single CTA vs multiple, long vs short
-4. **Incentive type**: % off vs $ off vs free shipping vs gift
-5. **Personalization**: Name in subject, product recommendations
+### Foundational Segments (Must-Have)
+| Segment | Definition | Send Frequency |
+|---------|-----------|---------------|
+| **Engaged (90-day)** | Opened/clicked email in last 90 days | Every campaign (2-3x/week) |
+| **Engaged (30-day)** | Opened/clicked in last 30 days | VIP treatment, highest frequency |
+| **All Subscribers** | Everyone not suppressed | 1-2x/week max, best content only |
+| **VIP / Repeat** | 2+ orders or high CLV | Early access, exclusive offers |
+| **At-Risk** | No engagement 90-180 days | 1x/week, re-engagement content |
+| **Sunset** | No engagement 180+ days | SUPPRESS — protect deliverability |
+| **Non-purchasers** | Subscribed but never ordered | Welcome offers, first-purchase incentives |
+| **Purchasers** | Placed 1+ orders | Cross-sell, replenishment, loyalty |
+
+### Golden Rule
+**Never email the full list for routine campaigns.** Send to the Engaged segment. This alone fixes spam and unsub rates.
+
+### Sale Period Segments
+- **VIP/Repeat**: Early access (1-2 days before general launch)
+- **Engaged 30-day**: Launch day, all sale emails
+- **Engaged 90-day**: Launch + key moments (mid-sale, last chance)
+- **All Subscribers**: Launch email only, last chance only
+- **Non-openers (from launch email)**: Re-send with different subject line 24 hours later
+
+---
+
+## A/B Testing Framework
+
+### What to Test (In Priority Order)
+1. **Subject lines** — biggest impact on open rates
+2. **Send time** — morning vs afternoon vs evening
+3. **Content type** — educational vs promotional vs social proof
+4. **CTA text/color** — impact on click rates
+5. **Offer type** — % off vs $ off vs free shipping vs GWP
+6. **Design** — image-heavy vs minimal vs plain text
 
 ### Testing Rules
-- Test ONE variable at a time
-- Minimum sample size: 1,000 recipients per variant (or 500 for small lists)
-- Run test for at least 4 hours before picking winner
-- Statistical significance matters — don't pick winners based on small differences
-- Document results and build a "what works for us" playbook
+- **One variable at a time** — otherwise you can't attribute results
+- Minimum sample size: 1,000+ recipients per variant
+- Test duration: 4-24 hours before selecting winner
+- Document results — build a playbook of what works for YOUR audience
+- Run tests monthly to continuously improve
 
 ---
 
-## 12. SMS Strategy
+## Deliverability
 
-### When to Add SMS
-- After email flows are optimized and generating consistent revenue
-- When list is large enough to justify the cost (SMS costs per message, email is essentially free)
-- Best for: flash sales, back-in-stock alerts, shipping notifications
+### Authentication (Non-Negotiable)
+- **SPF**, **DKIM**, **DMARC** must all be configured
+- Check in Klaviyo Settings -> Domains
+- Without these, emails land in spam regardless of content quality
+
+### Key Benchmarks
+| Metric | Good | Great | Danger |
+|--------|------|-------|--------|
+| Open Rate | 35-45% | 45%+ | <25% |
+| Click Rate | 0.8-1.5% | 1.5%+ | <0.5% |
+| Bounce Rate | <0.5% | <0.2% | >1% |
+| Spam Rate | <0.01% | <0.005% | >0.01% |
+| Unsub Rate | <0.3% | <0.15% | >0.5% |
+
+### Deliverability Best Practices
+- Sunset unengaged subscribers after 180 days (sunset flow)
+- Clean list regularly: remove hard bounces, spam complainers
+- Send consistently — not 0 for 2 weeks then 5 in a day
+- Warm up new sending domains gradually (start with engaged segment)
+- Monitor Google Postmaster Tools for domain reputation
+- Avoid spam triggers in content and subject lines
+
+---
+
+## Sale Strategy Framework (Grow, Nurture, Convert)
+
+### Pre-Sale Phase (2-4 weeks before)
+- **Grow**: Ramp up list building — sale-specific popup ("Get early access to our upcoming sale")
+- **Nurture**: Increase campaign frequency, tease upcoming sale, build anticipation
+- **Convert**: Early access for VIPs 1-2 days before public launch
+
+### Sale Sending Schedule
+- **Hype (pre-launch)**: 1-3 emails building anticipation. Tease the offer. Countdown.
+- **Launch day**: 2 emails — morning launch + evening reminder to non-openers
+- **Mid-sale**: Daily emails — new angles, product spotlights, social proof, best sellers, gift guides
+- **Last chance**: 2 emails on final day — morning "final hours" + evening "closing tonight"
+- **Post-sale**: Thank you email, transition back to BAU content
+
+### Sale Segmentation Strategy
+- VIPs -> every email
+- Engaged 30-day -> every email
+- Engaged 90-day -> launch, mid-sale highlights, last chance
+- Full list -> launch email only, last chance only
+- Non-openers -> re-send key emails with different subject lines
+
+---
+
+## SMS Strategy
+
+### SMS Philosophy
+- SMS is for **peak events and major moments** — not routine communication
+- 90-97% open rate within 2 minutes of sending
+- SMS builds your own channel — reduces dependency on paid ads
+- Best for: Sale launches, last chance, restocks, new releases, free shipping days
+
+### Building SMS List (4 Methods)
+1. **Checkout opt-in**: Shopify checkbox ("Text me with news and offers") — low opt-in rate (<1%) but fully compliant
+2. **Competitions**: Collect phone number as entry requirement — high volume
+3. **Two-step popup**: Email on step 1, phone on step 2 — **60-80% of email signups also leave phone number** (Klaviyo data)
+4. **Dedicated email to existing list**: "Join our SMS club" with incentive
 
 ### SMS Best Practices
-- Keep messages under 160 characters
-- Always include opt-out language
-- Don't over-send (1-4x/month max)
-- Use for time-sensitive offers only
-- Never use SMS for educational content — that's email's job
+- **Sender ID**: Use brand name (max 11 characters) — distinguishes from spam
+- **Preview text matters**: First line shows on lock screen — lead with key message, not "Hey [name]"
+- **Naked URL** preferred over shortened links — shortened links look spammy
+- **Keep under 160 characters** — longer = 2 messages = double cost
+- **Time of send**: 9AM-12PM or 4PM-7PM. Never before 8AM.
+- Use SMS sparingly: 1-4x per month for most brands. Only for genuinely important moments.
+- MMS (with image/GIF): 25c+ per send but much higher engagement — use for biggest events
+
+### SMS Campaign Types (When to Send)
+1. **Sale announcement** — primary reason. "BFCM Sale live now. Shop: [url]"
+2. **Last chance** — "Final hours. Sale ends midnight. [url]"
+3. **Restock** — "Best seller back in stock. [url]"
+4. **New release** — major collection drops only
+5. **Hype** — rare, only biggest events (BFCM, EOFY)
+6. **Community** — holiday wishes, thank you (non-commercial, builds goodwill)
+7. **Free shipping Friday** — low-commitment offer that drives 2x normal daily revenue
+
+### SMS in Flows
+- Add SMS as **fallback after email** (conditional split: "has not opened email")
+- Best in: Abandoned cart (20 hours after email), Welcome (final urgency push)
+- Include dynamic merge fields (checkout URL, product name)
+- Keep flow SMS to 1-2 messages max — light touch
 
 ---
 
-## 13. Sale Strategy
+## Zero Party Data (ZPD) in Flows
 
-### Types of Sales
-1. **Flash Sales**: 24-48 hours, create urgency, deep discount on select items
-2. **Seasonal Sales**: Aligned with calendar (BFCM, Boxing Day, EOFY)
-3. **Bundle Sales**: Create value through bundling, not discounting
-4. **VIP Early Access**: Give VIPs 24-hour head start on sales
-5. **Threshold Sales**: Spend $X to save $Y (drives AOV)
+### What is ZPD
+- Information customers **voluntarily share** that you couldn't know otherwise
+- Examples: skincare concerns, product preferences, skin type, purchase intent, gift vs self
+- Collected via: micro-commitment forms, quizzes, post-purchase surveys, preference centers
 
-### Sale Frequency
-- Max 1 sale per month (outside BFCM)
-- Too many sales train customers to wait for discounts
-- Bundle offers are better than straight discounts — they increase AOV while maintaining perceived value
+### Using ZPD in Flows
+- Welcome flow: Conditional splits based on signup form answers -> personalized product recommendations
+- Post-purchase: Different cross-sell paths based on what they bought or told you
+- Browse abandonment: Personalized messaging based on stated concerns
+- Must have in 2026 — ISPs reward engagement; personalization drives engagement
 
 ---
 
-## 14. BFCM Planning
+## Customer Lifecycle Stages
+
+### Stage 1: Prospect
+- On email list but hasn't purchased
+- Focus: Welcome flow, educational content, first-purchase incentive
+
+### Stage 2: First-Time Buyer
+- Made one purchase
+- Focus: Post-purchase flow, cross-sell, review request, replenishment
+
+### Stage 3: Repeat Customer
+- 2+ purchases
+- Focus: VIP treatment, loyalty program, early access, exclusive offers
+
+### Stage 4: Lapsed Customer
+- Previously purchased, now inactive (90-180+ days)
+- Focus: Win-back campaigns, re-engagement offers, sunset flow
+
+### Stage 5: Churned
+- 180+ days no engagement, no purchase
+- Action: Suppress from active sending to protect deliverability
+
+---
+
+## Reviewing & Improving Performance
+
+### Campaign Performance Review
+- Check weekly: open rate, click rate, revenue, unsub rate, spam rate
+- Compare against your own benchmarks (not just industry averages)
+- Low opens -> subject line problem or deliverability issue
+- Low clicks -> content/CTA problem (email opens but doesn't drive action)
+- High unsubs/spam -> wrong audience (segmentation) or irrelevant content
+
+### Flow Performance Review
+- Review monthly: revenue per recipient, conversion rate per email in flow
+- Identify drop-off points — where do people stop engaging?
+- Test subject lines and content within flows (A/B test in Klaviyo)
+- Add/remove emails based on performance data
+- Ensure flow filters are working (not sending to wrong people)
+
+### Improving Flow Performance
+- Test different time delays, swap content types, add/remove emails based on data
+- Add plain text emails as alternatives to designed emails
+- Refresh content every 3-6 months to prevent fatigue
+
+---
+
+## BFCM / Major Sale Playbook
 
 ### Timeline
-- **October**: Plan offers, build email sequences, test subject lines
-- **Early November**: Tease BFCM to VIP and Engaged segments
-- **BFCM Week**: Launch sequence — VIP early access (Thursday) → General launch (Friday) → Cyber Monday extended
-- **Post-BFCM**: Thank you flow, welcome new customers, don't go silent
+- **8-12 weeks out**: Plan offer, creative, sending schedule
+- **4-6 weeks out**: Build sale-specific signup form, ramp list building
+- **2-4 weeks out**: Build emails and flows, prepare segments
+- **1-2 weeks out**: Hype phase — teaser campaigns, early access signup
+- **Launch day**: Execute sending schedule, monitor performance live
+- **During sale**: Daily campaigns, multiple angles, segment-specific sends
+- **Final day**: Last chance urgency, countdown timers, 2x sends
+- **Post-sale**: Thank you, transition to BAU, debrief performance
 
-### BFCM Email Cadence
-- 3-5 emails during BFCM weekend (more than normal is expected and accepted)
-- Pre-event teaser: 1-2 emails in the week before
-- VIP early access: 24 hours before general launch
-- Launch day: 2 emails (morning launch + evening reminder)
-- Cyber Monday: 1-2 emails
-- Final chance: Last call email before sale ends
-
-### BFCM Segmentation
-- **VIP**: First access, best offers
-- **Engaged**: Standard access, standard offers
-- **At-Risk**: Re-engagement angle — "We haven't heard from you, here's our best deal of the year"
-- **All Subscribers**: Final broadcast only
+### BFCM Specific Tactics
+- Replace BAU popup with sale-specific early access form
+- Pause/update abandonment flows with sale messaging
+- Send broader than usual (all subscribers for launch + last chance)
+- SMS for launch + last chance. Re-send to non-openers with different subject lines.
+- Add countdown timers for urgency. Monitor deliverability closely.
 
 ---
 
-## 15. Noody Email Performance Summary
+## Key Benchmarks Summary
 
-### Flow Revenue (Feb 2026)
-| Flow | Revenue | Recipients | Rev/Recipient | vs Target |
-|------|---------|-----------|---------------|-----------|
-| Welcome Series | $2,870 | 432 | $6.68 | $5.00 target |
-| Abandoned Cart | $1,180 | 372 | $3.21 | $3.00 target |
-| Browse Abandonment | $198 | 36 | $5.50 | Low volume — trigger too narrow |
-| Order Confirmation | $185 | 711 | $0.26 | Cross-sell opportunity |
-
-### Key Issues
-1. **Click rate at 26th percentile** — emails open but don't drive clicks
-2. **Spam rate 2.7x benchmark** — too many recipients marking as spam
-3. **Unsub rate 2.3x median** — need tighter segmentation
-4. **Browse Abandonment trigger too narrow** — only 36 recipients (should be hundreds)
-5. **Post-purchase cross-sell underperforming** — $0.26/recipient vs $1.00 target
-6. **Campaign frequency likely too low** — need 2-3x/week minimum
-
-### Priority Actions
-1. Fix Browse Abandonment trigger to capture more browsers
-2. Build/improve Post-Purchase cross-sell flow
-3. Increase campaign frequency to 2-3x/week (to Engaged segment)
-4. Strengthen CTAs in all emails (fix click rate)
-5. Tighten campaign segmentation (fix spam + unsub rates)
-
----
-
-*Copyright Disclaimer: All contents are the property of Ecommerce Equation and protected by copyright law. Reproduced for internal reference only.*
+| Metric | Target | Notes |
+|--------|--------|-------|
+| Signup form submission rate | 3-5% | 15-20% with strong offer |
+| Welcome flow rev/recipient | $5+ | Highest-value flow |
+| Abandoned checkout rev/recipient | $3+ | Highest buying intent |
+| Abandoned cart rev/recipient | $3+ | Medium intent |
+| Browse abandonment rev/recipient | $2+ | Lowest intent, needs volume |
+| Post-purchase rev/recipient | $1+ | Cross-sell opportunity |
+| Campaign rev/recipient | $0.05-0.15 | Engaged segment |
+| Flow vs campaign revenue split | 60/40 flows | Flows should dominate |
+| Email as % of total revenue | 30%+ | North star metric |
+| Campaign open rate | 45%+ | Engaged segment |
+| Campaign click rate | 1.5%+ | Content quality indicator |
+| Spam complaint rate | <0.01% | Danger above 0.01% |
+| Unsub rate | <0.3% | Danger above 0.5% |
+| SMS open rate | 90-97% | Within 2 minutes |
+| Two-step form SMS capture | 60-80% | Of email signups |
+| Annual list churn | ~20% | Normal — must replenish |

@@ -497,7 +497,74 @@ A structured approach to improving the equation:
 
 ---
 
-## 22. Noody Skincare — Current Metrics
+## 22. The Pre-loaded Year
+
+Annual revenue planning framework that turns yearly targets into monthly/weekly/daily numbers:
+
+1. **Set annual revenue target** based on Growth Rate Calculator
+2. **Allocate by month** — weight toward peak seasons (e.g., BFCM, gift-giving, seasonal demand)
+3. **Derive daily targets** — monthly target / trading days = daily revenue needed
+4. **Reverse-engineer inputs** — daily revenue / RPV = sessions needed; sessions x CPC = ad spend required
+5. **Build the revenue bridge**: Current baseline + growth from scaling + growth from new channels + seasonal peaks = annual target
+
+### Half-Time Review (6-Month Check)
+At 6 months, compare actual vs plan:
+- If ahead: lock in gains, raise targets modestly
+- If behind: diagnose which constraint held you back, recalibrate the back half
+- Adjust seasonal weighting for remaining months
+
+---
+
+## 23. The 7 Figure Sale
+
+Engineering peak revenue events that compound year-over-year:
+
+### Planning (8+ Weeks Before)
+- Define the offer (discount, bundle, GWP, early access)
+- Set a specific revenue target for the sale
+- Build email/SMS hype sequence (teasers 2-3 weeks out)
+- Pre-build all creative assets and landing pages
+- Stock check — ensure hero products can handle 3-5x normal volume
+
+### Execution Framework
+- **Day 1-2:** Early access (VIPs, email list)
+- **Day 3-5:** General access with urgency triggers (countdown, stock levels)
+- **Day 6-7:** Last chance messaging, final push
+
+### Post-Sale
+- Analyze: revenue, new vs returning, AOV, MER during sale, email contribution
+- Document what worked for next year's playbook
+- Year-over-year comparison is the real scorecard
+
+---
+
+## 24. Ultimate Marketing Calendar
+
+Year-ahead promotional planning to avoid reactive, last-minute campaigns:
+
+- Map ALL key dates: BFCM, Valentine's, Mother's Day, seasonal transitions, brand milestones
+- Assign campaign type to each: sale, launch, content push, collab, GWP
+- Plan creative production 4-6 weeks ahead of each event
+- Coordinate across channels: email, Meta, Google, organic social, website
+- Leave buffer weeks between campaigns (avoid promo fatigue)
+- Review quarterly and adjust based on performance data
+
+---
+
+## 25. Win the Week
+
+Quarterly planning cascade that turns big goals into daily action:
+
+1. **Quarterly Rocks** (from 6-Week Game Plan): 1-2 major projects that address your current constraint
+2. **Weekly Task List**: Break quarterly rocks into weekly deliverables (8-12 hrs/week on growth work)
+3. **Daily Calendar Blocking**: Schedule growth tasks in your peak energy hours, batch admin/comms
+4. **Weekly Review**: Friday check — did you complete your growth tasks? What slipped? What's next week's focus?
+
+The principle: most founders spend 80% of time on operations and 20% on growth. Flip that ratio for the 8-12 hrs/week of dedicated growth work.
+
+---
+
+## 26. Noody Skincare — Current Metrics
 
 ### Revenue & Channel Split (Last 3 Months)
 - Total Revenue: ~$196K (3 months)

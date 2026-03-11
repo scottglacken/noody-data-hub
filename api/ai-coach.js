@@ -33,7 +33,7 @@ var KB_SECTIONS = {
   // Equation/Diagnose/Scale tabs
   equation: { ee: [2, 5, 6, 7, 8, 9, 10, 20], nurture: [] },
   diagnose: { ee: [2, 5, 6, 7, 8, 9, 10, 20], nurture: [] },
-  scale: { ee: [2, 5, 6, 7, 8, 9, 10, 20], nurture: [] },
+  scale: { ee: [2, 5, 6, 7, 8, 9, 10, 13, 20], nurture: [] },
   // Klaviyo tab
   klaviyo: { ee: [15], nurture: [2, 4, 5, 6, 7, 8, 9, 10] },
   // Meta Ads tab
@@ -46,7 +46,7 @@ var KB_SECTIONS = {
   daily: { ee: [10, 11, 19], nurture: [] },
   // Xero tab
   xero: { ee: [2, 5, 6, 7, 8, 12], nurture: [] },
-  // Social tab — no KB sections, context doc only
+  // Social tab
   social: { ee: [], nurture: [] },
   // Insights tab
   insights: { ee: [5, 6, 20, 21], nurture: [] },
@@ -54,35 +54,64 @@ var KB_SECTIONS = {
   website: { ee: [10, 11, 19], nurture: [] },
 };
 
-// Map context keys to their context doc filenames
+// Map context keys to their primary + secondary context doc filenames
 var CONTEXT_FILES = {
-  shopify: 'shopify.md',
-  klaviyo: 'klaviyo.md',
-  meta: 'meta-ads.md',
-  google: 'google-ads.md',
-  gads: 'google-ads.md',
-  xero: 'xero.md',
-  social: 'social.md',
-  website: 'website.md',
+  shopify: ['shopify.md'],
+  klaviyo: ['klaviyo.md', 'customer-nurture-playbook.md'],
+  meta: ['meta-ads.md', 'creative-strategy.md'],
+  google: ['google-ads.md'],
+  gads: ['google-ads.md'],
+  xero: ['xero.md', 'demand-planning.md'],
+  social: ['social.md', 'tiktok-ads.md'],
+  website: ['website.md', 'high-conversion-website.md', 'offer-strategy.md'],
+  equation: ['ecommerce-equation-kb.md', 'demand-planning.md'],
+  diagnose: ['ecommerce-equation-kb.md', 'scale-challenge.md'],
+  scale: ['scale-challenge.md', 'ecommerce-equation-kb.md'],
+  insights: ['ecommerce-equation-kb.md', 'promotional-rhythm.md', 'sale-strategy.md', 'brand-strategy.md'],
+  daily: ['shopify.md'],
 };
+
+// Rough token estimate (~4 chars per token)
+function estimateTokens(text) { return Math.ceil((text || '').length / 4); }
 
 // Build the knowledge context for a given tab
 function buildKnowledgeContext(contextKeys) {
   var parts = [];
+  var totalTokens = 0;
+  var TOKEN_BUDGET = 8000; // max context tokens to keep prompts reasonable
 
-  // 1. Load tab-specific context docs
+  // 1. Load tab-specific context docs (primary first, then secondary)
   var loadedFiles = {};
   if (contextKeys && contextKeys.length) {
     for (var i = 0; i < contextKeys.length; i++) {
       var key = contextKeys[i];
-      var file = CONTEXT_FILES[key];
-      if (file && !loadedFiles[file]) {
+      var files = CONTEXT_FILES[key];
+      if (!files) continue;
+      // Support legacy single string format
+      if (typeof files === 'string') files = [files];
+      for (var j = 0; j < files.length; j++) {
+        var file = files[j];
+        if (loadedFiles[file]) continue;
         var content = readContext(file);
         if (content) {
+          var tokens = estimateTokens(content);
+          if (totalTokens + tokens > TOKEN_BUDGET) {
+            // Truncate to fit budget
+            var remaining = (TOKEN_BUDGET - totalTokens) * 4;
+            if (remaining > 200) {
+              content = content.substring(0, remaining) + '\n\n[... truncated for length]';
+              parts.push('=== ' + file.toUpperCase().replace('.MD', '') + ' CONTEXT ===\n' + content);
+            }
+            totalTokens = TOKEN_BUDGET;
+            loadedFiles[file] = true;
+            break;
+          }
           parts.push('=== ' + file.toUpperCase().replace('.MD', '') + ' CONTEXT ===\n' + content);
           loadedFiles[file] = true;
+          totalTokens += tokens;
         }
       }
+      if (totalTokens >= TOKEN_BUDGET) break;
     }
   }
 
@@ -104,21 +133,33 @@ function buildKnowledgeContext(contextKeys) {
     }
   }
 
-  // 3. Extract relevant EE sections
-  if (eeSections.length) {
+  // 3. Extract relevant EE sections (if not already loaded as full file)
+  if (eeSections.length && !loadedFiles['ecommerce-equation-kb.md'] && totalTokens < TOKEN_BUDGET) {
     var eeContent = readContext('ecommerce-equation-kb.md');
     var extracted = extractSections(eeContent, eeSections);
     if (extracted) {
+      var tokens = estimateTokens(extracted);
+      if (totalTokens + tokens > TOKEN_BUDGET) {
+        var remaining = (TOKEN_BUDGET - totalTokens) * 4;
+        if (remaining > 200) extracted = extracted.substring(0, remaining) + '\n\n[... truncated]';
+      }
       parts.push('=== ECOMMERCE EQUATION FRAMEWORK (Relevant Sections) ===\n' + extracted);
+      totalTokens += estimateTokens(extracted);
     }
   }
 
-  // 4. Extract relevant Customer Nurture sections
-  if (nurtureSections.length) {
+  // 4. Extract relevant Customer Nurture sections (if not already loaded as full file)
+  if (nurtureSections.length && !loadedFiles['customer-nurture-playbook.md'] && totalTokens < TOKEN_BUDGET) {
     var nurtureContent = readContext('customer-nurture-playbook.md');
     var extracted = extractSections(nurtureContent, nurtureSections);
     if (extracted) {
+      var tokens = estimateTokens(extracted);
+      if (totalTokens + tokens > TOKEN_BUDGET) {
+        var remaining = (TOKEN_BUDGET - totalTokens) * 4;
+        if (remaining > 200) extracted = extracted.substring(0, remaining) + '\n\n[... truncated]';
+      }
       parts.push('=== CUSTOMER NURTURE PLAYBOOK (Relevant Sections) ===\n' + extracted);
+      totalTokens += estimateTokens(extracted);
     }
   }
 
