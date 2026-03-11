@@ -1210,7 +1210,48 @@ function Dashboard(){
         const _p="Analyse this "+_days+"-day DTC daily performance ("+agg.startDate+" to "+agg.endDate+"). Give 3-5 sentences with specific numbers, period-over-period insight, and one actionable recommendation.\n\nRevenue: $"+fn(agg.tr)+" ("+f$(agg.avgRev)+"/day)\nOrders: "+fn(agg.to)+" ("+fn(agg.avgOrd)+"/day)\nAOV: $"+Math.round(agg.aov)+" (target: $"+TARGETS.aov+")\nMeta Spend: $"+fn(agg.tms)+"\nMER: "+(agg.mer?agg.mer.toFixed(1):"—")+"%\nROAS: "+(agg.metaROAS?agg.metaROAS.toFixed(2):"—")+"x\nEmail %: "+_ep+(prevAgg?"\n\nPrior period: Rev $"+fn(prevAgg.tr)+", AOV $"+Math.round(prevAgg.aov)+", MER "+(prevAgg.mer?prevAgg.mer.toFixed(1):"—")+"%":"");
         setTimeout(()=>fetchTabAi("daily",_p,["shopify","klaviyo"]),0);
       }
+      // Daily equation calculations
+      const _dtcRatio=xeroChannels.dtc/xeroChannels.rev;
+      const _estTotal=_dtcRatio>0?agg.tr/_dtcRatio:agg.tr;
+      const _varRatio=XERO_VAR/XERO.rev;
+      const _fixMo=XERO_FIXED/XERO.months;
+      const _estVar=_estTotal*_varRatio;
+      const _estFixed=_fixMo*(_days/30);
+      const _estProfit=_estTotal-_estVar-agg.tms-_estFixed;
+      const _estProfPct=_estTotal>0?_estProfit/_estTotal*100:0;
+      const _eqColor=_estProfPct>=10?"var(--grn)":_estProfPct>=5?"var(--ylw)":"var(--red)";
+      // Marketing level
+      const _mktLevel=agg.tms>0&&agg.metaROAS>=2?"Level 3":agg.tms>0?"Level 2":"Level 1";
+      const _mktDesc=_mktLevel==="Level 3"?"Offensive Marketing":"Level 2"===_mktLevel?"Defensive Marketing":"Passive Marketing";
+      const _mktCol=_mktLevel==="Level 3"?"var(--grn)":_mktLevel==="Level 2"?"var(--ylw)":"var(--red)";
       return <>
+
+      {/* THE DAILY EQUATION */}
+      <div style={{background:"linear-gradient(135deg,"+_eqColor+"08,"+_eqColor+"03)",border:"1px solid "+_eqColor+"33",borderRadius:14,padding:14,marginBottom:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+          <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em",fontWeight:600}}>The Daily Equation — {_days}d Est.</div>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <span style={{width:8,height:8,borderRadius:4,background:_mktCol,display:"inline-block"}}/>
+            <span style={{fontSize:10,color:_mktCol,fontWeight:600}}>{_mktDesc}</span>
+          </div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",fontFamily:"'JetBrains Mono',monospace",fontSize:14}}>
+          <span style={{fontWeight:700,color:"#1d4ed8"}}>{f$(_estTotal)}</span>
+          <span style={{color:"var(--t3)"}}>-</span>
+          <span style={{color:"var(--red)"}}>{f$(_estVar)}</span>
+          <span style={{fontSize:10,color:"var(--t3)"}}>VC</span>
+          <span style={{color:"var(--t3)"}}>-</span>
+          <span style={{color:"#7c3aed"}}>{f$(agg.tms)}</span>
+          <span style={{fontSize:10,color:"var(--t3)"}}>MC</span>
+          <span style={{color:"var(--t3)"}}>-</span>
+          <span style={{color:"var(--ylw)"}}>{f$(_estFixed)}</span>
+          <span style={{fontSize:10,color:"var(--t3)"}}>FC</span>
+          <span style={{color:"var(--t3)"}}>=</span>
+          <span style={{fontWeight:800,color:_eqColor,fontSize:18}}>{f$(_estProfit)}</span>
+          <span style={{fontSize:11,color:_eqColor,fontWeight:600}}>({fp(_estProfPct)})</span>
+        </div>
+      </div>
+
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <h2 style={{fontSize:20,fontWeight:700,margin:0}}>Last {agg.d} Days</h2>
         <div style={{fontSize:11,color:"var(--t3)"}}>{f$(agg.avgRev)}/day · {fn(agg.avgOrd)} orders/day</div>
@@ -2095,6 +2136,51 @@ function Dashboard(){
       return <>
         <div style={{fontSize:20,fontWeight:700,marginBottom:16}}>Klaviyo Email Performance</div>
 
+        {/* EE Email Revenue Score */}
+        {(()=>{
+          const epScore=emailPct>=35?"A":emailPct>=30?"B":emailPct>=20?"C":emailPct>=10?"D":"F";
+          const epColor=epScore==="A"||epScore==="B"?"var(--grn)":epScore==="C"?"var(--ylw)":"var(--red)";
+          const epBg=epScore==="A"||epScore==="B"?"rgba(21,128,61,0.06)":epScore==="C"?"rgba(146,64,14,0.06)":"rgba(185,28,28,0.06)";
+          const fiveFlowsActive=flows.filter(function(f){
+            const nm=f.name.toLowerCase();
+            return f.status==="live"&&["welcome","abandoned cart","browse abandon","post-purchase","order confirm"].some(function(k){return nm.indexOf(k)!==-1;});
+          });
+          const flowMissing=5-fiveFlowsActive.length;
+          const campPerWeek=sentCamps.length/(klavDetailDays/7);
+          return <div style={{background:epBg,border:"2px solid "+epColor+"44",borderRadius:14,padding:16,marginBottom:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div>
+                <div style={{fontSize:14,fontWeight:700,color:"var(--t1)"}}>EE Email Revenue Score</div>
+                <div style={{fontSize:11,color:"var(--t3)"}}>Target: 30-40% of total DTC revenue from email</div>
+              </div>
+              <div style={{textAlign:"center"}}>
+                <div style={{fontSize:36,fontWeight:800,color:epColor,fontFamily:"'JetBrains Mono',monospace",lineHeight:1}}>{epScore}</div>
+                <div style={{fontSize:10,color:epColor,fontWeight:600}}>{fp(emailPct)} of DTC</div>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+              <div style={{padding:8,background:"rgba(255,255,255,0.5)",borderRadius:8,textAlign:"center"}}>
+                <div style={{fontSize:18,fontWeight:700,color:fiveFlowsActive.length>=4?"var(--grn)":"var(--red)",fontFamily:"'JetBrains Mono',monospace"}}>{fiveFlowsActive.length}/5</div>
+                <div style={{fontSize:10,color:"var(--t3)"}}>Key Flows Active</div>
+                {flowMissing>0&&<div style={{fontSize:9,color:"var(--red)",marginTop:2}}>{flowMissing} flow{flowMissing>1?"s":""} missing</div>}
+              </div>
+              <div style={{padding:8,background:"rgba(255,255,255,0.5)",borderRadius:8,textAlign:"center"}}>
+                <div style={{fontSize:18,fontWeight:700,color:campPerWeek>=2?"var(--grn)":campPerWeek>=1?"var(--ylw)":"var(--red)",fontFamily:"'JetBrains Mono',monospace"}}>{campPerWeek.toFixed(1)}</div>
+                <div style={{fontSize:10,color:"var(--t3)"}}>Campaigns/Week</div>
+                <div style={{fontSize:9,color:"var(--t3)"}}>Target: 2-3/week</div>
+              </div>
+              <div style={{padding:8,background:"rgba(255,255,255,0.5)",borderRadius:8,textAlign:"center"}}>
+                <div style={{fontSize:18,fontWeight:700,color:flowPct>=60?"var(--grn)":flowPct>=40?"var(--ylw)":"var(--red)",fontFamily:"'JetBrains Mono',monospace"}}>{flowPct.toFixed(0)}%</div>
+                <div style={{fontSize:10,color:"var(--t3)"}}>Flow Revenue Share</div>
+                <div style={{fontSize:9,color:"var(--t3)"}}>Target: 60%+ from flows</div>
+              </div>
+            </div>
+            {emailPct<30&&<div style={{marginTop:8,fontSize:11,color:"var(--red)",padding:"6px 10px",background:"rgba(185,28,28,0.05)",borderRadius:6}}>
+              Email below 30% target. EE priority: {flowMissing>0?"Activate missing flows first, then ":""}increase signup form conversion to 3%+, segment campaigns by engagement.
+            </div>}
+          </div>;
+        })()}
+
         <AiSummary text={aiText} loading={aiLoad} label="Email Performance Analysis" />
 
         {/* THREE PILLARS HEALTH */}
@@ -2443,6 +2529,44 @@ function Dashboard(){
             <span style={{fontSize:16,color:"var(--t3)"}}>=</span>
             <span style={{padding:"4px 12px",background:"rgba(0,0,0,0.04)",borderRadius:6,fontWeight:600}}>RPV {"$"+rpv.toFixed(2)}</span>
           </div>
+        </div>}
+
+        {/* Conversion Catalyst Ranking */}
+        {!loading&&ga&&totalSessions>0&&<div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:14}}>
+          <div style={{fontSize:14,fontWeight:700,color:"var(--t1)",marginBottom:4}}>Conversion Catalyst \u2014 594 Brand Benchmark</div>
+          <div style={{fontSize:11,color:"var(--t3)",marginBottom:12}}>Where Noody sits against ecommerce benchmarks from the EE program</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            {[
+              {metric:"Conversion Rate",val:cr,unit:"%",levels:[{l:"Bottom 25%",v:1.0},{l:"Median",v:1.8},{l:"75th",v:2.8},{l:"Top quartile",v:3.2},{l:"Top 10%",v:4.5}]},
+              {metric:"RPV",val:rpv,unit:"$",levels:[{l:"Below avg",v:1.5},{l:"Average",v:2.0},{l:"Good",v:2.5},{l:"Very Good",v:4.0},{l:"Excellent",v:6.0}]},
+            ].map(function(m,mi){
+              let rank="Bottom 25%",rankCol="var(--red)";
+              const lvls=m.levels;
+              for(let i=lvls.length-1;i>=0;i--){if(m.val>=lvls[i].v){rank=lvls[i].l;break;}}
+              if(m.val>=lvls[lvls.length-1].v)rankCol="var(--grn)";
+              else if(m.val>=lvls[Math.floor(lvls.length/2)].v)rankCol="var(--grn)";
+              else if(m.val>=lvls[1].v)rankCol="var(--ylw)";
+              return <div key={mi} style={{padding:12,background:"rgba(0,0,0,0.02)",borderRadius:10}}>
+                <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>{m.metric}</div>
+                <div style={{fontSize:20,fontWeight:700,color:rankCol,fontFamily:"'JetBrains Mono',monospace",marginBottom:4}}>{m.unit==="$"?"$"+m.val.toFixed(2):m.val.toFixed(2)+"%"}</div>
+                <div style={{fontSize:12,color:rankCol,fontWeight:600,marginBottom:8}}>{rank}</div>
+                <div style={{position:"relative",height:6,background:"var(--bdr)",borderRadius:3,marginBottom:4}}>
+                  <div style={{position:"absolute",height:"100%",width:Math.min(m.val/lvls[lvls.length-1].v*100,100)+"%",background:rankCol,borderRadius:3}}/>
+                  {lvls.map(function(lv,li){return <div key={li} style={{position:"absolute",left:Math.min(lv.v/lvls[lvls.length-1].v*100,100)+"%",top:-2,width:1,height:10,background:"var(--t3)"}} title={lv.l+": "+lv.v}/>;})};
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"var(--t3)"}}>
+                  <span>{lvls[0].l}</span>
+                  <span>{lvls[lvls.length-1].l}</span>
+                </div>
+              </div>;
+            })}
+          </div>
+          {cr<2.5&&<div style={{marginTop:10,fontSize:11,color:"var(--ylw)",padding:"8px 10px",background:"rgba(146,64,14,0.05)",borderRadius:6}}>
+            CR is the bigger lever. EE research shows every 1-second speed improvement lifts CR ~7%. Mobile-first design, social proof above fold, and simplified checkout are highest-ROI fixes.
+          </div>}
+          {cr>=2.5&&aov<70&&<div style={{marginTop:10,fontSize:11,color:"var(--ylw)",padding:"8px 10px",background:"rgba(146,64,14,0.05)",borderRadius:6}}>
+            CR is solid \u2014 AOV is the lever. Test bundles at 15% discount, free shipping threshold at {"$"+Math.round(aov*1.15)}, and post-purchase upsells to lift RPV.
+          </div>}
         </div>}
 
         {/* Section 2: Key Metrics Grid */}
