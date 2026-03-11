@@ -729,6 +729,85 @@ function Dashboard(){
         </div>;
       })()}
 
+      {/* EE SITUATION PLAYBOOK */}
+      {(()=>{
+        const fixedMo=fixedMonthly;
+        const annualRev=dtcRev/days*365;
+        const annualRevStr=f$(annualRev);
+        const fcAtCurrent=fixedMo*12/annualRev*100;
+        const target700k=fixedMo*12/700000*100;
+        const target1m=fixedMo*12/1000000*100;
+        const playbooks={
+          1:{title:"PROFITABLE \u2014 SCALE IT",rx:"SCALE revenue aggressively. Your equation is healthy \u2014 run Scale Challenges, test new creative, expand geos.",
+             math:"Fixed costs are "+fp(estFcPct)+" of revenue \u2014 already leveraged. Every extra dollar of revenue drops almost entirely to profit.",
+             dont:"Don't over-optimize what's already working. Don't cut ad spend to 'protect' margins. Offense, not defense.",
+             path:["SCALE: Increase daily ad spend 20% per week","EXPAND: Test new audiences and geos","COMPOUND: Launch creative testing campaign"]},
+          2:{title:"PROFITABLE \u2014 CONSTRAINED",rx:"SCALE revenue to leverage fixed costs. Fixed costs don't change when you double revenue. Your "+f$(fixedMo)+"/mo fixed costs are "+fp(estFcPct)+" at current revenue but would be "+fp(target700k)+" at $700K/yr.",
+             math:"At current run rate ("+annualRevStr+"/yr), fixed costs = "+fp(fcAtCurrent)+". At $700K/yr = "+fp(target700k)+". At $1M/yr = "+fp(target1m)+". That difference IS the profit.",
+             dont:"Don't cut fixed costs that enable growth (people, systems). Don't pause ads \u2014 you need MORE throughput, not less.",
+             path:["CALIBRATE: Verify MER < 35% and creative is working","SCALE: Push daily spend up 20%/week via Scale Challenge","LEVERAGE: Watch FC% drop as revenue grows"]},
+          3:{title:"BREAKEVEN ZONE",rx:"FIX efficiency before scaling. Near breakeven means scaling will amplify losses, not create profit.",
+             math:"Profit margin is only "+fp(estProfPct)+". Variable costs at "+fp(estVarPct)+" and MER at "+fp(estDtcMer)+" leave almost nothing after fixed costs of "+fp(estFcPct)+".",
+             dont:"Don't scale. Don't increase ad spend. Don't launch new products. Fix the equation first.",
+             path:["CALIBRATE: Get MER under 35% \u2014 kill underperforming ads","FIX: Increase RPV (conversion rate \u00D7 AOV)","THEN SCALE: Only after 2 weeks of consistent profitability"]},
+          5:{title:"UNPROFITABLE \u2014 FIX IN ORDER",rx:"Multiple ratios out of range. Fix in this exact order: (1) MER first \u2014 get marketing efficient (2) VC second \u2014 fix margins (3) Then scale.",
+             math:"Losing "+f$(Math.abs(estProfit))+" over "+days+"d. MER "+fp(estDtcMer)+", Variable "+fp(estVarPct)+", Fixed "+fp(estFcPct)+". Must fix unit economics before anything else.",
+             dont:"Don't scale. Don't increase spend. Don't launch new channels. Fix the equation.",
+             path:["STOP: Cut all unprofitable ad campaigns immediately","FIX MER: Target < 35% \u2014 diagnose CPP vs RPV","FIX VC: Renegotiate suppliers, optimize packaging"]}
+        };
+        const pb=playbooks[situation]||playbooks[2];
+        return <div style={{background:"var(--card)",border:"2px solid "+sitColor+"44",borderRadius:14,padding:18,marginBottom:16}}>
+          <div style={{fontSize:11,color:sitColor,textTransform:"uppercase",letterSpacing:"0.06em",fontWeight:700,marginBottom:8}}>EE Situation {situation} Playbook</div>
+          <div style={{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:8}}>{pb.title}</div>
+          <div style={{fontSize:13,color:"var(--t2)",lineHeight:1.7,marginBottom:12,padding:12,background:sitColor+"08",borderRadius:8,borderLeft:"3px solid "+sitColor}}>{pb.rx}</div>
+          <div style={{fontSize:12,color:"var(--t2)",lineHeight:1.6,marginBottom:12,padding:10,background:"rgba(0,0,0,0.02)",borderRadius:8,fontFamily:"'JetBrains Mono',monospace"}}>
+            <span style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase"}}>The Math</span><br/>{pb.math}
+          </div>
+          <div style={{fontSize:12,color:"var(--red)",marginBottom:14,padding:8,background:"rgba(185,28,28,0.05)",borderRadius:6}}>
+            <strong>Do NOT:</strong> {pb.dont}
+          </div>
+          <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6,fontWeight:600}}>Prescribed Pathway</div>
+          {pb.path.map((step,i)=><div key={i} style={{display:"flex",gap:8,alignItems:"flex-start",marginBottom:6}}>
+            <span style={{fontSize:11,fontWeight:700,color:sitColor,fontFamily:"'JetBrains Mono',monospace",minWidth:18}}>{i+1}.</span>
+            <span style={{fontSize:12,color:"var(--t2)"}}>{step}</span>
+          </div>)}
+        </div>;
+      })()}
+
+      {/* THREE CONSTRAINTS */}
+      {(()=>{
+        // Efficiency: based on variable costs + MER
+        const effScore=(estVarPct<=40&&estDtcMer<=35)?"green":(estVarPct<=50&&estDtcMer<=45)?"yellow":"red";
+        const effLabel=effScore==="green"?"Healthy \u2014 costs and MER in range":effScore==="yellow"?"Warning \u2014 "+(estDtcMer>35?"MER "+fp(estDtcMer)+" above 35%":"")+(estVarPct>40?(estDtcMer>35?" + ":"")+"VC "+fp(estVarPct)+" above 40%":""):"Critical \u2014 fix before scaling";
+        // Throughput: based on traffic + conversion rate
+        const cr=agg.cr;const sess=agg.useSess;
+        const tpScore=(cr!=null&&cr>=2.5)?"green":(cr!=null&&cr>=1.5)?"yellow":cr!=null?"red":"yellow";
+        const tpLabel=cr!=null?(tpScore==="green"?"Healthy \u2014 CR "+fp(cr)+" above 2.5%":tpScore==="yellow"?"Warning \u2014 CR "+fp(cr)+" (target >2.5%)":"Critical \u2014 CR "+fp(cr)+" below 1.5%"):"Needs session data \u2014 paste in Daily tab";
+        // Determine primary bottleneck
+        const scores={bandwidth:1,efficiency:effScore==="red"?3:effScore==="yellow"?2:0,throughput:tpScore==="red"?3:tpScore==="yellow"?2:0};
+        const primary=scores.efficiency>=scores.throughput?(scores.efficiency>0?"efficiency":"none"):(scores.throughput>0?"throughput":"none");
+        const cColors={green:"var(--grn)",yellow:"var(--ylw)",red:"var(--red)"};
+        const cBg={green:"rgba(21,128,61,0.06)",yellow:"rgba(146,64,14,0.06)",red:"rgba(185,28,28,0.06)"};
+        return <div style={{marginBottom:16}}>
+          <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:8,fontWeight:600}}>Three Constraints Analysis</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+            {[
+              {name:"Bandwidth",icon:"\uD83D\uDCE6",score:"yellow",label:"Stock capacity \u2014 needs assessment",detail:"Can you fulfill 2x orders without breaking?",isPrimary:false},
+              {name:"Efficiency",icon:"\u2699\uFE0F",score:effScore,label:effLabel,detail:"MER "+fp(estDtcMer)+" \u00B7 VC "+fp(estVarPct)+" \u00B7 CM "+fp(contribMargin),isPrimary:primary==="efficiency"},
+              {name:"Throughput",icon:"\uD83D\uDE80",score:tpScore,label:tpLabel,detail:sess?"Sessions: "+fn(sess)+" \u00B7 CR: "+(cr!=null?fp(cr):"\u2014"):"No session data",isPrimary:primary==="throughput"},
+            ].map((c,i)=><div key={i} style={{background:cBg[c.score],border:c.isPrimary?"2px solid "+cColors[c.score]:"1px solid "+cColors[c.score]+"33",borderRadius:12,padding:14,position:"relative"}}>
+              {c.isPrimary&&<div style={{position:"absolute",top:-8,left:12,background:cColors[c.score],color:"#fff",fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:4,textTransform:"uppercase"}}>Primary Bottleneck</div>}
+              <div style={{fontSize:20,marginBottom:4}}>{c.icon}</div>
+              <div style={{fontSize:13,fontWeight:700,color:"var(--t1)",marginBottom:4}}>{c.name}</div>
+              <div style={{width:8,height:8,borderRadius:4,background:cColors[c.score],display:"inline-block",marginRight:6,verticalAlign:"middle"}}/>
+              <span style={{fontSize:11,color:cColors[c.score],fontWeight:600}}>{c.score==="green"?"Healthy":c.score==="yellow"?"Warning":"Critical"}</span>
+              <div style={{fontSize:11,color:"var(--t2)",marginTop:6,lineHeight:1.5}}>{c.label}</div>
+              <div style={{fontSize:10,color:"var(--t3)",marginTop:4,fontFamily:"'JetBrains Mono',monospace"}}>{c.detail}</div>
+            </div>)}
+          </div>
+        </div>;
+      })()}
+
       {/* TARGETS PROGRESS */}
       <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:16,marginBottom:16}}>
         <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:10}}>Monthly Targets (prorated from {days}d)</div>
@@ -1037,6 +1116,64 @@ function Dashboard(){
           </ComposedChart>
         </ResponsiveContainer>
       </div>}
+
+      {/* 6-WEEK GAME PLAN */}
+      {(()=>{
+        const emailLow=emailPct!=null&&emailPct<30;
+        const merHigh=estDtcMer>35;
+        const crLow=agg.cr!=null&&agg.cr<2.5;
+        const fcHigh=estFcPct>20;
+        const w12=situation>=3?[
+          merHigh?"Kill all campaigns with CPA > 2x target. Consolidate to top 3 performers.":"Audit campaign structure \u2014 ensure CBO with broad targeting.",
+          emailLow?"Activate all 5 fundamental Klaviyo flows (Welcome, Abandoned Cart, Browse Abandon, Post-Purchase, Win-back). Ensure signup form >3% conversion.":"Review email flow performance \u2014 A/B test subject lines on top 2 flows.",
+          crLow?"Product page overhaul: hero image, benefits copy, reviews above fold, trust badges.":"Test free shipping threshold $10 above current AOV ("+f$(aov)+") to lift AOV.",
+        ]:[
+          "Verify equation is stable for 7+ consecutive days. Document current baseline metrics.",
+          emailLow?"Activate all 5 fundamental Klaviyo flows. Signup form target: >3% conversion.":"Email flows healthy. A/B test subject lines and send times for 10% lift.",
+          "Audit Meta campaign structure: 1 CBO broad, 1 retargeting, clean creative naming.",
+        ];
+        const w34=situation>=3?[
+          "Increase RPV: test bundles at 15% discount, add post-purchase upsell, optimize checkout.",
+          "Renegotiate top 3 supplier costs. Target 5% COGS reduction.",
+          emailLow?"Launch 2x/week campaign sends. Segment by engagement. Target 30% email rev.":"Segment campaigns by engagement tier. Test send frequency increase.",
+        ]:[
+          "Launch 3 new creative concepts per week. Test UGC vs studio vs founder content.",
+          "Set up Scale Challenge calculator. Model revenue at 1.5x and 2x current.",
+          crLow?"Conversion rate sprint: simplify checkout, add urgency, test popup offers.":"Test new audience expansion: lookalikes, interest stacks, geo expansion.",
+        ];
+        const w56=situation>=3?[
+          "If MER < 35% for 2 consecutive weeks, begin cautious scale test (+20%/week).",
+          "Review all metrics vs Week 1 baseline. Document improvements.",
+          "Set new targets based on improved equation. Plan next 6-week cycle.",
+        ]:[
+          "Execute Scale Challenge: increase daily spend 20%/week. Target "+f$(Math.round(metaSpend/days*1.5))+"/day.",
+          fcHigh?"Monitor FC% as revenue scales \u2014 expect drop from "+fp(estFcPct)+" toward "+fp(estFcPct*0.7)+".":"Maintain FC discipline. Lock in new revenue baseline.",
+          "Evaluate Scale Challenge results. If profitable, lock in new baseline and plan next challenge.",
+        ];
+        const weekColor=["#2563eb","#7c3aed","#0e7490"];
+        const weekLabel=["CALIBRATE","QUICK WINS","SCALE TEST"];
+        const weekData=[[w12,"Weeks 1\u20132"],[w34,"Weeks 3\u20134"],[w56,"Weeks 5\u20136"]];
+        return <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:20}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+            <span style={{fontSize:18}}>🗓️</span>
+            <div>
+              <div style={{fontSize:14,fontWeight:700,color:"var(--t1)"}}>6-Week Game Plan</div>
+              <div style={{fontSize:11,color:"var(--t3)"}}>Pre-populated from EE framework based on S{situation} diagnosis</div>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+            {weekData.map(([actions,label],wi)=><div key={wi} style={{borderRadius:10,border:"1px solid "+weekColor[wi]+"33",overflow:"hidden"}}>
+              <div style={{background:weekColor[wi],color:"#fff",padding:"8px 12px",fontSize:11,fontWeight:700,letterSpacing:"0.05em"}}>{label} \u2014 {weekLabel[wi]}</div>
+              <div style={{padding:12}}>
+                {actions.map((a,ai)=><div key={ai} style={{display:"flex",gap:6,marginBottom:ai<actions.length-1?8:0,alignItems:"flex-start"}}>
+                  <span style={{color:weekColor[wi],fontSize:12,lineHeight:"18px",flexShrink:0}}>&#x25CF;</span>
+                  <span style={{fontSize:11,color:"var(--t2)",lineHeight:"16px"}}>{a}</span>
+                </div>)}
+              </div>
+            </div>)}
+          </div>
+        </div>;
+      })()}
 
       {/* AI COACH */}
       <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:20}}>
