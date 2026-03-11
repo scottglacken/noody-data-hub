@@ -1344,6 +1344,57 @@ function Dashboard(){
         </div>
       </div>}
 
+      {/* Creative Health Score (EE Framework) */}
+      {cData.length>0&&(()=>{
+        var heroes=0,sidekicks=0,villains=0;
+        cData.forEach(function(c){
+          var fun=_funnel(c.campaign_name);var fb=_freqBench[fun]||_freqBench.TOF;
+          var avgCpp=agg.cpp||30;
+          var roasOk=c.roas&&c.roas>=TARGETS.metaROAS;
+          var cppOk=c.cpp&&c.cpp<=avgCpp*1.5;
+          var freqOk=c.frequency&&c.frequency<=fb.w;
+          var score=(roasOk?1:0)+(cppOk?1:0)+(freqOk?1:0);
+          if(score>=3)heroes++;else if(score>=2)sidekicks++;else if(c.purchases>0)villains++;
+        });
+        var total=heroes+sidekicks+villains;
+        if(total===0)return null;
+        var healthPct=total>0?Math.round((heroes*100+sidekicks*50)/total):0;
+        var healthCol=healthPct>=70?"#15803d":healthPct>=40?"#92400e":"#b91c1c";
+        var healthLabel=healthPct>=70?"Healthy":"Needs Work";
+        return <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div>
+              <div style={{fontSize:14,fontWeight:600}}>Creative Health Score</div>
+              <div style={{fontSize:11,color:"var(--t3)"}}>EE Hero/Sidekick/Villain classification</div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontSize:24,fontWeight:800,color:healthCol,fontFamily:"'JetBrains Mono',monospace"}}>{healthPct}</div>
+              <div style={{fontSize:10,color:healthCol,fontWeight:600}}>{healthLabel}</div>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+            <div style={{textAlign:"center",padding:10,background:"rgba(21,128,61,0.06)",borderRadius:8}}>
+              <div style={{fontSize:20,fontWeight:700,color:"#15803d"}}>{heroes}</div>
+              <div style={{fontSize:11,color:"#15803d",fontWeight:600}}>Heroes</div>
+              <div style={{fontSize:10,color:"var(--t3)"}}>Scale these</div>
+            </div>
+            <div style={{textAlign:"center",padding:10,background:"rgba(146,64,14,0.06)",borderRadius:8}}>
+              <div style={{fontSize:20,fontWeight:700,color:"#92400e"}}>{sidekicks}</div>
+              <div style={{fontSize:11,color:"#92400e",fontWeight:600}}>Sidekicks</div>
+              <div style={{fontSize:10,color:"var(--t3)"}}>Monitor</div>
+            </div>
+            <div style={{textAlign:"center",padding:10,background:"rgba(185,28,28,0.06)",borderRadius:8}}>
+              <div style={{fontSize:20,fontWeight:700,color:"#b91c1c"}}>{villains}</div>
+              <div style={{fontSize:11,color:"#b91c1c",fontWeight:600}}>Villains</div>
+              <div style={{fontSize:10,color:"var(--t3)"}}>Kill or refresh</div>
+            </div>
+          </div>
+          {villains>heroes&&<div style={{marginTop:8,fontSize:11,color:"#b91c1c",padding:"6px 10px",background:"rgba(185,28,28,0.06)",borderRadius:6}}>
+            More villains than heroes — creative refresh urgently needed. EE recommends 3-5 new creatives in testing at all times.
+          </div>}
+        </div>;
+      })()}
+
       {/* Funnel Spend Allocation */}
       {cData.length>0&&totalCSpend>0&&<div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:14}}>
         <div style={{fontSize:14,fontWeight:600,marginBottom:4}}>Funnel Spend Allocation</div>
@@ -1608,12 +1659,45 @@ function Dashboard(){
         </table>
       </div>
 
-      <div style={{background:"rgba(16,185,129,0.06)",border:"1px solid rgba(16,185,129,0.2)",borderRadius:14,padding:18}}>
+      <div style={{background:"rgba(16,185,129,0.06)",border:"1px solid rgba(16,185,129,0.2)",borderRadius:14,padding:18,marginBottom:14}}>
         <div style={{fontSize:12,fontWeight:700,color:"#15803d",marginBottom:6}}>💪 THE MATH</div>
         <div style={{fontSize:12,color:"var(--t1)",lineHeight:1.7}}>
           At $2M revenue with the same cost structure plus ~$42K additional fixed costs for capacity, profit jumps from {f$(annProfit)} to {f$(t2Prof)}{annProfit>0&&t2Prof>annProfit?<> — a <strong style={{color:"#15803d"}}>{profGrowthPct}% increase</strong> in profit on {revGrowthPct}% revenue growth</>:null}. Fixed cost leverage is the #1 profit unlock. But the growth engine needs to be DTC + wholesale together — not just pouring more into Meta{estDtcMer>35?" at "+fp(estDtcMer)+" DTC MER":""}.
         </div>
       </div>
+
+      {/* Scale Readiness Checklist from EE Scale Challenge */}
+      {(()=>{
+        const merOk=estDtcMer<=35;
+        const varOk=varRatio*100<=40;
+        const profOk=annProfPct>=10;
+        const fcHigh=estFixed/(estTotalRev||1)*100>20;
+        const checks=[
+          {ok:profOk,l:"Equation profitable (>10% net profit)",v:fp(annProfPct)},
+          {ok:merOk,l:"DTC MER within 20-35% range",v:fp(estDtcMer)},
+          {ok:varOk,l:"Variable costs within 25-40% target",v:fp(varRatio*100)},
+          {ok:fcHigh||profOk,l:"Fixed cost leverage available (FC >20% = scale opportunity)",v:fp(estFixed/(estTotalRev||1)*100)},
+          {ok:emailPct!=null&&emailPct>=15,l:"Email contributing to revenue (>15%)",v:emailPct!=null?fp(emailPct):"No data"},
+          {ok:roas>=2.0,l:"Meta ROAS sustainable (>2.0x)",v:roas?roas.toFixed(2)+"x":"No data"},
+        ];
+        const passCount=checks.filter(function(c){return c.ok;}).length;
+        const allPass=passCount>=5;
+        const glColor=allPass?"#15803d":passCount>=3?"#92400e":"#b91c1c";
+        const glLabel=allPass?"GREEN LIGHT — Ready to Scale":passCount>=3?"YELLOW — Fix "+String(6-passCount)+" item"+(6-passCount>1?"s":"")+" first":"RED — Equation needs work before scaling";
+        return <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:14}}>
+          <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:10}}>EE Scale Readiness Checklist</div>
+          <div style={{fontSize:14,fontWeight:700,color:glColor,marginBottom:12}}>{allPass?"🟢":passCount>=3?"🟡":"🔴"} {glLabel}</div>
+          {checks.map(function(c,i){return <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:i<checks.length-1?"1px solid var(--bg)":"none"}}>
+            <span style={{fontSize:14}}>{c.ok?"✅":"❌"}</span>
+            <span style={{fontSize:12,color:c.ok?"var(--t1)":"var(--t3)",flex:1}}>{c.l}</span>
+            <span style={{fontSize:12,fontWeight:600,color:c.ok?"#15803d":"#b91c1c",fontFamily:"'JetBrains Mono',monospace"}}>{c.v}</span>
+          </div>;})}
+          <div style={{fontSize:11,color:"var(--t3)",marginTop:10,lineHeight:1.5}}>
+            {allPass?"Scale test: increase ad spend 15-30% for 14 days. Monitor MER daily. If ratios hold, lock in new baseline.":"Fix the equation before scaling. Scaling an unprofitable equation just makes losses bigger, faster."}
+            {" "}EE recommends 15% budget increments, not 2x overnight. Hold each new level for 10-14 days.
+          </div>
+        </div>;
+      })()}
     </>;
     })()}
 
@@ -2400,6 +2484,20 @@ function Dashboard(){
               </div>;
             })}
           </div>
+          {(()=>{
+            const desk=ga.devices.find(function(d){return d.device==="desktop";});
+            const mob=ga.devices.find(function(d){return d.device==="mobile";});
+            if(desk&&mob&&desk.conversionRate>0){
+              const ratio=mob.conversionRate/desk.conversionRate*100;
+              const ratioCol=ratio>=60?"var(--grn)":ratio>=40?"var(--ylw)":"var(--red)";
+              return <div style={{marginTop:10,padding:"8px 12px",background:ratio<40?"rgba(185,28,28,0.06)":ratio<60?"rgba(146,64,14,0.06)":"rgba(21,128,61,0.06)",borderRadius:8,fontSize:11,display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontWeight:700,color:ratioCol,fontFamily:"'JetBrains Mono',monospace"}}>{ratio.toFixed(0)}%</span>
+                <span style={{color:"var(--t2)"}}>Mobile CR as % of Desktop CR</span>
+                <span style={{color:"var(--t3)",marginLeft:"auto"}}>EE benchmark: 40-60% is healthy{ratio<40?" — mobile UX needs urgent work":""}</span>
+              </div>;
+            }
+            return null;
+          })()}
         </div>}
 
         {/* Section 6b: UX Health (Clarity) */}
