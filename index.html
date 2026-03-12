@@ -276,8 +276,12 @@ function Dashboard(){
     const key=tabName+"_"+rangeKey;
     if(tabAi[key])return;
     setTabAiLoading(p=>({...p,[tabName]:true}));
+    // Add data accuracy preamble to all AI prompts
+    const vr=Math.round(XERO_VAR/XERO.rev*1000)/10;
+    const fd=Math.round(XERO_FIXED/XERO.months/30);
+    const preamble="DATA NOTE: All profit figures use the full EE equation (R - VC - MC - FC). Variable costs are "+vr+"% of revenue (Xero 12-month ratio: COGS+shipping+packaging+fees). Fixed costs are ~$"+fd+"/day ($"+Math.round(XERO_FIXED/XERO.months)+"/mo). Never report profit as just Revenue minus Ad Spend.\n\n";
     try{
-      const r=await fetch("/api/ai-coach",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":"noody-eq-2026-datahub"},body:JSON.stringify({prompt,context:ctxKeys,max_tokens:maxTok||800})});
+      const r=await fetch("/api/ai-coach",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":"noody-eq-2026-datahub"},body:JSON.stringify({prompt:preamble+prompt,context:ctxKeys,max_tokens:maxTok||800})});
       const d=await r.json();
       setTabAi(p=>({...p,[key]:d.text||"No response"}));
       setTabAiRange(p=>({...p,[tabName]:rangeKey}));
@@ -798,7 +802,7 @@ function Dashboard(){
               <div><div style={{fontSize:9,color:"var(--t3)"}}>Revenue</div><div style={{fontSize:15,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{f$(ydRev)}</div></div>
               <div><div style={{fontSize:9,color:"var(--t3)"}}>Ad Spend</div><div style={{fontSize:15,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"var(--t2)"}}>{f$(ydSpend)}</div></div>
               <div><div style={{fontSize:9,color:"var(--t3)"}}>Orders</div><div style={{fontSize:15,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{ydOrders||0}</div></div>
-              <div><div style={{fontSize:9,color:"var(--t3)"}}>Est. Profit</div><div style={{fontSize:15,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:ydVerdictCol}}>{f$(ydEstProfit)}</div></div>
+              <div><div style={{fontSize:9,color:"var(--t3)"}}>Est. Profit</div><div style={{fontSize:15,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:ydVerdictCol,cursor:"help",borderBottom:"1px dotted var(--t3)"}} title={ydEstTotal?"Rev "+f$(ydEstTotal)+" - VC "+f$(ydEstTotal*varRatio)+" - Ads "+f$(ydSpend)+" - Fixed "+f$(fixedDaily)+"/day = "+f$(ydEstProfit):""}>{f$(ydEstProfit)}</div></div>
             </div>
             <div style={{fontSize:12,fontWeight:600,color:ydVerdictCol}}>{ydVerdict}</div>
           </div>}
@@ -858,6 +862,14 @@ function Dashboard(){
       // LTGP:CAC estimate (LTV ~ 2x AOV for skincare, gross margin from contrib margin, CAC = ad spend / new customers)
       const estLTV=aov*2;const estGrossMargin=contribMarginDTC/100;const estCAC=orders>0?metaSpend/orders:0;
       const ltgpCac=estCAC>0?(estLTV*estGrossMargin)/estCAC:null;
+
+      // Breakeven calculation: fixedDaily / (1 - varRatio - merRatio)
+      const totalAds=metaSpend+googleAdSpend;
+      const merRatio=dtcRev>0?totalAds/dtcRev:0;
+      const beMargin=1-varRatio-merRatio;
+      const fixedDaily=fixedMonthly/30;
+      const breakevenDaily=beMargin>0?fixedDaily/beMargin:null;
+      const breakevenMonthly=breakevenDaily?breakevenDaily*30:null;
 
       // Previous period
       const pDtcRev=p?p.tr:null;
@@ -1131,11 +1143,11 @@ function Dashboard(){
         <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:20,marginBottom:14}}>
           <div style={{fontSize:10,color:"var(--t3)",marginBottom:12,textTransform:"uppercase",letterSpacing:"0.06em"}}>Revenue \u2212 Variable \u2212 Marketing \u2212 Fixed = Profit</div>
           {[
-            {l:"Est. Total Revenue",v:estTotalRev,p:100,bm:null,note:"DTC "+f$(dtcRev)+" + Est. WH "+f$(estWholesale)+" + Intl "+f$(estIntl)},
-            {l:"Variable Costs",v:estVariable,p:estVarPct,bm:BM.vc,target:"< 40%",note:fp(varRatio*100)+" from Xero"},
-            {l:"Marketing",v:metaSpend,p:estMerPct,bm:BM.mer,target:"< 35%",note:"Meta + Google actual spend"},
-            {l:"Fixed Costs",v:estFixed,p:estFcPct,bm:BM.fc,target:"< 20%",note:f$(fixedMonthly)+"/mo \u00D7 "+(days/30).toFixed(1)+" mo"},
-            {l:"NET PROFIT",v:estProfit,p:estProfPct,bm:BM.np,target:"> 10%"},
+            {l:"Est. Total Revenue",v:estTotalRev,p:100,bm:null,note:"DTC "+f$(dtcRev)+" + Est. WH "+f$(estWholesale)+" + Intl "+f$(estIntl),tip:"Shopify DTC "+f$(dtcRev)+" / "+fp(dtcRatio*100)+" DTC ratio = "+f$(estTotalRev)},
+            {l:"Variable Costs",v:estVariable,p:estVarPct,bm:BM.vc,target:"< 40%",note:fp(varRatio*100)+" from Xero",tip:f$(estTotalRev)+" x "+fp(varRatio*100)+" (COGS+shipping+packaging+fees) = "+f$(estVariable)},
+            {l:"Marketing",v:totalAds,p:estTotalRev>0?totalAds/estTotalRev*100:0,bm:BM.mer,target:"< 35%",note:"Meta "+f$(metaSpend)+(googleAdSpend>0?" + Google "+f$(googleAdSpend):""),tip:"Meta "+f$(metaSpend)+(googleAdSpend>0?" + Google Ads "+f$(googleAdSpend):"")+" = "+f$(totalAds)},
+            {l:"Fixed Costs",v:estFixed,p:estFcPct,bm:BM.fc,target:"< 20%",note:f$(fixedMonthly)+"/mo \u00D7 "+(days/30).toFixed(1)+" mo",tip:f$(XERO_FIXED)+"/yr / 12 = "+f$(fixedMonthly)+"/mo x "+(days/30).toFixed(1)+" mo = "+f$(estFixed)},
+            {l:"NET PROFIT",v:estProfit,p:estProfPct,bm:BM.np,target:"> 10%",tip:f$(estTotalRev)+" - "+f$(estVariable)+" - "+f$(totalAds)+" - "+f$(estFixed)+" = "+f$(estProfit)+" ("+fp(estProfPct)+")"},
           ].map((r,i)=>{
             const s=r.bm?gs(r.p,r.bm):"n";
             const col=i===0?"#1d4ed8":SC[s];
@@ -1146,7 +1158,7 @@ function Dashboard(){
                   {i>0&&i<4?"\u2212 ":i===4?"= ":""}{r.l}
                   {r.target&&<span style={{fontSize:9,color:"var(--t3)",marginLeft:6}}>{r.target}</span>}
                 </span>
-                <span style={{fontSize:13,fontWeight:700,color:col,fontFamily:"'JetBrains Mono',monospace"}}>{f$(r.v)} ({fp(r.p)})</span>
+                <span style={{fontSize:13,fontWeight:700,color:col,fontFamily:"'JetBrains Mono',monospace",cursor:r.tip?"help":"default",borderBottom:r.tip?"1px dotted var(--t3)":"none"}} title={r.tip||""}>{f$(r.v)} ({fp(r.p)})</span>
               </div>
               <div style={{height:i===4?6:4,background:"var(--bdr)",borderRadius:2,overflow:"hidden"}}>
                 <div style={{height:"100%",width:Math.min(Math.abs(r.p),100)+"%",background:bg+"88",borderRadius:2}}/>
@@ -1156,6 +1168,18 @@ function Dashboard(){
           })}
         </div>
       </div>
+
+      {/* BREAKEVEN LINE */}
+      {breakevenDaily&&<div style={{background:"rgba(146,64,14,0.06)",border:"1px solid rgba(146,64,14,0.2)",borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+        <div>
+          <span style={{fontSize:12,fontWeight:600,color:"#92400e"}}>Breakeven: {f$(breakevenDaily)}/day ({f$(breakevenMonthly)}/mo)</span>
+          <span style={{fontSize:10,color:"var(--t3)",marginLeft:8}} title={"Fixed "+f$(fixedDaily)+"/day / (1 - "+fp(varRatio*100)+" VC% - "+fp(merRatio*100)+" MER%) = "+f$(breakevenDaily)+"/day"} style={{cursor:"help",borderBottom:"1px dotted var(--t3)",fontSize:10,color:"var(--t3)",marginLeft:8}}>How?</span>
+        </div>
+        <div style={{fontSize:11,color:"var(--t2)"}}>
+          Avg daily rev: <span style={{fontWeight:600,color:dtcRev/days>=breakevenDaily?"var(--grn)":"var(--red)",fontFamily:"'JetBrains Mono',monospace"}}>{f$(dtcRev/days)}</span>
+          <span style={{fontSize:10,color:"var(--t3)",marginLeft:4}}>{dtcRev/days>=breakevenDaily?"above":"below"} breakeven</span>
+        </div>
+      </div>}
 
       {/* EE BENCHMARK SCORECARD — Traffic Light Grid */}
       <div style={{marginBottom:20}}>
@@ -4532,7 +4556,9 @@ function Dashboard(){
         try{
           const ctx=TAB_CTX[tab]||["equation"];
           const dataSnap=buildDataSnapshot();
-          const sysPrompt="You are Ask Noody AI — the conversational EE Coach for Noody Skincare. You have access to live business data below. Answer questions using SPECIFIC NUMBERS from the data. Reference EE benchmarks. Be conversational but precise. Keep answers to 3-5 paragraphs max.\n\nLIVE DATA:\n"+dataSnap;
+          const vr=Math.round(XERO_VAR/XERO.rev*1000)/10;
+          const fd=Math.round(XERO_FIXED/XERO.months/30);
+          const sysPrompt="You are Ask Noody AI — the conversational EE Coach for Noody Skincare. You have access to live business data below. Answer questions using SPECIFIC NUMBERS from the data. Reference EE benchmarks. Be conversational but precise. Keep answers to 3-5 paragraphs max.\n\nIMPORTANT: All profit uses the full EE equation (R - VC - MC - FC). Variable costs = "+vr+"% of revenue (Xero ratio). Fixed costs = ~$"+fd+"/day. Never quote profit as Revenue minus Ad Spend only.\n\nLIVE DATA:\n"+dataSnap;
           const r=await fetch("/api/ai-coach",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":"noody-eq-2026-datahub"},body:JSON.stringify({prompt:msg.trim(),system:sysPrompt,context:ctx,max_tokens:1200})});
           const d=await r.json();
           const aiMsg={role:"ai",text:d.text||"Sorry, I couldn't generate a response.",ts:Date.now()};
