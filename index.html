@@ -120,10 +120,10 @@ function MC({l,v,fmt,bm,sub,big,v7d,inv,bmLabel,showBm}){
   </div>;
 }
 
-function Tab({a,onClick,children,icon,accent}){
+function Tab({a,onClick,children,icon,accent,badge}){
   const bg=a?(accent||"var(--acc)"):"transparent";
   const bdr=a?(accent||"var(--acc)"):"var(--bdr)";
-  return <button onClick={onClick} style={{padding:"11px 20px",background:bg,border:"1px solid "+bdr,borderRadius:10,color:a?"#fff":"var(--t2)",fontSize:14,fontWeight:a?600:500,cursor:"pointer",display:"flex",alignItems:"center",gap:7,minHeight:44,whiteSpace:"nowrap",transition:"all .2s"}}><span style={{fontSize:17}}>{icon}</span>{children}</button>;
+  return <button onClick={onClick} style={{padding:"11px 20px",background:bg,border:"1px solid "+bdr,borderRadius:10,color:a?"#fff":"var(--t2)",fontSize:14,fontWeight:a?600:500,cursor:"pointer",display:"flex",alignItems:"center",gap:7,minHeight:44,whiteSpace:"nowrap",transition:"all .2s",position:"relative"}}><span style={{fontSize:17}}>{icon}</span>{children}{badge>0&&<span style={{position:"absolute",top:-4,right:-4,background:"var(--red)",color:"#fff",fontSize:9,fontWeight:700,borderRadius:99,minWidth:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px"}}>{badge}</span>}</button>;
 }
 
 function AiSummary({text,loading,label}){
@@ -565,6 +565,41 @@ function Dashboard(){
     return computeAgg(weekData);
   },[mergedD,sessData]);
 
+  // ═══════════ TOOL 8: ANOMALY DETECTION (persistent) ═══════════
+  const anomalies=useMemo(()=>{
+    if(!agg||!mergedD.length)return [];
+    const alerts=[];
+    const yDate=new Date(Date.now()-86400000).toISOString().split("T")[0];
+    const yd=mergedD.find(d=>d.d===yDate);
+    if(yd&&mergedD.length>2){
+      const d2=mergedD.find(d=>d.d===new Date(Date.now()-2*86400000).toISOString().split("T")[0]);
+      if(d2&&d2.r>100&&yd.r<d2.r*0.7) alerts.push({icon:"🔴",msg:"Revenue dropped "+Math.round((1-yd.r/d2.r)*100)+"% vs day before",tab:"daily",sev:3});
+      if(yd.ms>0&&yd.mp>0){
+        const ydCpp=yd.ms/yd.mp;
+        const last7=mergedD.filter(d=>d.d>=new Date(Date.now()-8*86400000).toISOString().split("T")[0]&&d.d<yDate&&d.ms>0&&d.mp>0);
+        if(last7.length>3){
+          const avg7cpp=last7.reduce((s,d)=>s+d.ms,0)/last7.reduce((s,d)=>s+d.mp,0);
+          if(ydCpp>avg7cpp*1.4) alerts.push({icon:"📢",msg:"Meta CPP "+f$(ydCpp)+" is "+Math.round((ydCpp/avg7cpp-1)*100)+"% above 7d avg",tab:"meta",sev:2});
+        }
+      }
+      if(yd.ms>0&&yd.mv>0&&yd.mv/yd.ms<1.0) alerts.push({icon:"📢",msg:"Yesterday Meta ROAS "+((yd.mv/yd.ms).toFixed(2))+"x — below breakeven",tab:"meta",sev:2});
+      if(yd.o===0&&yd.r<10) alerts.push({icon:"🚨",msg:"Zero orders yesterday",tab:"website",sev:3});
+    }
+    if(klavDetail){
+      const sentCamps=(klavDetail.detail?.campaigns||[]).filter(c=>c.status==="Sent"||c.status==="sent");
+      if(sentCamps.length===0) alerts.push({icon:"📧",msg:"No email campaigns sent in tracking period",tab:"klaviyo",sev:1});
+    }
+    // DTC MER check
+    if(agg.tr>0&&agg.tms/agg.tr>0.45) alerts.push({icon:"⚠️",msg:"DTC MER at "+fp(agg.tms/agg.tr*100)+" — above 45% danger zone",tab:"equation",sev:2});
+    return alerts;
+  },[agg,mergedD,klavDetail]);
+
+  const anomalyByTab=useMemo(()=>{
+    const m={};
+    anomalies.forEach(a=>{if(a.tab){m[a.tab]=(m[a.tab]||0)+1;}});
+    return m;
+  },[anomalies]);
+
   // Part C: Benchmark toggle
   const [showBenchmarks,setShowBenchmarks]=useState(true);
 
@@ -622,14 +657,14 @@ function Dashboard(){
         <div style={{fontSize:10,color:"var(--t3)"}}>Shopify + Meta + Google Ads + Xero · {mergedD.length} days{(shopLive||metaLive)?" (live)":""}</div></div>
       </div>
       <div className="tab-bar">
-        <Tab a={tab==="equation"} onClick={()=>setTab("equation")} icon="💰">Equation</Tab>
-        <Tab a={tab==="daily"} onClick={()=>setTab("daily")} icon="📊">Daily</Tab>
-        <Tab a={tab==="website"} onClick={()=>setTab("website")} icon="🌐">Website</Tab>
+        <Tab a={tab==="equation"} onClick={()=>setTab("equation")} icon="💰" badge={anomalyByTab.equation}>Equation</Tab>
+        <Tab a={tab==="daily"} onClick={()=>setTab("daily")} icon="📊" badge={anomalyByTab.daily}>Daily</Tab>
+        <Tab a={tab==="website"} onClick={()=>setTab("website")} icon="🌐" badge={anomalyByTab.website}>Website</Tab>
         <div className="tab-sep"/>
-        <Tab a={tab==="meta"} onClick={()=>setTab("meta")} icon="📢">Meta Ads</Tab>
+        <Tab a={tab==="meta"} onClick={()=>setTab("meta")} icon="📢" badge={anomalyByTab.meta}>Meta Ads</Tab>
         <Tab a={tab==="creative"} onClick={()=>setTab("creative")} icon="🎨">Creative</Tab>
         <Tab a={tab==="gads"} onClick={()=>setTab("gads")} icon="🎯">Google Ads</Tab>
-        <Tab a={tab==="klaviyo"} onClick={()=>setTab("klaviyo")} icon="📧">Klaviyo</Tab>
+        <Tab a={tab==="klaviyo"} onClick={()=>setTab("klaviyo")} icon="📧" badge={anomalyByTab.klaviyo}>Klaviyo</Tab>
         <Tab a={tab==="social"} onClick={()=>setTab("social")} icon="📱">Social</Tab>
         <div className="tab-sep"/>
         <Tab a={tab==="xero"} onClick={()=>setTab("xero")} icon="📋">Xero P&L</Tab>
@@ -678,30 +713,7 @@ function Dashboard(){
         const ydVerdict=ydEstProfit===null?"Loading...":ydEstProfit>50?"✅ Profitable day":ydEstProfit>-20?"⚠️ Break-even":"🔴 Loss day";
         const ydVerdictCol=ydEstProfit===null?"var(--t3)":ydEstProfit>50?"var(--grn)":ydEstProfit>-20?"var(--ylw)":"var(--red)";
 
-        // Anomaly detection (Tool 8)
-        const anomalies=[];
-        if(yd&&mergedD.length>2){
-          const d2=mergedD.find(d=>d.d===new Date(Date.now()-2*86400000).toISOString().split("T")[0]);
-          if(d2&&d2.r>100&&ydRev<d2.r*0.7) anomalies.push({icon:"🔴",msg:"Revenue dropped "+Math.round((1-ydRev/d2.r)*100)+"% vs day before — check for site issues",tab:"daily"});
-          if(ydSpend>0&&yd.mp>0){
-            const ydCpp=ydSpend/yd.mp;
-            const last7=mergedD.filter(d=>d.d>=new Date(Date.now()-8*86400000).toISOString().split("T")[0]&&d.d<yDate&&d.ms>0&&d.mp>0);
-            if(last7.length>3){
-              const avg7cpp=last7.reduce((s,d)=>s+d.ms,0)/last7.reduce((s,d)=>s+d.mp,0);
-              if(ydCpp>avg7cpp*1.4) anomalies.push({icon:"📢",msg:"Meta CPP "+f$(ydCpp)+" is "+Math.round((ydCpp/avg7cpp-1)*100)+"% above 7d avg "+f$(avg7cpp),tab:"meta"});
-            }
-          }
-          if(ydSpend>0&&yd.mv>0){
-            const ydRoas=yd.mv/ydSpend;
-            if(ydRoas<1.0) anomalies.push({icon:"📢",msg:"Yesterday's Meta ROAS was "+ydRoas.toFixed(2)+"x — below breakeven",tab:"meta"});
-          }
-          if(ydOrders===0&&ydRev<10) anomalies.push({icon:"🚨",msg:"Zero orders yesterday — check checkout and site status",tab:"website"});
-        }
-        // Check for no campaigns sent recently (from klavDetail)
-        if(klavDetail){
-          const sentCamps=(klavDetail.detail?.campaigns||[]).filter(c=>c.status==="Sent"||c.status==="sent");
-          if(sentCamps.length===0) anomalies.push({icon:"📧",msg:"No email campaigns sent in tracking period — target 2-3/week",tab:"klaviyo"});
-        }
+        // Uses component-level anomalies (Tool 8)
 
         // AI daily brief
         const briefAiKey="daily_brief_"+rangeKey;
