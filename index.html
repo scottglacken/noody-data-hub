@@ -120,7 +120,7 @@ function CalcTip({formula,children}){
   return <span title={formula} style={{cursor:formula?"help":"default",borderBottom:formula?"1px dotted var(--t3)":"none"}}>{children}</span>;
 }
 
-function MC({l,v,fmt,bm,sub,big,v7d,inv,bmLabel,showBm}){
+function MC({l,v,fmt,bm,sub,big,v7d,inv,bmLabel,showBm,warn}){
   let dv=fmt==="$"?f$(v):fmt==="%"?fp(v):fmt==="x"?(v||0).toFixed(2)+"x":fn(v);
   let s=(bm&&showBm!==false)?gs(v,bm):"n";
   const fv7=v7d!=null?(fmt==="$"?f$(v7d):fmt==="%"?fp(v7d):fmt==="x"?(v7d||0).toFixed(2)+"x":fn(v7d)):null;
@@ -137,6 +137,7 @@ function MC({l,v,fmt,bm,sub,big,v7d,inv,bmLabel,showBm}){
     {fv7&&<div style={{fontSize:11,color:arrowCol,marginTop:3,fontFamily:"'JetBrains Mono',monospace"}}>7d: {fv7} {arrow7}</div>}
     {sub&&<div style={{fontSize:10,color:"var(--t3)",marginTop:2}}>{sub}</div>}
     {bmLabel&&showBm!==false&&<div style={{fontSize:9,color:"var(--t3)",marginTop:2,opacity:0.7}}>{bmLabel}</div>}
+    {warn&&<div style={{fontSize:9,color:"var(--ylw)",marginTop:3,cursor:"help"}} title={warn}>&#x26A0;&#xFE0F; {warn}</div>}
   </div>;
 }
 
@@ -1460,7 +1461,7 @@ function Dashboard(){
       {/* THE DAILY EQUATION */}
       <div style={{background:"linear-gradient(135deg,"+_eqColor+"08,"+_eqColor+"03)",border:"1px solid "+_eqColor+"33",borderRadius:14,padding:14,marginBottom:14}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-          <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em",fontWeight:600}}>The Daily Equation — {_days}d Est.</div>
+          <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em",fontWeight:600}}>The Daily Equation — {_days}d Est. (Total Business)</div>
           <div style={{display:"flex",alignItems:"center",gap:6}}>
             <span style={{width:8,height:8,borderRadius:4,background:_mktCol,display:"inline-block"}}/>
             <span style={{fontSize:10,color:_mktCol,fontWeight:600}}>{_mktDesc}</span>
@@ -1481,11 +1482,18 @@ function Dashboard(){
           <span style={{fontWeight:800,color:_eqColor,fontSize:18}}>{f$(_estProfit)}</span>
           <span style={{fontSize:11,color:_eqColor,fontWeight:600}}>({fp(_estProfPct)})</span>
         </div>
+        <div style={{fontSize:10,color:"var(--t3)",marginTop:4}}>DTC Revenue: {f$(agg.tr)} × {(1/_dtcRatio).toFixed(1)}x Xero channel ratio = {f$(_estTotal)} est. total business</div>
       </div>
 
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <h2 style={{fontSize:20,fontWeight:700,margin:0}}>Last {agg.d} Days</h2>
         <div style={{fontSize:11,color:"var(--t3)"}}>{f$(agg.avgRev)}/day · {fn(agg.avgOrd)} orders/day</div>
+      </div>
+      <div style={{fontSize:10,color:"var(--t3)",marginBottom:6,display:"flex",gap:8,flexWrap:"wrap"}}>
+        <span>📊 Revenue/Orders: Shopify</span><span>·</span>
+        <span>Meta Spend: Meta Ads API</span><span>·</span>
+        <span>Sessions: {agg.sessSource==="ga4"?"GA4":"Manual CSV"}</span><span>·</span>
+        <span>Profit est: Xero annual ratios</span>
       </div>
       {/* Targets */}
       <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:12,padding:14,marginBottom:14}}>
@@ -1498,12 +1506,12 @@ function Dashboard(){
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:7,marginBottom:14}}>
         <MC l="Revenue" v={agg.tr} fmt="$" big v7d={current7d?current7d.tr:null} showBm={showBenchmarks}/>
         <MC l="Meta Spend" v={agg.tms} fmt="$" inv v7d={current7d?current7d.tms:null} showBm={showBenchmarks}/>
-        <MC l="MER" v={agg.mer} fmt="%" bm={BM.mer} inv v7d={current7d?current7d.mer:null} showBm={showBenchmarks} bmLabel="<35%"/>
+        <MC l="MER" v={agg.mer} fmt="%" bm={BM.mer} inv v7d={current7d?current7d.mer:null} showBm={showBenchmarks} bmLabel="<35%" warn={agg.mer>60?"MER >60% — verify spend/revenue data":null}/>
         <MC l="Avg AOV" v={agg.aov} fmt="$" v7d={current7d?current7d.aov:null} showBm={showBenchmarks} bmLabel=">$70"/>
         <MC l="Orders" v={agg.to} fmt="n" v7d={current7d?current7d.to:null} showBm={showBenchmarks}/>
         <MC l="Meta ROAS" v={agg.metaROAS} fmt="x" sub="last-click" v7d={current7d?current7d.metaROAS:null} showBm={showBenchmarks} bmLabel=">2.5x"/>
         <MC l="Sessions" v={agg.useSess||null} fmt="n" sub={agg.sessSource==="ga4"?agg.ga4Days+"d GA4":agg.sessDays>0?agg.sessDays+"d manual":"enter below"} v7d={current7d?current7d.useSess:null} showBm={showBenchmarks}/>
-        <MC l="Conv Rate" v={agg.cr} fmt="%" bm={{h:[2.5,100],w:[1.5,2.5]}} sub={"orders/sessions"+(agg.sessSource==="ga4"?" (GA4)":"")} v7d={current7d?current7d.cr:null} showBm={showBenchmarks}/>
+        <MC l="Conv Rate" v={agg.cr} fmt="%" bm={{h:[2.5,100],w:[1.5,2.5]}} sub={"orders/sessions"+(agg.sessSource==="ga4"?" (GA4)":"")} v7d={current7d?current7d.cr:null} showBm={showBenchmarks} warn={agg.cr>15?"CR >15% unusual — check session data":null}/>
         <MC l="Rev/Session" v={agg.rps} fmt="$" sub={"RPV = CR x AOV"+(agg.sessSource==="ga4"?" (GA4)":"")} v7d={current7d?current7d.rps:null} showBm={showBenchmarks}/>
         <MC l="Avg CPP" v={agg.cpp} fmt="$" inv v7d={current7d?current7d.cpp:null} showBm={showBenchmarks}/>
         <MC l="Shipping %" v={agg.shipPct} fmt="%" v7d={current7d?current7d.shipPct:null} showBm={showBenchmarks}/>
@@ -1677,6 +1685,11 @@ function Dashboard(){
 
       return <>
       <AiSummary text={tabAi[_metaAiKey]} loading={tabAiLoading.meta} label={"What to focus on — Meta Ads "+_days+"d"}/>
+      <div style={{fontSize:10,color:"var(--t3)",marginBottom:6,display:"flex",gap:8,flexWrap:"wrap"}}>
+        <span>📊 Spend/ROAS/CPP: Meta Ads API</span><span>·</span>
+        <span>Revenue/Orders: Shopify</span><span>·</span>
+        <span>MER = Meta Spend / Shopify Revenue</span>
+      </div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
         <h2 style={{fontSize:20,fontWeight:700,margin:0}}>Meta Ads Performance</h2>
         <div style={{display:"flex",gap:8}}>
@@ -3432,11 +3445,12 @@ function Dashboard(){
                 {ga.trafficSources.map((s,i)=>{
                   const share=totalSessions>0?(s.sessions/totalSessions*100):0;
                   const crCol=s.conversionRate>=3.2?"var(--grn)":s.conversionRate>=1.8?"var(--ylw)":s.conversionRate>0?"var(--red)":"var(--t3)";
+                  const crWarn=s.conversionRate>20;
                   return <tr key={i}>
                     <td style={tdS}>{s.channel}</td>
                     <td style={{...tdS,textAlign:"right"}}>{fn(s.sessions)}</td>
                     <td style={{...tdS,textAlign:"right"}}>{fn(s.conversions)}</td>
-                    <td style={{...tdS,textAlign:"right",color:crCol}}>{s.conversionRate.toFixed(2)}%</td>
+                    <td style={{...tdS,textAlign:"right",color:crWarn?"var(--ylw)":crCol}} title={crWarn?"CR >20% — low session count may skew rate":""}>{s.conversionRate.toFixed(2)}%{crWarn?" ⚠️":""}</td>
                     <td style={{...tdS,textAlign:"right"}}>{share.toFixed(1)}%</td>
                   </tr>;
                 })}

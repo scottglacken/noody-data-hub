@@ -195,8 +195,8 @@ export default async function handler(req, res) {
         instagram.mediaError = igMedia._error || (igMedia.error ? igMedia.error.message : 'Unknown error');
       }
 
-      // Follower estimation fallback — only if profile endpoint AND insights both failed
-      if (instagram.followers === 0 && recentPosts.length > 0) {
+      // Follower estimation fallback — if profile endpoint failed AND delta is missing or suspiciously low
+      if ((instagram.followers === 0 || (instagram.followers < 50 && followerCountSource === 'insights_daily_delta')) && recentPosts.length > 0) {
         var maxLikes = recentPosts.reduce(function(mx, p) { return p.likes > mx ? p.likes : mx; }, 0);
         if (maxLikes > 0) {
           instagram.followersEstimated = true;

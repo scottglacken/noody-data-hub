@@ -612,6 +612,31 @@ export default async function handler(req, res) {
       entries: c.entries,
     })).sort((a, b) => b.spend - a.spend);
 
+    // ── Step 5b: Aggregate by date for daily breakdown ──
+    const dailyMap = {};
+    for (const row of rows) {
+      const date = row.segments?.date;
+      if (!date) continue;
+      if (!dailyMap[date]) {
+        dailyMap[date] = { date, spend: 0, clicks: 0, impressions: 0, conversions: 0, conversionValue: 0 };
+      }
+      const dd = dailyMap[date];
+      dd.spend += parseInt(row.metrics?.costMicros || '0') / 1_000_000;
+      dd.clicks += parseInt(row.metrics?.clicks || '0');
+      dd.impressions += parseInt(row.metrics?.impressions || '0');
+      dd.conversions += parseFloat(row.metrics?.conversions || '0');
+      dd.conversionValue += parseFloat(row.metrics?.conversionsValue || '0');
+    }
+    const daily = Object.values(dailyMap).map(d => ({
+      date: d.date,
+      spend: Math.round(d.spend * 100) / 100,
+      clicks: d.clicks,
+      impressions: d.impressions,
+      conversions: Math.round(d.conversions * 100) / 100,
+      conversionValue: Math.round(d.conversionValue * 100) / 100,
+      roas: d.spend > 0 ? Math.round((d.conversionValue / d.spend) * 100) / 100 : 0,
+    })).sort((a, b) => a.date.localeCompare(b.date));
+
     // ── Step 6: Return clean response ──
     const summary = {
       totalSpend: Math.round(totalSpend * 100) / 100,
@@ -639,6 +664,7 @@ export default async function handler(req, res) {
       dateFilter,
       summary,
       campaigns,
+      daily,
       pulledAt: new Date().toISOString(),
     });
   } catch (err) {

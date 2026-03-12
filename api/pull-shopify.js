@@ -138,11 +138,15 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'No Shopify access token. Run /api/install?shop=' + shop });
   }
 
-  var sinceDate = new Date(Date.now() - days * 86400000).toISOString().split('T')[0];
+  // Compute since-date in NZ timezone (UTC+13) so it matches NZ daily bucketing
+  var nzOffsetMs = 13 * 3600000;
+  var sinceDate = new Date(Date.now() + nzOffsetMs - days * 86400000).toISOString().split('T')[0];
+  // Convert NZ midnight of sinceDate to UTC for the API filter
+  var sinceUtc = new Date(new Date(sinceDate + 'T00:00:00Z').getTime() - nzOffsetMs).toISOString().split('.')[0] + 'Z';
 
   try {
     var allOrders = [];
-    var url = 'https://' + shop + '/admin/api/' + API_VERSION + '/orders.json?status=any&limit=250&created_at_min=' + sinceDate + 'T00:00:00Z&fields=id,name,created_at,total_price,total_tax,total_discounts,total_shipping_price_set,financial_status,line_items,customer,cancelled_at';
+    var url = 'https://' + shop + '/admin/api/' + API_VERSION + '/orders.json?status=any&limit=250&created_at_min=' + sinceUtc + '&fields=id,name,created_at,total_price,total_tax,total_discounts,total_shipping_price_set,financial_status,line_items,customer,cancelled_at';
 
     while (url) {
       var response = await fetch(url, {
