@@ -2411,6 +2411,39 @@ function Dashboard(){
             {allPass?"Scale test: increase ad spend 15-30% for 14 days. Monitor MER daily. If ratios hold, lock in new baseline.":"Fix the equation before scaling. Scaling an unprofitable equation just makes losses bigger, faster."}
             {" "}EE recommends 15% budget increments, not 2x overnight. Hold each new level for 10-14 days.
           </div>
+          {/* ═══════════ TOOL 5: SCALE PROTOCOL ENGINE ═══════════ */}
+          {allPass&&<div style={{marginTop:14,background:"linear-gradient(135deg,rgba(21,128,61,0.06),rgba(59,91,219,0.04))",border:"1px solid rgba(21,128,61,0.2)",borderRadius:12,padding:16}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#15803d",marginBottom:10}}>Scale Protocol — Next Steps</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:12}}>
+              {[15,20,30].map(pct=>{
+                const newSpend=metaSpend*(1+pct/100);
+                const newDaily=newSpend/days;
+                const projRevLift=dtcRev*(pct/100)*0.6;
+                const projNewRev=dtcRev+projRevLift;
+                const projNewMer=projNewRev>0?newSpend/projNewRev*100:0;
+                const merSafe=projNewMer<=35;
+                return <div key={pct} style={{padding:12,background:"var(--card)",borderRadius:10,border:"1px solid "+(merSafe?"rgba(21,128,61,0.2)":"rgba(185,28,28,0.2)"),textAlign:"center"}}>
+                  <div style={{fontSize:16,fontWeight:800,color:merSafe?"#15803d":"#b91c1c",fontFamily:"'JetBrains Mono',monospace"}}>+{pct}%</div>
+                  <div style={{fontSize:10,color:"var(--t3)",marginBottom:6}}>Budget Increase</div>
+                  <div style={{fontSize:11,color:"var(--t2)"}}>Spend: {f$(newSpend)}</div>
+                  <div style={{fontSize:11,color:"var(--t2)"}}>{f$(newDaily)}/day</div>
+                  <div style={{fontSize:11,color:merSafe?"#15803d":"#b91c1c",fontWeight:600,marginTop:4}}>Est. MER: {fp(projNewMer)}</div>
+                  <div style={{fontSize:9,color:"var(--t3)",marginTop:2}}>{merSafe?"Within 35% ceiling":"MER exceeds 35%"}</div>
+                </div>;
+              })}
+            </div>
+            <div style={{fontSize:11,color:"var(--t2)",lineHeight:1.6}}>
+              <strong>EE Scale Rules:</strong> (1) Increase 15-20% at a time, never 2x. (2) Hold new level for 10-14 days. (3) Monitor MER daily — abort if MER exceeds 35% for 3+ consecutive days. (4) Only increase again once current level is stable. (5) Track CPP — if CPP rises more than 20%, creative is fatiguing at scale.
+            </div>
+          </div>}
+          {!allPass&&<div style={{marginTop:14,background:"rgba(185,28,28,0.04)",border:"1px solid rgba(185,28,28,0.15)",borderRadius:12,padding:16}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#b91c1c",marginBottom:8}}>Fix Before Scaling</div>
+            {checks.filter(c=>!c.ok).map((c,i)=><div key={i} style={{fontSize:12,color:"var(--t2)",padding:"4px 0",display:"flex",gap:6}}>
+              <span>→</span>
+              <span>{c.l} (current: <span style={{color:"#b91c1c",fontWeight:600}}>{c.v}</span>)</span>
+            </div>)}
+            <div style={{fontSize:11,color:"var(--t3)",marginTop:8}}>Each failed checkpoint represents a leak in the equation. Scale amplifies leaks. Fix the equation first, then pour fuel on it.</div>
+          </div>}
         </div>;
       })()}
     </>;
