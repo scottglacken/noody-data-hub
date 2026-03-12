@@ -2799,6 +2799,70 @@ function Dashboard(){
           </div>
         </div>
 
+        {/* ═══════════ TOOL 4: EMAIL REVENUE OPTIMIZER ═══════════ */}
+        {klavDetail&&(()=>{
+          const targetPct=30;
+          const currentPct=emailPct;
+          const gapPct=Math.max(0,targetPct-currentPct);
+          const gapRev=dtcRev>0?dtcRev*(gapPct/100):0;
+          // Flow benchmarks: Welcome $5, Cart $15, Browse $3, PostPurch $1 per recipient
+          const flowBench={welcome:5,cart:15,browse:3,"post-purchase":1,"order confirm":0.5};
+          const flowGaps=[];
+          flows.forEach(f=>{
+            const nm=f.name.toLowerCase();
+            const msgs=f.messages||1;
+            const revPer=msgs>0?(f.revenue||0)/msgs:0;
+            let bench=null,key="";
+            if(nm.indexOf("welcome")!==-1){bench=flowBench.welcome;key="Welcome";}
+            else if(nm.indexOf("cart")!==-1||nm.indexOf("checkout")!==-1){bench=flowBench.cart;key="Cart/Checkout";}
+            else if(nm.indexOf("browse")!==-1){bench=flowBench.browse;key="Browse Abandon";}
+            else if(nm.indexOf("post-purchase")!==-1||nm.indexOf("post purchase")!==-1){bench=flowBench["post-purchase"];key="Post-Purchase";}
+            if(bench!==null){
+              const gap=Math.max(0,(bench-revPer)*msgs);
+              flowGaps.push({name:key,current:revPer,bench,gap,msgs,rev:f.revenue||0});
+            }
+          });
+          flowGaps.sort((a,b)=>b.gap-a.gap);
+          const totalFlowGap=flowGaps.reduce((s,f)=>s+f.gap,0);
+          const campPerWeek=sentCamps.length/(klavDetailDays/7);
+          const campGap=campPerWeek<2?(2-campPerWeek)*(klavDetailDays/7):"";
+          if(gapPct<=0&&totalFlowGap<50)return null;
+          return <div style={{background:"linear-gradient(135deg,rgba(79,110,247,0.06),rgba(124,58,237,0.04))",border:"2px solid rgba(79,110,247,0.2)",borderRadius:14,padding:18,marginBottom:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+              <div>
+                <div style={{fontSize:15,fontWeight:700,color:"var(--t1)"}}>Email Revenue Optimizer</div>
+                <div style={{fontSize:11,color:"var(--t3)"}}>Gap analysis vs EE benchmarks — estimated opportunity</div>
+              </div>
+              {gapRev>0&&<div style={{textAlign:"right"}}>
+                <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase"}}>Revenue Gap</div>
+                <div style={{fontSize:22,fontWeight:800,color:"var(--acc)",fontFamily:"'JetBrains Mono',monospace"}}>{f$(gapRev)}</div>
+                <div style={{fontSize:10,color:"var(--t3)"}}>{fp(currentPct)} current vs {targetPct}% target</div>
+              </div>}
+            </div>
+            {flowGaps.length>0&&<div style={{marginBottom:12}}>
+              <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",fontWeight:600,marginBottom:6}}>Flow Optimization Opportunities</div>
+              {flowGaps.filter(f=>f.gap>10).map((f,i)=>{
+                const pctOfBench=f.bench>0?(f.current/f.bench*100):0;
+                const barCol=pctOfBench>=80?"var(--grn)":pctOfBench>=50?"var(--ylw)":"var(--red)";
+                return <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderBottom:"1px solid var(--bdr)"}}>
+                  <div style={{width:110,fontSize:12,fontWeight:600,color:"var(--t1)"}}>{f.name}</div>
+                  <div style={{flex:1}}>
+                    <div style={{height:6,background:"rgba(255,255,255,0.06)",borderRadius:3,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:Math.min(pctOfBench,100)+"%",background:barCol,borderRadius:3}}/>
+                    </div>
+                  </div>
+                  <div style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:"var(--t2)",width:90,textAlign:"right"}}>{f$(f.current)}/{f$(f.bench)}</div>
+                  <div style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:"var(--acc)",width:70,textAlign:"right"}}>+{f$(f.gap)}</div>
+                </div>;
+              })}
+              {totalFlowGap>50&&<div style={{fontSize:11,color:"var(--acc)",padding:"8px 0",fontWeight:600}}>Total flow optimization opportunity: {f$(totalFlowGap)}</div>}
+            </div>}
+            {campPerWeek<2&&<div style={{fontSize:12,color:"var(--ylw)",padding:"8px 10px",background:"rgba(146,64,14,0.06)",borderRadius:8,marginBottom:6}}>
+              Campaign frequency: {campPerWeek.toFixed(1)}/week (target 2-3). Add {typeof campGap==="number"?Math.ceil(campGap):""} more campaigns to hit cadence target.
+            </div>}
+          </div>;
+        })()}
+
         {/* A) EMAIL REVENUE OVERVIEW */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:14}}>
           <MC l="Email Revenue" v={emailRev} fmt="$" big />
