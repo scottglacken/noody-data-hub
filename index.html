@@ -602,6 +602,10 @@ function Dashboard(){
 
   // Part C: Benchmark toggle
   const [showBenchmarks,setShowBenchmarks]=useState(true);
+  // Tool 6: RPV Scenario Calculator state
+  const [rpvCrLift,setRpvCrLift]=useState(0);
+  const [rpvAovLift,setRpvAovLift]=useState(0);
+  const [rpvTrafficLift,setRpvTrafficLift]=useState(0);
 
   // Change indicator helper
   const pctChange=(curr,prev)=>{
@@ -3226,6 +3230,62 @@ function Dashboard(){
             CR is solid \u2014 AOV is the lever. Test bundles at 15% discount, free shipping threshold at {"$"+Math.round(aov*1.15)}, and post-purchase upsells to lift RPV.
           </div>}
         </div>}
+
+        {/* ═══════════ TOOL 6: RPV OPTIMIZATION ENGINE ═══════════ */}
+        {!loading&&totalSessions>0&&(()=>{
+          const newCr=cr*(1+rpvCrLift/100);
+          const newAov=aov*(1+rpvAovLift/100);
+          const newSess=totalSessions*(1+rpvTrafficLift/100);
+          const newRpv=(newCr/100)*newAov;
+          const currentRevDay=totalRev/(range||30);
+          const newRevDay=newSess*newRpv;
+          const revLift=newRevDay-currentRevDay;
+          const revLiftPct=currentRevDay>0?(revLift/currentRevDay*100):0;
+          const monthly30=revLift*30;
+          const sliderS={width:"100%",accentColor:"var(--acc)",cursor:"pointer"};
+          return <div style={{background:"linear-gradient(135deg,rgba(21,128,61,0.05),rgba(59,91,219,0.05))",border:"2px solid rgba(21,128,61,0.2)",borderRadius:14,padding:18,marginBottom:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+              <div>
+                <div style={{fontSize:15,fontWeight:700,color:"var(--t1)"}}>RPV Optimization Engine</div>
+                <div style={{fontSize:11,color:"var(--t3)"}}>Model the 3 levers: CR, AOV, and Traffic. RPV = CR x AOV</div>
+              </div>
+              <button onClick={()=>{setRpvCrLift(0);setRpvAovLift(0);setRpvTrafficLift(0);}} style={{padding:"4px 10px",background:"transparent",border:"1px solid var(--bdr)",borderRadius:6,color:"var(--t3)",fontSize:10,cursor:"pointer"}}>Reset</button>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,marginBottom:14}}>
+              {[
+                {label:"Conversion Rate",current:cr,unit:"%",lift:rpvCrLift,setLift:setRpvCrLift,newVal:newCr,color:"#15803d",hint:"Speed, trust signals, checkout"},
+                {label:"AOV",current:aov,unit:"$",lift:rpvAovLift,setLift:setRpvAovLift,newVal:newAov,color:"#1d4ed8",hint:"Bundles, upsells, shipping threshold"},
+                {label:"Daily Sessions",current:Math.round(totalSessions/(range||30)),unit:"",lift:rpvTrafficLift,setLift:setRpvTrafficLift,newVal:Math.round(newSess/(range||30)),color:"#7c3aed",hint:"SEO, ads, email, social"},
+              ].map((s,i)=><div key={i} style={{padding:12,background:"rgba(255,255,255,0.03)",borderRadius:10,border:"1px solid var(--bdr)"}}>
+                <div style={{fontSize:11,color:"var(--t3)",textTransform:"uppercase",marginBottom:4}}>{s.label}</div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
+                  <span style={{fontSize:14,fontWeight:600,color:"var(--t2)",fontFamily:"'JetBrains Mono',monospace"}}>{s.unit==="$"?f$(s.current):s.unit==="%"?s.current.toFixed(2)+"%":fn(Math.round(s.current))}</span>
+                  <span style={{fontSize:14,fontWeight:700,color:s.color,fontFamily:"'JetBrains Mono',monospace"}}>{s.lift>0?"+":""}{s.lift}%</span>
+                </div>
+                <input type="range" min={0} max={50} value={s.lift} onChange={e=>s.setLift(parseInt(e.target.value))} style={sliderS}/>
+                <div style={{fontSize:10,color:s.color,marginTop:4,fontWeight:600}}>{s.unit==="$"?f$(s.newVal):s.unit==="%"?s.newVal.toFixed(2)+"%":fn(Math.round(s.newVal))}</div>
+                <div style={{fontSize:9,color:"var(--t3)",marginTop:2}}>{s.hint}</div>
+              </div>)}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,textAlign:"center"}}>
+              <div style={{padding:10,background:"rgba(255,255,255,0.03)",borderRadius:10}}>
+                <div style={{fontSize:10,color:"var(--t3)"}}>New RPV</div>
+                <div style={{fontSize:20,fontWeight:800,color:newRpv>rpv?"var(--grn)":"var(--t1)",fontFamily:"'JetBrains Mono',monospace"}}>{"$"+newRpv.toFixed(2)}</div>
+                <div style={{fontSize:10,color:"var(--t3)"}}>was {"$"+rpv.toFixed(2)}</div>
+              </div>
+              <div style={{padding:10,background:"rgba(255,255,255,0.03)",borderRadius:10}}>
+                <div style={{fontSize:10,color:"var(--t3)"}}>Daily Rev Lift</div>
+                <div style={{fontSize:20,fontWeight:800,color:revLift>0?"var(--grn)":"var(--t1)",fontFamily:"'JetBrains Mono',monospace"}}>{revLift>0?"+":""}{f$(revLift)}</div>
+                <div style={{fontSize:10,color:"var(--t3)"}}>{revLiftPct>0?"+":""}{revLiftPct.toFixed(0)}%</div>
+              </div>
+              <div style={{padding:10,background:"rgba(21,128,61,0.06)",borderRadius:10,border:"1px solid rgba(21,128,61,0.2)"}}>
+                <div style={{fontSize:10,color:"var(--t3)"}}>30-Day Impact</div>
+                <div style={{fontSize:20,fontWeight:800,color:"var(--grn)",fontFamily:"'JetBrains Mono',monospace"}}>{monthly30>0?"+":""}{f$(monthly30)}</div>
+                <div style={{fontSize:10,color:"var(--grn)"}}>extra revenue</div>
+              </div>
+            </div>
+          </div>;
+        })()}
 
         {/* Section 2: Key Metrics Grid */}
         {!loading&&(wd||ga)&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginBottom:14}}>
