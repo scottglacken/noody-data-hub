@@ -1825,7 +1825,7 @@ function Dashboard(){
 
       {/* Fatigue Detection */}
       <div style={{background:fatigueStatus==="fatigued"?"rgba(185,28,28,0.05)":fatigueStatus==="improving"?"rgba(21,128,61,0.05)":"rgba(107,114,128,0.04)",border:"1px solid "+(fatigueStatus==="fatigued"?"rgba(185,28,28,0.3)":fatigueStatus==="improving"?"rgba(21,128,61,0.3)":"var(--bdr)"),borderRadius:12,padding:16,marginBottom:14}}>
-        <div style={{fontSize:14,fontWeight:600,color:"var(--t1)",marginBottom:8}}>{fatigueStatus==="fatigued"?"\u26A0\uFE0F Creative Fatigue Detected":fatigueStatus==="improving"?"\uD83D\uDFE2 Creative Improving":"\u2705 No Fatigue Detected"}</div>
+        <div style={{fontSize:14,fontWeight:600,color:"var(--t1)",marginBottom:8}}>{fatigueStatus==="fatigued"?"⚠️ Creative Fatigue Detected":fatigueStatus==="improving"?"🟢 Creative Improving":"✅ No Fatigue Detected"}</div>
         <div style={{fontSize:13,color:"var(--t2)",marginBottom:8}}>{fatigueMsg||"Not enough data for fatigue analysis. Need 14+ days of ad data."}</div>
         {cpp14&&<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
           <div style={{textAlign:"center",padding:8,background:"var(--card)",borderRadius:8,border:"1px solid var(--bdr)"}}>
@@ -1896,13 +1896,13 @@ function Dashboard(){
         <div style={{fontSize:14,fontWeight:600,color:"var(--t1)",marginBottom:10}}>Creative → Ad Pipeline</div>
         <div style={{display:"flex",gap:4,alignItems:"center",justifyContent:"center",flexWrap:"wrap"}}>
           {[
-            {stage:"Idea",icon:"\uD83D\uDCA1",desc:"Ideate from 4 pillars",count:creativeTests.filter(t=>t.status==="idea").length},
-            {stage:"Brief",icon:"\uD83D\uDCCB",desc:"Write brief & script",count:savedBriefs.length},
-            {stage:"Production",icon:"\uD83C\uDFA5",desc:"Shoot & edit",count:creativeTests.filter(t=>t.status==="production").length},
-            {stage:"Testing",icon:"\uD83E\uDDEA",desc:"Live in ad account",count:creativeTests.filter(t=>t.status==="testing").length},
-            {stage:"Results",icon:"\uD83D\uDCCA",desc:"Winner or loser",count:creativeTests.filter(t=>t.status==="winner"||t.status==="loser").length},
+            {stage:"Idea",icon:"💡",desc:"Ideate from 4 pillars",count:creativeTests.filter(t=>t.status==="idea").length},
+            {stage:"Brief",icon:"📋",desc:"Write brief & script",count:savedBriefs.length},
+            {stage:"Production",icon:"🎥",desc:"Shoot & edit",count:creativeTests.filter(t=>t.status==="production").length},
+            {stage:"Testing",icon:"🧪",desc:"Live in ad account",count:creativeTests.filter(t=>t.status==="testing").length},
+            {stage:"Results",icon:"📊",desc:"Winner or loser",count:creativeTests.filter(t=>t.status==="winner"||t.status==="loser").length},
           ].map((s,i)=><React.Fragment key={i}>
-            {i>0&&<div style={{fontSize:16,color:"var(--t3)"}}>\u2192</div>}
+            {i>0&&<div style={{fontSize:16,color:"var(--t3)"}}>→</div>}
             <div style={{textAlign:"center",padding:"10px 14px",background:"var(--card)",borderRadius:10,border:"1px solid var(--bdr)",minWidth:80}}>
               <div style={{fontSize:20}}>{s.icon}</div>
               <div style={{fontSize:12,fontWeight:600,color:"var(--t1)"}}>{s.stage}</div>
@@ -1940,7 +1940,7 @@ function Dashboard(){
                 </select></td>
                 <td style={{padding:"8px 10px"}}><input type="number" placeholder="$" value={t.cpa||""} onChange={e=>updateTest(t.id,"cpa",e.target.value?parseFloat(e.target.value):null)} style={{width:50,padding:"3px 6px",borderRadius:4,border:"1px solid var(--bdr)",fontSize:11,fontFamily:"'JetBrains Mono',monospace",background:"var(--card)",color:"var(--t1)"}}/></td>
                 <td style={{padding:"8px 10px"}}><input type="number" step="0.1" placeholder="x" value={t.roas||""} onChange={e=>updateTest(t.id,"roas",e.target.value?parseFloat(e.target.value):null)} style={{width:50,padding:"3px 6px",borderRadius:4,border:"1px solid var(--bdr)",fontSize:11,fontFamily:"'JetBrains Mono',monospace",background:"var(--card)",color:"var(--t1)"}}/></td>
-                <td style={{padding:"8px 10px"}}><button onClick={()=>removeTest(t.id)} style={{background:"none",border:"none",color:"var(--t3)",cursor:"pointer",fontSize:14}} title="Delete">\u2715</button></td>
+                <td style={{padding:"8px 10px"}}><button onClick={()=>removeTest(t.id)} style={{background:"none",border:"none",color:"var(--t3)",cursor:"pointer",fontSize:14}} title="Delete">✕</button></td>
               </tr>;
             })}</tbody>
           </table>
@@ -1953,7 +1953,7 @@ function Dashboard(){
         <div style={{fontSize:11,color:"var(--t3)",marginBottom:12}}>15 proven hook formulas with Noody-specific examples. Use these as starting points for ad creative and organic content.</div>
         <div style={{display:"grid",gap:10}}>
           {[
-            {name:"Problem-Agitate-Solve",formula:"[Problem] \u2192 [Emotional agitation] \u2192 [Product as solution]",example:"Eczema flare-ups at 3am \u2192 Nothing worked, we tried everything \u2192 Then we found Calm Balm",pillar:"Fears & Desires"},
+            {name:"Problem-Agitate-Solve",formula:"[Problem] → [Emotional agitation] → [Product as solution]",example:"Eczema flare-ups at 3am → Nothing worked, we tried everything → Then we found Calm Balm",pillar:"Fears & Desires"},
             {name:"Curiosity Gap",formula:"The one thing [authority] don't tell you about [topic]...",example:"The one thing paediatricians don't tell you about children's eczema...",pillar:"Education"},
             {name:"Social Proof Lead",formula:"[Number]+ [audience] trust this for [use case]",example:"4,000+ NZ families trust Noody for their kids' sensitive skin",pillar:"Proof"},
             {name:"Before/After",formula:"Left: [painful state] / Right: [desired state]",example:"Left: red, irritated skin after bath time / Right: calm, happy skin 30 minutes after Calm Balm",pillar:"Proof"},
@@ -1985,10 +1985,10 @@ function Dashboard(){
         <div style={{fontSize:11,color:"var(--t3)",marginBottom:10}}>All 4 pillars must be balanced. Together: Valuable + Safe + Inspiring + Authentic. Any one alone creates negative perception.</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8}}>
           {[
-            {name:"Education",emoji:"\uD83C\uDF93",feel:"Valuable",risk:"Boring",color:"#1d4ed8",convos:"Reasons Why, Product Demo, How-To"},
-            {name:"Proof",emoji:"\uD83D\uDEE1\uFE0F",feel:"Safe",risk:"Pretentious",color:"#15803d",convos:"Reviews, Customer UGC, Before/After"},
-            {name:"Fears & Desires",emoji:"\uD83D\uDC96",feel:"Inspiring",risk:"Fake",color:"#b91c1c",convos:"Problem-Solution, Aspiration, Hero Journey"},
-            {name:"Opinion",emoji:"\uD83D\uDDE3\uFE0F",feel:"Authentic",risk:"Preachy",color:"#7c3aed",convos:"Us vs Them, Picks/Trends, Behind Scenes"},
+            {name:"Education",emoji:"🎓",feel:"Valuable",risk:"Boring",color:"#1d4ed8",convos:"Reasons Why, Product Demo, How-To"},
+            {name:"Proof",emoji:"🛡️",feel:"Safe",risk:"Pretentious",color:"#15803d",convos:"Reviews, Customer UGC, Before/After"},
+            {name:"Fears & Desires",emoji:"💖",feel:"Inspiring",risk:"Fake",color:"#b91c1c",convos:"Problem-Solution, Aspiration, Hero Journey"},
+            {name:"Opinion",emoji:"🗣️",feel:"Authentic",risk:"Preachy",color:"#7c3aed",convos:"Us vs Them, Picks/Trends, Behind Scenes"},
           ].map((p,i)=><div key={i} style={{padding:12,background:"var(--card)",borderRadius:10,border:"1px solid "+p.color+"22"}}>
             <div style={{fontSize:20,marginBottom:4}}>{p.emoji}</div>
             <div style={{fontSize:13,fontWeight:700,color:p.color}}>{p.name}</div>
@@ -2005,7 +2005,7 @@ function Dashboard(){
         {savedBriefs.map((b,i)=><div key={b.id} style={{padding:10,borderBottom:i<savedBriefs.length-1?"1px solid var(--bdr)":"none"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
             <div style={{fontSize:11,color:"var(--t3)",fontFamily:"'JetBrains Mono',monospace"}}>{b.date} · range: {b.range}</div>
-            <button onClick={()=>{if(confirm("Delete this saved brief?"))saveBriefs(savedBriefs.filter(x=>x.id!==b.id));}} style={{background:"none",border:"none",color:"var(--t3)",cursor:"pointer",fontSize:12}}>\u2715</button>
+            <button onClick={()=>{if(confirm("Delete this saved brief?"))saveBriefs(savedBriefs.filter(x=>x.id!==b.id));}} style={{background:"none",border:"none",color:"var(--t3)",cursor:"pointer",fontSize:12}}>✕</button>
           </div>
           <details>
             <summary style={{fontSize:12,color:"var(--acc)",cursor:"pointer"}}>View brief</summary>
