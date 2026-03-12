@@ -40,7 +40,7 @@
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useMemo, useEffect, useCallback } = React;
+const { useState, useMemo, useEffect, useCallback, useRef } = React;
 const { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Area, ReferenceLine, PieChart, Pie, Cell } = Recharts;
 
 // --- AUTH ---
@@ -279,6 +279,14 @@ function Dashboard(){
   const [savedBriefs,setSavedBriefs]=useState(()=>lsGet("noody_saved_briefs",[]));
   const saveBriefs=(d)=>{setSavedBriefs(d);lsSet("noody_saved_briefs",d);};
 
+  // Ask Noody AI chat widget
+  const [chatOpen,setChatOpen]=useState(false);
+  const [chatMsgs,setChatMsgs]=useState(()=>lsGet("noody_chat_history",[]));
+  const [chatInput,setChatInput]=useState("");
+  const [chatLoading,setChatLoading]=useState(false);
+  const chatEndRef=useRef(null);
+  const saveChatMsgs=(msgs)=>{setChatMsgs(msgs);lsSet("noody_chat_history",msgs);};
+
   const [showPeriodComp,setShowPeriodComp]=useState(false);
   const [show7dSnapshot,setShow7dSnapshot]=useState(false);
   const [gads,setGads]=useState(null);
@@ -326,6 +334,8 @@ function Dashboard(){
     setXeroLoading(false);
   },[]);
   useEffect(()=>{if(tab==="xero"&&!xeroLive&&!xeroLoading)fetchXero(xeroMonths);},[tab]);
+  // Auto-scroll chat to bottom
+  useEffect(()=>{if(chatEndRef.current)chatEndRef.current.scrollIntoView({behavior:"smooth"});},[chatMsgs,chatLoading]);
 
   // Live Shopify data
   const [shopLive,setShopLive]=useState(null);
@@ -4435,6 +4445,130 @@ function Dashboard(){
     })()}
 
     </div>
+
+    {/* ═══════════ ASK NOODY AI — FLOATING CHAT WIDGET ═══════════ */}
+    {(()=>{
+      const TAB_CTX={equation:["equation","shopify"],daily:["shopify","klaviyo","equation"],website:["website","shopify"],meta:["meta","equation"],creative:["creative","meta"],gads:["google","equation"],klaviyo:["klaviyo","equation"],social:["social","meta"],xero:["xero","equation"],diagnose:["equation","shopify"],scale:["scale","equation"],insights:["equation","shopify","meta","klaviyo"]};
+
+      const buildDataSnapshot=()=>{
+        const parts=[];
+        const a=agg;
+        if(a){
+          const dtcR=xeroChannels.dtc/xeroChannels.rev;
+          const vR=XERO_VAR/XERO.rev;
+          const fM=XERO_FIXED/XERO.months;
+          const eT=dtcR>0?a.tr/dtcR:a.tr;
+          const eV=eT*vR;const eF=fM*(a.d/30);
+          const eP=eT-eV-a.tms-eF;
+          const np=eT>0?eP/eT*100:0;
+          const dtcMer=a.tr>0?a.tms/a.tr*100:0;
+          const sit=np<0?5:np<5?3:(np<10||dtcMer>45)?2:1;
+          parts.push("CURRENT DATA ("+a.startDate+" to "+a.endDate+", "+a.d+"d):");
+          parts.push("DTC Revenue: "+f$(a.tr)+" | Orders: "+fn(a.to)+" | AOV: "+f$(a.aov));
+          parts.push("Meta Spend: "+f$(a.tms)+" | Purchases: "+fn(a.tmp)+" | CPP: "+f$(a.cpp)+" | ROAS: "+(a.metaROAS?a.metaROAS.toFixed(2):"—")+"x");
+          parts.push("DTC MER: "+fp(dtcMer)+" | Blended MER: "+fp(eT>0?a.tms/eT*100:0));
+          parts.push("Est. Total Rev: "+f$(eT)+" | Variable: "+f$(eV)+" ("+fp(vR*100)+") | Fixed: "+f$(eF)+" ("+fp(eT>0?eF/eT*100:0)+")");
+          parts.push("Est. Profit: "+f$(eP)+" ("+fp(np)+") | Situation: S"+sit);
+          if(klavLive) parts.push("Email Rev %: "+fp(a.emailPct)+" (target 30-40%)");
+          if(a.tsess>0) parts.push("Sessions: "+fn(a.tsess)+" | CR: "+fp(a.to/a.tsess*100)+" | RPV: $"+(a.rps||0).toFixed(2));
+        }
+        if(current7d&&agg&&agg.d!==7){
+          parts.push("\n7-DAY SNAPSHOT:");
+          parts.push("Rev: "+f$(current7d.tr)+" | Orders: "+fn(current7d.to)+" | ROAS: "+(current7d.metaROAS?current7d.metaROAS.toFixed(2):"—")+"x | CPP: "+f$(current7d.cpp));
+        }
+        if(campaignData){
+          const cps=(campaignData.data||campaignData.campaigns||[]).filter(c=>c.spend>5);
+          if(cps.length) parts.push("\nMETA CAMPAIGNS:\n"+cps.sort((a,b)=>(b.spend||0)-(a.spend||0)).slice(0,8).map(c=>c.campaign_name.slice(0,40)+": spend="+f$(c.spend)+", roas="+(c.roas||0).toFixed(2)+"x, cpp="+f$(c.cpp)+", freq="+(c.frequency||0).toFixed(1)).join("\n"));
+        }
+        if(gads){
+          const g=gads.summary;
+          parts.push("\nGOOGLE ADS: Spend "+f$(g.totalSpend)+" | ROAS "+g.roas.toFixed(1)+"x | Clicks "+fn(g.totalClicks));
+        }
+        if(klavDetail){
+          const d=klavDetail.detail||{};
+          const flows=(d.flows||[]).filter(f=>f.revenue>0).slice(0,5);
+          if(flows.length) parts.push("\nKLAVIYO FLOWS:\n"+flows.map(f=>f.name+": $"+f.revenue+" ("+f.messages+" msgs, $"+(f.messages>0?(f.revenue/f.messages).toFixed(2):"0")+"/recipient)").join("\n"));
+          const del=d.deliverability;
+          if(del) parts.push("Deliverability: Open "+del.openRate+"%, Click "+del.clickRate+"%, Bounce "+del.bounceRate+"%");
+        }
+        if(anomalies.length) parts.push("\nACTIVE ANOMALIES:\n"+anomalies.map(a=>a.icon+" "+a.msg+" ("+a.tab+")").join("\n"));
+        parts.push("\nBrand: Noody Skincare (NZ children's natural skincare). Hero: Calm Balm.");
+        parts.push("Current tab: "+tab);
+        return parts.join("\n");
+      };
+
+      const sendChat=async(msg)=>{
+        if(!msg.trim()||chatLoading)return;
+        const userMsg={role:"user",text:msg.trim(),ts:Date.now()};
+        const updated=[...chatMsgs,userMsg];
+        saveChatMsgs(updated);
+        setChatInput("");
+        setChatLoading(true);
+        try{
+          const ctx=TAB_CTX[tab]||["equation"];
+          const dataSnap=buildDataSnapshot();
+          const sysPrompt="You are Ask Noody AI — the conversational EE Coach for Noody Skincare. You have access to live business data below. Answer questions using SPECIFIC NUMBERS from the data. Reference EE benchmarks. Be conversational but precise. Keep answers to 3-5 paragraphs max.\n\nLIVE DATA:\n"+dataSnap;
+          const r=await fetch("/api/ai-coach",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":"noody-eq-2026-datahub"},body:JSON.stringify({prompt:msg.trim(),system:sysPrompt,context:ctx,max_tokens:1200})});
+          const d=await r.json();
+          const aiMsg={role:"ai",text:d.text||"Sorry, I couldn't generate a response.",ts:Date.now()};
+          const final=[...updated,aiMsg];
+          saveChatMsgs(final);
+        }catch(e){
+          const errMsg={role:"ai",text:"Error: "+e.message,ts:Date.now()};
+          saveChatMsgs([...updated,errMsg]);
+        }
+        setChatLoading(false);
+      };
+
+      const suggested=["What's my current EE situation?","Which ad should I pause?","How's my email performing vs benchmarks?","Am I ready to scale?","What's my biggest opportunity right now?","Should I increase Meta spend?","Why did revenue change this week?"];
+
+      return <>
+        {/* Floating button */}
+        <button onClick={()=>setChatOpen(!chatOpen)} style={{position:"fixed",bottom:24,right:24,width:56,height:56,borderRadius:28,background:"linear-gradient(135deg,#3b5bdb,#7c3aed)",color:"#fff",border:"none",cursor:"pointer",fontSize:24,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 20px rgba(59,91,219,0.4)",zIndex:9999,transition:"transform .2s"}} title="Ask Noody AI">
+          {chatOpen?"✕":"💬"}
+        </button>
+
+        {/* Chat panel */}
+        {chatOpen&&<div style={{position:"fixed",bottom:90,right:24,width:380,maxHeight:"70vh",background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:16,boxShadow:"0 8px 40px rgba(0,0,0,0.15)",zIndex:9998,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+          {/* Header */}
+          <div style={{padding:"14px 16px",borderBottom:"1px solid var(--bdr)",background:"linear-gradient(135deg,rgba(59,91,219,0.06),rgba(124,58,237,0.04))"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{fontSize:14,fontWeight:700,color:"var(--t1)"}}>Ask Noody AI</div>
+                <div style={{fontSize:10,color:"var(--t3)"}}>EE Coach with live data · {tab} tab</div>
+              </div>
+              {chatMsgs.length>0&&<button onClick={()=>{saveChatMsgs([]);}} style={{padding:"3px 8px",background:"transparent",border:"1px solid var(--bdr)",borderRadius:4,color:"var(--t3)",fontSize:9,cursor:"pointer"}}>Clear</button>}
+            </div>
+          </div>
+
+          {/* Messages */}
+          <div style={{flex:1,overflowY:"auto",padding:12,display:"flex",flexDirection:"column",gap:8,maxHeight:"45vh",minHeight:200}}>
+            {chatMsgs.length===0&&<div style={{padding:8}}>
+              <div style={{fontSize:12,color:"var(--t3)",marginBottom:10}}>Ask me anything about your business. I have access to all your live data.</div>
+              <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                {suggested.map((q,i)=><button key={i} onClick={()=>sendChat(q)} style={{padding:"8px 12px",background:"rgba(59,91,219,0.04)",border:"1px solid rgba(59,91,219,0.15)",borderRadius:8,color:"var(--acc)",fontSize:12,cursor:"pointer",textAlign:"left",transition:"background .15s"}}>{q}</button>)}
+              </div>
+            </div>}
+            {chatMsgs.map((m,i)=><div key={i} style={{alignSelf:m.role==="user"?"flex-end":"flex-start",maxWidth:"85%"}}>
+              <div style={{padding:"10px 14px",borderRadius:m.role==="user"?"14px 14px 4px 14px":"14px 14px 14px 4px",background:m.role==="user"?"linear-gradient(135deg,#3b5bdb,#7c3aed)":"rgba(0,0,0,0.03)",color:m.role==="user"?"#fff":"var(--t1)",fontSize:13,lineHeight:1.6,whiteSpace:"pre-wrap",border:m.role==="ai"?"1px solid var(--bdr)":"none"}}>
+                {m.text}
+              </div>
+              <div style={{fontSize:9,color:"var(--t3)",marginTop:2,textAlign:m.role==="user"?"right":"left"}}>{new Date(m.ts).toLocaleTimeString("en-NZ",{hour:"2-digit",minute:"2-digit"})}</div>
+            </div>)}
+            {chatLoading&&<div style={{alignSelf:"flex-start",maxWidth:"85%"}}>
+              <div style={{padding:"10px 14px",borderRadius:"14px 14px 14px 4px",background:"rgba(0,0,0,0.03)",border:"1px solid var(--bdr)",fontSize:13,color:"var(--t3)"}}>Thinking...</div>
+            </div>}
+            <div ref={chatEndRef}/>
+          </div>
+
+          {/* Input */}
+          <div style={{padding:"10px 12px",borderTop:"1px solid var(--bdr)",display:"flex",gap:8}}>
+            <input value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendChat(chatInput);}}} placeholder="Ask anything about your business..." style={{flex:1,padding:"10px 14px",borderRadius:10,border:"1px solid var(--bdr)",background:"var(--bg)",color:"var(--t1)",fontSize:13,outline:"none"}}/>
+            <button onClick={()=>sendChat(chatInput)} disabled={chatLoading||!chatInput.trim()} style={{padding:"10px 16px",borderRadius:10,background:chatInput.trim()?"linear-gradient(135deg,#3b5bdb,#7c3aed)":"var(--bdr)",color:"#fff",border:"none",cursor:chatInput.trim()?"pointer":"default",fontSize:13,fontWeight:600,flexShrink:0}}>Send</button>
+          </div>
+        </div>}
+      </>;
+    })()}
   </div>;
 }
 function App(){
