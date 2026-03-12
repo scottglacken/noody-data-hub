@@ -4357,6 +4357,80 @@ function Dashboard(){
             </div>
           </div>;
         })()}
+
+        {/* ═══════════ TOOL 9: EE COHORT BENCHMARK TRACKER ═══════════ */}
+        <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginTop:14}}>
+          <div style={{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:4}}>EE Cohort Benchmark Comparison</div>
+          <div style={{fontSize:11,color:"var(--t3)",marginBottom:12}}>Noody vs EE program benchmarks (600+ DTC brands, health/beauty vertical)</div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,fontFamily:"'JetBrains Mono',monospace"}}>
+              <thead><tr style={{borderBottom:"2px solid var(--bdr)"}}>
+                {["Metric","Noody","Bottom 25%","Median","Top 25%","Status"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:h==="Metric"?"left":"center",color:"var(--t3)",fontWeight:500,fontSize:10,textTransform:"uppercase"}}>{h}</th>)}
+              </tr></thead>
+              <tbody>{[
+                {m:"Conversion Rate",v:agg.tsess>0?(agg.to/agg.tsess*100):0,fmt:"%",b25:1.0,med:1.8,t25:3.2},
+                {m:"AOV",v:currentAOV,fmt:"$",b25:45,med:65,t25:95},
+                {m:"RPV",v:agg.rps||0,fmt:"$",b25:1.0,med:2.0,t25:4.0},
+                {m:"DTC MER",v:dtcMerVal,fmt:"%",b25:40,med:28,t25:18,inv:true},
+                {m:"Meta ROAS",v:metaROAS||0,fmt:"x",b25:1.2,med:2.0,t25:3.5},
+                {m:"Email Rev %",v:emailAvg,fmt:"%",b25:10,med:22,t25:35},
+                {m:"Variable Cost %",v:vcPct,fmt:"%",b25:45,med:38,t25:30,inv:true},
+                {m:"Net Profit %",v:npPct,fmt:"%",b25:0,med:8,t25:15},
+              ].map((r,i)=>{
+                const rank=r.inv?(r.v<=r.t25?"top":r.v<=r.med?"above":r.v<=r.b25?"below":"bottom"):(r.v>=r.t25?"top":r.v>=r.med?"above":r.v>=r.b25?"below":"bottom");
+                const rc=rank==="top"?"#15803d":rank==="above"?"var(--acc)":rank==="below"?"#92400e":"#b91c1c";
+                const rl=rank==="top"?"Top 25%":rank==="above"?"Above Med.":rank==="below"?"Below Med.":"Bottom 25%";
+                const fmtV=(v,f)=>f==="$"?"$"+v.toFixed(0):f==="x"?v.toFixed(2)+"x":v.toFixed(1)+"%";
+                return <tr key={i} style={{borderBottom:"1px solid var(--bdr)"}}>
+                  <td style={{padding:"8px 10px",color:"var(--t2)",fontFamily:"'DM Sans',sans-serif"}}>{r.m}</td>
+                  <td style={{padding:"8px 10px",textAlign:"center",color:rc,fontWeight:700}}>{fmtV(r.v,r.fmt)}</td>
+                  <td style={{padding:"8px 10px",textAlign:"center",color:"var(--t3)"}}>{fmtV(r.b25,r.fmt)}</td>
+                  <td style={{padding:"8px 10px",textAlign:"center",color:"var(--t3)"}}>{fmtV(r.med,r.fmt)}</td>
+                  <td style={{padding:"8px 10px",textAlign:"center",color:"var(--t3)"}}>{fmtV(r.t25,r.fmt)}</td>
+                  <td style={{padding:"8px 10px",textAlign:"center",fontSize:10,color:rc,fontWeight:600}}>{rl}</td>
+                </tr>;
+              })}</tbody>
+            </table>
+          </div>
+          <div style={{fontSize:10,color:"var(--t3)",marginTop:8}}>Benchmarks from EE Conversion Catalyst (594 brands) and program cohort data. Health/beauty DTC vertical.</div>
+        </div>
+
+        {/* ═══════════ TOOL 10: ONE-CLICK MONTHLY REPORT ═══════════ */}
+        <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginTop:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div>
+              <div style={{fontSize:15,fontWeight:700,color:"var(--t1)"}}>Monthly Report Generator</div>
+              <div style={{fontSize:11,color:"var(--t3)"}}>Comprehensive report combining all data sources</div>
+            </div>
+            <button onClick={()=>{
+              const rk="monthly_report_"+rangeKey;
+              if(tabAi[rk])return;
+              const mp="Generate a COMPREHENSIVE MONTHLY REPORT for Noody Skincare. This should be board-ready.\n\n"+
+                "PERIOD: "+a.startDate+" to "+a.endDate+" ("+days+" days)\n\n"+
+                "THE EQUATION:\n- Est. Total Revenue: "+f$(estTotalRev)+"\n  - DTC (Shopify): "+f$(dtcRev)+" ("+dtcPct+"%)\n  - Wholesale (est.): "+f$(estTotalRev*whRatio)+" ("+whPct+"%)\n  - International (est.): "+f$(estTotalRev*intlRatio)+" ("+intlPct+"%)\n"+
+                "- Variable Costs: "+f$(estVariable)+" ("+fp(vcPct)+")\n- Marketing Costs: "+f$(metaSpend)+" (DTC MER: "+fp(dtcMerVal)+", Blended MER: "+fp(merPct)+")\n"+
+                (gads?"  - Google Ads: "+f$(gads.summary.totalSpend)+" (ROAS: "+gads.summary.roas.toFixed(1)+"x)\n":"")+
+                "- Fixed Costs: "+f$(estFixed)+" ("+fp(fcPct)+")\n- Net Profit: "+f$(estProfit)+" ("+fp(npPct)+")\n- LER: "+ler.toFixed(2)+"\n\n"+
+                "CHANNEL DETAIL:\n- Meta: "+fn(a.tmp)+" purchases, "+f$(a.tms)+" spend, ROAS "+(metaROAS?metaROAS.toFixed(2):"—")+"x, CPP "+f$(a.cpp)+"\n"+
+                "- Email: "+(klavLive?fp(a.emailPct)+" of DTC":"loading")+"\n- AOV: "+f$(currentAOV)+"\n"+
+                (monthlyRoas.length?"- Monthly ROAS trend: "+monthlyRoas.map(function(m){return m.month+": "+m.roas+"x";}).join(", ")+"\n":"")+
+                "\nSITUATION: S"+situation+"\n\n"+
+                "FORMAT AS:\n1. EXECUTIVE SUMMARY (3-4 sentences, board-ready)\n2. KEY METRICS TABLE (formatted neatly)\n3. CHANNEL PERFORMANCE (DTC, Wholesale, Meta, Google, Email)\n4. WINS (bullet points with specific numbers)\n5. RISKS & CONCERNS (bullet points with specific numbers vs EE benchmarks)\n6. 90-DAY ACTION PLAN (prioritised by profit impact)\n7. SCALE ASSESSMENT (Green/Yellow/Red with specific criteria met/unmet)\n\nBe comprehensive but concise. Use specific numbers throughout. Reference EE benchmarks for every metric. This report should tell the full story of the business in this period.";
+              fetchTabAi("monthly_report",mp,["equation","shopify","meta","klaviyo","scale","insights"],3000);
+            }} style={{padding:"8px 16px",background:"linear-gradient(135deg,#7c3aed,#a78bfa)",color:"#fff",border:"none",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>{tabAiLoading.monthly_report?"Generating...":"Generate Monthly Report"}</button>
+          </div>
+          {tabAiLoading.monthly_report&&<div style={{fontSize:12,color:"var(--t3)",textAlign:"center",padding:30}}>Generating comprehensive monthly report... this may take 15-20 seconds.</div>}
+          {tabAi["monthly_report_"+rangeKey]&&<div>
+            <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
+              <button onClick={()=>{
+                const el=document.createElement("textarea");
+                el.value=tabAi["monthly_report_"+rangeKey];
+                document.body.appendChild(el);el.select();document.execCommand("copy");document.body.removeChild(el);
+              }} style={{padding:"4px 10px",background:"transparent",border:"1px solid rgba(124,58,237,0.3)",borderRadius:6,color:"#a78bfa",fontSize:10,cursor:"pointer"}}>Copy to Clipboard</button>
+            </div>
+            <div style={{fontSize:13,color:"var(--t1)",whiteSpace:"pre-wrap",lineHeight:1.7}}>{tabAi["monthly_report_"+rangeKey]}</div>
+          </div>}
+        </div>
       </>;
     })()}
 
