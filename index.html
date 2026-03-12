@@ -4265,6 +4265,67 @@ function Dashboard(){
             </div>)}
           </div>
         </div>
+
+        {/* ═══════════ TOOL 7: PROMOTIONAL CALENDAR ENGINE ═══════════ */}
+        {(()=>{
+          const now=new Date();
+          // NZ key dates (MM-DD format)
+          const nzEvents=[
+            {d:"01-01",name:"New Year",type:"holiday"},{d:"02-06",name:"Waitangi Day",type:"holiday"},
+            {d:"02-14",name:"Valentine's Day",type:"promo"},{d:"03-08",name:"Intl Women's Day",type:"promo"},
+            {d:"04-18",name:"Good Friday",type:"holiday"},{d:"04-21",name:"Easter Monday",type:"holiday"},
+            {d:"04-25",name:"ANZAC Day",type:"holiday"},{d:"05-11",name:"Mother's Day NZ",type:"promo"},
+            {d:"06-02",name:"Queen's Birthday",type:"holiday"},{d:"06-15",name:"Father's Day NZ",type:"promo"},
+            {d:"07-07",name:"Matariki",type:"holiday"},{d:"09-01",name:"Father's Day AU",type:"promo"},
+            {d:"10-27",name:"Labour Day NZ",type:"holiday"},
+            {d:"11-28",name:"Black Friday",type:"mega"},{d:"12-01",name:"Cyber Monday",type:"mega"},
+            {d:"12-25",name:"Christmas",type:"mega"},{d:"12-26",name:"Boxing Day",type:"mega"},
+          ];
+          const cal=[];
+          for(let i=0;i<90;i++){
+            const dt=new Date(now.getTime()+i*86400000);
+            const key=(dt.getMonth()+1).toString().padStart(2,"0")+"-"+dt.getDate().toString().padStart(2,"0");
+            const ev=nzEvents.find(e=>e.d===key);
+            const dayNum=dt.getDay();
+            cal.push({date:dt.toISOString().split("T")[0],day:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][dayNum],dom:dt.getDate(),month:dt.toLocaleDateString("en-NZ",{month:"short"}),event:ev,isWknd:dayNum===0||dayNum===6,isEmail:dayNum===2||dayNum===4});
+          }
+          const upcoming=cal.filter(d=>d.event).slice(0,6);
+          const tC={holiday:"#1d4ed8",promo:"#7c3aed",mega:"#b91c1c",minor:"#6b7280"};
+          // Pad first week
+          const firstDow=new Date(cal[0].date).getDay();
+          const pad=firstDow===0?6:firstDow-1;
+          return <div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginTop:14}}>
+            <div style={{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:4}}>90-Day Promotional Calendar</div>
+            <div style={{fontSize:11,color:"var(--t3)",marginBottom:12}}>NZ key dates + EE promotional rhythm</div>
+            {upcoming.length>0&&<div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
+              {upcoming.map((d,i)=><div key={i} style={{padding:"4px 10px",background:tC[d.event.type]+"10",border:"1px solid "+tC[d.event.type]+"33",borderRadius:6,fontSize:11}}>
+                <span style={{color:tC[d.event.type],fontWeight:600}}>{d.event.name}</span>
+                <span style={{color:"var(--t3)",marginLeft:4}}>{d.date.slice(5)}</span>
+              </div>)}
+            </div>}
+            <div style={{overflowX:"auto"}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,minWidth:480}}>
+                {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d=><div key={d} style={{fontSize:9,textAlign:"center",color:"var(--t3)",padding:2,fontWeight:600}}>{d}</div>)}
+                {Array(pad).fill(0).map((_,i)=><div key={"p"+i}/>)}
+                {cal.map((d,i)=>{
+                  const bg=d.event?tC[d.event.type]+"15":d.isEmail?"rgba(79,110,247,0.04)":"transparent";
+                  const bdr=d.event?"1px solid "+tC[d.event.type]+"44":"1px solid transparent";
+                  return <div key={i} style={{padding:3,textAlign:"center",background:bg,border:bdr,borderRadius:4,minHeight:30}} title={d.event?d.event.name:d.isEmail?"Email send day":""}>
+                    <div style={{fontSize:10,color:d.event?tC[d.event.type]:d.isWknd?"var(--t3)":"var(--t2)",fontWeight:d.event?700:400}}>{d.dom}</div>
+                    {d.event&&<div style={{fontSize:7,color:tC[d.event.type],overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.event.name.slice(0,10)}</div>}
+                    {d.isEmail&&!d.event&&<div style={{fontSize:7,color:"var(--acc)"}}>email</div>}
+                  </div>;
+                })}
+              </div>
+            </div>
+            <div style={{display:"flex",gap:10,marginTop:8,flexWrap:"wrap"}}>
+              {[{l:"Mega",c:tC.mega},{l:"Promo",c:tC.promo},{l:"Holiday",c:tC.holiday},{l:"Email Day",c:"var(--acc)"}].map((x,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:3,fontSize:9,color:"var(--t3)"}}><div style={{width:7,height:7,borderRadius:2,background:x.c}}/>{x.l}</div>)}
+            </div>
+            <div style={{fontSize:10,color:"var(--t3)",marginTop:8,lineHeight:1.5}}>
+              <strong>EE Rhythm:</strong> 2-3 campaigns/week (Tue+Thu). Pre-event campaigns 2 weeks before mega dates. BFCM planning 6 weeks prior. Quiet zones (3-5 days value only) after major promos.
+            </div>
+          </div>;
+        })()}
       </>;
     })()}
 
