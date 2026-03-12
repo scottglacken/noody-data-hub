@@ -100,6 +100,26 @@ const f$=n=>n==null?"—":(n<0?"-":"")+"$"+Math.abs(Math.round(n)).toLocaleStrin
 const fp=n=>n==null?"—":n.toFixed(1)+"%";
 const fn=n=>n==null?"—":Math.round(n).toLocaleString();
 
+// Data validation helper — flags suspicious metrics
+function validateMetric(name,value,ctx){
+  const w=[];
+  if(name==="profit"&&ctx&&ctx.revenue>0&&value>ctx.revenue*0.4)w.push("Profit >40% of revenue — verify all costs included");
+  if(name==="dailyProfit"&&value>500)w.push("Daily profit >$500 — verify COGS and fixed costs");
+  if(name==="conversionRate"&&value>=100)w.push("100% CR impossible — GA4 metric bug");
+  if(name==="conversionRate"&&value>10)w.push("CR >10% unusual for DTC");
+  if(name==="engagementRate"&&value>50)w.push("Engagement >50% — check follower count");
+  if(name==="mer"&&value>100)w.push("MER >100% — spending more than revenue");
+  if(name==="emailPct"&&value>60)w.push("Email >60% unusual");
+  if(name==="aov"&&value>200)w.push("AOV >$200 unusual for Noody");
+  if(name==="aov"&&value>0&&value<20)w.push("AOV <$20 — possible data error");
+  return {valid:w.length===0,warnings:w};
+}
+
+// Tooltip component for showing calculation breakdown
+function CalcTip({formula,children}){
+  return <span title={formula} style={{cursor:formula?"help":"default",borderBottom:formula?"1px dotted var(--t3)":"none"}}>{children}</span>;
+}
+
 function MC({l,v,fmt,bm,sub,big,v7d,inv,bmLabel,showBm}){
   let dv=fmt==="$"?f$(v):fmt==="%"?fp(v):fmt==="x"?(v||0).toFixed(2)+"x":fn(v);
   let s=(bm&&showBm!==false)?gs(v,bm):"n";
@@ -185,16 +205,16 @@ function AlertBar({agg,xeroChannels,klavLive}){
   </div>;
 }
 
-function PulseBar({agg,xeroChannels,klavLive,current7d,range}){
+function PulseBar({agg,xeroChannels,klavLive,current7d,range,gAdSpend}){
   if(!agg)return null;
-  const dtcRev=agg.tr;const metaSpend=agg.tms;const days=agg.d;
+  const dtcRev=agg.tr;const metaSpend=agg.tms;const totalAds=metaSpend+(gAdSpend||0);const days=agg.d;
   const dtcRatio=xeroChannels.dtc/xeroChannels.rev;
   const estTotalRev=dtcRatio>0?dtcRev/dtcRatio:dtcRev;
   const varRatio=XERO_VAR/XERO.rev;
   const fixedMonthly=XERO_FIXED/XERO.months;
   const estVariable=estTotalRev*varRatio;
   const estFixed=fixedMonthly*(days/30);
-  const estProfit=estTotalRev-estVariable-metaSpend-estFixed;
+  const estProfit=estTotalRev-estVariable-totalAds-estFixed;
   const profPct=estTotalRev>0?estProfit/estTotalRev*100:0;
   const dtcMer=dtcRev>0?metaSpend/dtcRev*100:null;
   const emailPct=klavLive?agg.emailPct:null;
@@ -203,10 +223,10 @@ function PulseBar({agg,xeroChannels,klavLive,current7d,range}){
   // Compute 7d equivalents for trend arrows
   let prof7=null,mer7=null,email7=null,fc7=null,aov7=null;
   if(current7d&&range!==7){
-    const c7r=current7d.tr;const c7ms=current7d.tms;
+    const c7r=current7d.tr;const c7ms=current7d.tms;const c7gads=(gAdSpend||0)*(7/days);
     const c7est=dtcRatio>0?c7r/dtcRatio:c7r;
     const c7var=c7est*varRatio;const c7fc=fixedMonthly*(7/30);
-    const c7prof=c7est-c7var-c7ms-c7fc;
+    const c7prof=c7est-c7var-c7ms-c7gads-c7fc;
     prof7=c7est>0?c7prof/c7est*100:null;
     mer7=c7r>0?c7ms/c7r*100:null;
     email7=klavLive?current7d.emailPct:null;
@@ -617,6 +637,9 @@ function Dashboard(){
   const [rpvAovLift,setRpvAovLift]=useState(0);
   const [rpvTrafficLift,setRpvTrafficLift]=useState(0);
 
+  // Google Ads spend (0 if not loaded yet)
+  const googleAdSpend=gads?gads.summary.totalSpend:0;
+
   // Change indicator helper
   const pctChange=(curr,prev)=>{
     if(!prev||prev===0||curr==null||prev==null)return null;
@@ -689,7 +712,7 @@ function Dashboard(){
       </div>
     </div>
 
-    <PulseBar agg={agg} xeroChannels={xeroChannels} klavLive={klavLive} current7d={current7d} range={range}/>
+    <PulseBar agg={agg} xeroChannels={xeroChannels} klavLive={klavLive} current7d={current7d} range={range} gAdSpend={googleAdSpend}/>
 
     {(tab==="equation"||tab==="daily"||tab==="meta"||tab==="creative"||tab==="insights"||tab==="diagnose"||tab==="scale"||tab==="klaviyo"||tab==="social"||tab==="gads"||tab==="xero"||tab==="website")&&<div style={{padding:"6px 20px",display:"flex",gap:3,alignItems:"center",flexWrap:"wrap"}}>
       {[7,14,30,90,180,365].map(r=><button key={r} onClick={()=>{setRange(r);setCustomFrom("");setCustomTo("");}} style={{padding:"8px 16px",fontSize:13,borderRadius:8,minHeight:36,cursor:"pointer",background:!customFrom&&range===r?"var(--acc)":"var(--card)",color:!customFrom&&range===r?"#fff":"var(--t2)",border:!customFrom&&range===r?"1px solid var(--acc)":"1px solid var(--bdr)"}}>{r}d</button>)}
@@ -716,14 +739,16 @@ function Dashboard(){
         const yDate=new Date(Date.now()-86400000).toISOString().split("T")[0];
         const yd=mergedD.find(d=>d.d===yDate);
         const ydRev=yd?yd.r:null;
-        const ydSpend=yd?(yd.ms||0):null;
+        const ydMetaSpend=yd?(yd.ms||0):null;
+        const ydGadsDaily=googleAdSpend>0&&agg&&agg.d>0?googleAdSpend/agg.d:0;
+        const ydSpend=(ydMetaSpend||0)+ydGadsDaily;
         const ydOrders=yd?yd.o:null;
         const ydEmail=yd?yd.e:0;
         const dtcRatio=xeroChannels.dtc/xeroChannels.rev;
         const varRatio=XERO_VAR/XERO.rev;
         const fixedDaily=XERO_FIXED/XERO.months/30;
         const ydEstTotal=ydRev&&dtcRatio>0?ydRev/dtcRatio:ydRev;
-        const ydEstProfit=ydEstTotal?(ydEstTotal-ydEstTotal*varRatio-(ydSpend||0)-fixedDaily):null;
+        const ydEstProfit=ydEstTotal?(ydEstTotal-ydEstTotal*varRatio-ydSpend-fixedDaily):null;
         const ydVerdict=ydEstProfit===null?"Loading...":ydEstProfit>50?"✅ Profitable day":ydEstProfit>-20?"⚠️ Break-even":"🔴 Loss day";
         const ydVerdictCol=ydEstProfit===null?"var(--t3)":ydEstProfit>50?"var(--grn)":ydEstProfit>-20?"var(--ylw)":"var(--red)";
 
@@ -758,7 +783,7 @@ function Dashboard(){
               {(()=>{
                 const dtcMer=agg.tr>0?agg.tms/agg.tr*100:0;
                 const estT=dtcRatio>0?agg.tr/dtcRatio:agg.tr;const estV=estT*varRatio;const estF=XERO_FIXED/XERO.months*(agg.d/30);
-                const estP=estT-estV-agg.tms-estF;const estPP=estT>0?estP/estT*100:0;
+                const estP=estT-estV-agg.tms-googleAdSpend-estF;const estPP=estT>0?estP/estT*100:0;
                 const sit=estPP<0?5:estPP<5?3:(estPP<10||dtcMer>45)?2:1;
                 const sitC=sit===1?"var(--grn)":sit<=3?"var(--ylw)":"var(--red)";
                 return <div style={{fontSize:22,fontWeight:800,color:sitC,fontFamily:"'JetBrains Mono',monospace"}}>S{sit}</div>;
@@ -821,7 +846,7 @@ function Dashboard(){
       const fixedMonthly=XERO_FIXED/XERO.months;
       const estVariable=estTotalRev*varRatio;
       const estFixed=fixedMonthly*(days/30);
-      const estProfit=estTotalRev-estVariable-metaSpend-estFixed;
+      const estProfit=estTotalRev-estVariable-metaSpend-googleAdSpend-estFixed;
       const estVarPct=estTotalRev>0?estVariable/estTotalRev*100:0;
       const estMerPct=estTotalRev>0?metaSpend/estTotalRev*100:0;
       const estDtcMer=dtcRev>0?metaSpend/dtcRev*100:0;
@@ -1397,7 +1422,7 @@ function Dashboard(){
       const _fixMo=XERO_FIXED/XERO.months;
       const _estVar=_estTotal*_varRatio;
       const _estFixed=_fixMo*(_days/30);
-      const _estProfit=_estTotal-_estVar-agg.tms-_estFixed;
+      const _estProfit=_estTotal-_estVar-agg.tms-googleAdSpend-_estFixed;
       const _estProfPct=_estTotal>0?_estProfit/_estTotal*100:0;
       const _eqColor=_estProfPct>=10?"var(--grn)":_estProfPct>=5?"var(--ylw)":"var(--red)";
       // Marketing level
@@ -2218,7 +2243,7 @@ function Dashboard(){
       const varRatio=XERO_VAR/XERO.rev;const fixedMonthly=XERO_FIXED/XERO.months;
       const estTotalRev=dtcRatio>0?dtcRev/dtcRatio:dtcRev;
       const estVariable=estTotalRev*varRatio;const estFixed=fixedMonthly*(days/30);
-      const estProfit=estTotalRev-estVariable-metaSpend-estFixed;
+      const estProfit=estTotalRev-estVariable-metaSpend-googleAdSpend-estFixed;
       const estProfPct=estTotalRev>0?estProfit/estTotalRev*100:0;
       const estFcPct=estTotalRev>0?estFixed/estTotalRev*100:0;
       const estVarPct=estTotalRev>0?estVariable/estTotalRev*100:0;
@@ -2321,7 +2346,7 @@ function Dashboard(){
       const estTotalRev=dtcRatio>0?dtcRev/dtcRatio:dtcRev;
       const annRev=Math.round(estTotalRev/(days/365));
       const annVar=Math.round(annRev*varRatio);
-      const annMkt=Math.round(metaSpend/(days/365));
+      const annMkt=Math.round((metaSpend+googleAdSpend)/(days/365));
       const annFixed=Math.round(XERO_FIXED);
       const annProfit=annRev-annVar-annMkt-annFixed;
       const annProfPct=annRev>0?annProfit/annRev*100:0;
@@ -4017,7 +4042,7 @@ function Dashboard(){
       const varRatio=XERO_VAR/XERO.rev;const fixedMonthly=XERO_FIXED/XERO.months;
       const estTotalRev=dtcRatio>0?dtcRev/dtcRatio:dtcRev;
       const estVariable=estTotalRev*varRatio;const estFixed=fixedMonthly*(days/30);
-      const estProfit=estTotalRev-estVariable-metaSpend-estFixed;
+      const estProfit=estTotalRev-estVariable-metaSpend-googleAdSpend-estFixed;
       const vcPct=estTotalRev>0?estVariable/estTotalRev*100:0;
       const merPct=estTotalRev>0?metaSpend/estTotalRev*100:0;
       const fcPct=estTotalRev>0?estFixed/estTotalRev*100:0;
@@ -4459,7 +4484,7 @@ function Dashboard(){
           const fM=XERO_FIXED/XERO.months;
           const eT=dtcR>0?a.tr/dtcR:a.tr;
           const eV=eT*vR;const eF=fM*(a.d/30);
-          const eP=eT-eV-a.tms-eF;
+          const eP=eT-eV-a.tms-googleAdSpend-eF;
           const np=eT>0?eP/eT*100:0;
           const dtcMer=a.tr>0?a.tms/a.tr*100:0;
           const sit=np<0?5:np<5?3:(np<10||dtcMer>45)?2:1;
