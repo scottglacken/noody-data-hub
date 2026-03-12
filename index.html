@@ -660,6 +660,116 @@ function Dashboard(){
     {tab==="equation"&&(()=>{
       if(!agg)return <div style={{padding:40,textAlign:"center",color:"var(--t3)"}}>Loading data...</div>;
 
+      // ═══════════ TOOL 1: DAILY COMMAND BRIEFING ═══════════
+      const _briefBlock=(()=>{
+        // Get yesterday's data
+        const today=new Date().toISOString().split("T")[0];
+        const yDate=new Date(Date.now()-86400000).toISOString().split("T")[0];
+        const yd=mergedD.find(d=>d.d===yDate);
+        const ydRev=yd?yd.r:null;
+        const ydSpend=yd?(yd.ms||0):null;
+        const ydOrders=yd?yd.o:null;
+        const ydEmail=yd?yd.e:0;
+        const dtcRatio=xeroChannels.dtc/xeroChannels.rev;
+        const varRatio=XERO_VAR/XERO.rev;
+        const fixedDaily=XERO_FIXED/XERO.months/30;
+        const ydEstTotal=ydRev&&dtcRatio>0?ydRev/dtcRatio:ydRev;
+        const ydEstProfit=ydEstTotal?(ydEstTotal-ydEstTotal*varRatio-(ydSpend||0)-fixedDaily):null;
+        const ydVerdict=ydEstProfit===null?"Loading...":ydEstProfit>50?"✅ Profitable day":ydEstProfit>-20?"⚠️ Break-even":"🔴 Loss day";
+        const ydVerdictCol=ydEstProfit===null?"var(--t3)":ydEstProfit>50?"var(--grn)":ydEstProfit>-20?"var(--ylw)":"var(--red)";
+
+        // Anomaly detection (Tool 8)
+        const anomalies=[];
+        if(yd&&mergedD.length>2){
+          const d2=mergedD.find(d=>d.d===new Date(Date.now()-2*86400000).toISOString().split("T")[0]);
+          if(d2&&d2.r>100&&ydRev<d2.r*0.7) anomalies.push({icon:"🔴",msg:"Revenue dropped "+Math.round((1-ydRev/d2.r)*100)+"% vs day before — check for site issues",tab:"daily"});
+          if(ydSpend>0&&yd.mp>0){
+            const ydCpp=ydSpend/yd.mp;
+            const last7=mergedD.filter(d=>d.d>=new Date(Date.now()-8*86400000).toISOString().split("T")[0]&&d.d<yDate&&d.ms>0&&d.mp>0);
+            if(last7.length>3){
+              const avg7cpp=last7.reduce((s,d)=>s+d.ms,0)/last7.reduce((s,d)=>s+d.mp,0);
+              if(ydCpp>avg7cpp*1.4) anomalies.push({icon:"📢",msg:"Meta CPP "+f$(ydCpp)+" is "+Math.round((ydCpp/avg7cpp-1)*100)+"% above 7d avg "+f$(avg7cpp),tab:"meta"});
+            }
+          }
+          if(ydSpend>0&&yd.mv>0){
+            const ydRoas=yd.mv/ydSpend;
+            if(ydRoas<1.0) anomalies.push({icon:"📢",msg:"Yesterday's Meta ROAS was "+ydRoas.toFixed(2)+"x — below breakeven",tab:"meta"});
+          }
+          if(ydOrders===0&&ydRev<10) anomalies.push({icon:"🚨",msg:"Zero orders yesterday — check checkout and site status",tab:"website"});
+        }
+        // Check for no campaigns sent recently (from klavDetail)
+        if(klavDetail){
+          const sentCamps=(klavDetail.detail?.campaigns||[]).filter(c=>c.status==="Sent"||c.status==="sent");
+          if(sentCamps.length===0) anomalies.push({icon:"📧",msg:"No email campaigns sent in tracking period — target 2-3/week",tab:"klaviyo"});
+        }
+
+        // AI daily brief
+        const briefAiKey="daily_brief_"+rangeKey;
+        if(!tabAi[briefAiKey]&&!tabAiLoading.daily_brief&&yd){
+          const dtcMer=agg.tr>0?agg.tms/agg.tr*100:0;
+          const emailPctVal=klavLive?agg.emailPct:null;
+          const _p="You are the EE Daily Command Briefing AI. Generate exactly 3 hyper-specific priorities for TODAY based on this data. Be specific — not generic advice.\n\n"+
+            "YESTERDAY ("+yDate+"):\nRevenue: "+f$(ydRev)+" | Orders: "+(ydOrders||0)+" | Ad Spend: "+f$(ydSpend)+" | Email Rev: "+f$(ydEmail)+"\nEst. Profit: "+f$(ydEstProfit)+" — "+ydVerdict+"\n\n"+
+            "PERIOD ("+agg.d+"d, "+agg.startDate+" to "+agg.endDate+"):\nDTC Revenue: "+f$(agg.tr)+" | Meta Spend: "+f$(agg.tms)+" | Meta ROAS: "+(agg.metaROAS?agg.metaROAS.toFixed(2):"—")+"x | CPP: "+f$(agg.cpp)+"\nDTC MER: "+fp(dtcMer)+" | AOV: "+f$(agg.aov)+" | Orders: "+fn(agg.to)+"\n"+
+            (emailPctVal!=null?"Email Revenue %: "+fp(emailPctVal)+" (target 30-40%)\n":"")+
+            (anomalies.length?"ANOMALIES DETECTED:\n"+anomalies.map(a=>a.icon+" "+a.msg).join("\n")+"\n":"")+
+            "\nBrand: Noody Skincare (NZ children's natural skincare). Hero product: Calm Balm.\n"+
+            "RULES: Each priority must include a specific number, specific action, and expected impact. Format:\n1. [PRIORITY] — [specific action with numbers]\n2. [PRIORITY] — [specific action]\n3. [PRIORITY] — [specific action]";
+          setTimeout(()=>fetchTabAi("daily_brief",_p,["equation","shopify","meta"]),0);
+        }
+
+        const briefText=tabAi[briefAiKey];
+        const briefLoad=tabAiLoading.daily_brief;
+
+        return <div style={{background:"linear-gradient(135deg,rgba(59,91,219,0.08),rgba(124,58,237,0.06))",border:"2px solid rgba(59,91,219,0.25)",borderRadius:16,padding:20,marginBottom:18}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+            <div>
+              <div style={{fontSize:16,fontWeight:800,color:"var(--t1)",letterSpacing:"-0.02em"}}>DAILY COMMAND BRIEFING</div>
+              <div style={{fontSize:11,color:"var(--t3)"}}>{new Date().toLocaleDateString("en-NZ",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}</div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase"}}>Situation</div>
+              {(()=>{
+                const dtcMer=agg.tr>0?agg.tms/agg.tr*100:0;
+                const estT=dtcRatio>0?agg.tr/dtcRatio:agg.tr;const estV=estT*varRatio;const estF=XERO_FIXED/XERO.months*(agg.d/30);
+                const estP=estT-estV-agg.tms-estF;const estPP=estT>0?estP/estT*100:0;
+                const sit=estPP<0?5:estPP<5?3:(estPP<10||dtcMer>45)?2:1;
+                const sitC=sit===1?"var(--grn)":sit<=3?"var(--ylw)":"var(--red)";
+                return <div style={{fontSize:22,fontWeight:800,color:sitC,fontFamily:"'JetBrains Mono',monospace"}}>S{sit}</div>;
+              })()}
+            </div>
+          </div>
+
+          {/* Yesterday's Equation */}
+          {yd&&<div style={{background:"var(--card)",borderRadius:10,padding:12,marginBottom:12,border:"1px solid var(--bdr)"}}>
+            <div style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Yesterday's Equation — {yDate}</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(100px,1fr))",gap:6,marginBottom:8}}>
+              <div><div style={{fontSize:9,color:"var(--t3)"}}>Revenue</div><div style={{fontSize:15,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{f$(ydRev)}</div></div>
+              <div><div style={{fontSize:9,color:"var(--t3)"}}>Ad Spend</div><div style={{fontSize:15,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"var(--t2)"}}>{f$(ydSpend)}</div></div>
+              <div><div style={{fontSize:9,color:"var(--t3)"}}>Orders</div><div style={{fontSize:15,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{ydOrders||0}</div></div>
+              <div><div style={{fontSize:9,color:"var(--t3)"}}>Est. Profit</div><div style={{fontSize:15,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:ydVerdictCol}}>{f$(ydEstProfit)}</div></div>
+            </div>
+            <div style={{fontSize:12,fontWeight:600,color:ydVerdictCol}}>{ydVerdict}</div>
+          </div>}
+
+          {/* Anomaly Alerts */}
+          {anomalies.length>0&&<div style={{background:"rgba(185,28,28,0.06)",border:"1px solid rgba(185,28,28,0.2)",borderRadius:8,padding:10,marginBottom:12}}>
+            <div style={{fontSize:10,color:"var(--red)",textTransform:"uppercase",fontWeight:700,marginBottom:4}}>Alerts</div>
+            {anomalies.map((a,i)=><div key={i} style={{fontSize:12,color:"var(--t1)",padding:"3px 0",display:"flex",gap:6,alignItems:"flex-start"}}>
+              <span>{a.icon}</span>
+              <span>{a.msg}</span>
+            </div>)}
+          </div>}
+
+          {/* AI Priorities */}
+          {briefLoad&&<div style={{fontSize:12,color:"var(--t3)",padding:8,textAlign:"center"}}>⏳ Generating today's priorities...</div>}
+          {briefText&&<div style={{background:"var(--card)",borderRadius:10,padding:12,border:"1px solid var(--bdr)"}}>
+            <div style={{fontSize:10,color:"var(--acc)",textTransform:"uppercase",fontWeight:700,letterSpacing:"0.06em",marginBottom:6}}>Today's Priorities</div>
+            <div style={{fontSize:13,color:"var(--t1)",whiteSpace:"pre-wrap",lineHeight:1.6}}>{briefText}</div>
+          </div>}
+        </div>;
+      })();
+
       // All metrics from selected range
       const a=agg; const p=prevAgg;
       const dtcRev=a.tr;
@@ -732,6 +842,8 @@ function Dashboard(){
       const c7=current7d;
 
       return <>
+
+      {_briefBlock}
 
       {/* SITUATION BANNER */}
       {(()=>{
