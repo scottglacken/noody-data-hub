@@ -4126,8 +4126,39 @@ function Dashboard(){
             <h2 style={{fontSize:20,fontWeight:700,margin:0,color:"#a78bfa"}}>✦ Strategic Insights — {days} Days</h2>
             <div style={{fontSize:11,color:"var(--t3)",marginTop:2}}>Auto-generated from {a.startDate} → {a.endDate} × Ecommerce Equation benchmarks</div>
           </div>
-          <div style={{fontSize:10,color:"var(--t3)"}}>{(shopLive?"Shopify ✓ ":"")+(metaLive?"Meta ✓ ":"")+(gads?"Google ✓ ":"")+(xeroLive?"Xero ✓":"")}</div>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <div style={{fontSize:10,color:"var(--t3)"}}>{(shopLive?"Shopify ✓ ":"")+(metaLive?"Meta ✓ ":"")+(gads?"Google ✓ ":"")+(xeroLive?"Xero ✓":"")}</div>
+            <button onClick={()=>{
+              const rk="weekly_report_"+rangeKey;
+              if(tabAi[rk])return;
+              const wp="Generate a comprehensive WEEKLY EQUATION REPORT for Noody Skincare. Format with clear sections and headers.\n\n"+
+                "BUSINESS SNAPSHOT ("+a.startDate+" to "+a.endDate+", "+days+"d):\n"+
+                "- Total Est. Revenue: "+f$(estTotalRev)+" (DTC: "+f$(dtcRev)+", WH est: "+f$(estTotalRev*whRatio)+", Intl est: "+f$(estTotalRev*intlRatio)+")\n"+
+                "- Variable Costs: "+f$(estVariable)+" ("+fp(vcPct)+")\n- Marketing Costs: "+f$(metaSpend)+" (MER: "+fp(merPct)+", DTC MER: "+fp(dtcMerVal)+")\n"+
+                "- Fixed Costs: "+f$(estFixed)+" ("+fp(fcPct)+")\n- Est. Profit: "+f$(estProfit)+" ("+fp(npPct)+")\n"+
+                "- Situation: S"+situation+"\n\n"+
+                "CHANNEL PERFORMANCE:\n- Meta: ROAS "+(metaROAS?metaROAS.toFixed(2):"—")+"x, CPP "+f$(a.cpp)+", "+fn(a.tmp)+" purchases\n"+
+                (gads?"- Google: Spend "+f$(gads.summary.totalSpend)+", ROAS "+gads.summary.roas.toFixed(1)+"x\n":"")+
+                "- AOV: "+f$(currentAOV)+"\n- Email Rev %: "+(klavLive?fp(a.emailPct):"loading")+"\n\n"+
+                "INSTRUCTIONS:\n1. EXECUTIVE SUMMARY: 3-sentence state of the business\n2. EQUATION BREAKDOWN: R - MC - VC - FC = Profit with EE benchmark comparison\n3. WINS THIS PERIOD: What went well (specific numbers)\n4. CONCERNS: What needs attention (specific numbers vs benchmarks)\n5. PRIORITY ACTIONS: Top 3 actions ranked by profit impact\n6. SCALE READINESS: Green/Yellow/Red light assessment\n\nBe specific. Use actual numbers. Reference EE benchmarks. No fluff.";
+              fetchTabAi("weekly_report",wp,["equation","shopify","meta","klaviyo"],2000);
+            }} style={{padding:"6px 14px",background:"linear-gradient(135deg,#7c3aed,#a78bfa)",color:"#fff",border:"none",borderRadius:8,fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>{tabAiLoading.weekly_report?"Generating...":"Generate Weekly Report"}</button>
+          </div>
         </div>
+
+        {/* ═══════════ TOOL 2: WEEKLY EQUATION REPORT ═══════════ */}
+        {(tabAi["weekly_report_"+rangeKey]||tabAiLoading.weekly_report)&&<div style={{background:"linear-gradient(135deg,rgba(124,58,237,0.06),rgba(59,91,219,0.04))",border:"2px solid rgba(124,58,237,0.2)",borderRadius:14,padding:18,marginBottom:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{fontSize:14,fontWeight:700,color:"#a78bfa"}}>Weekly Equation Report</div>
+            {tabAi["weekly_report_"+rangeKey]&&<button onClick={()=>{
+              const el=document.createElement("textarea");
+              el.value=tabAi["weekly_report_"+rangeKey];
+              document.body.appendChild(el);el.select();document.execCommand("copy");document.body.removeChild(el);
+            }} style={{padding:"4px 10px",background:"transparent",border:"1px solid rgba(124,58,237,0.3)",borderRadius:6,color:"#a78bfa",fontSize:10,cursor:"pointer"}}>Copy</button>}
+          </div>
+          {tabAiLoading.weekly_report&&<div style={{fontSize:12,color:"var(--t3)",textAlign:"center",padding:20}}>Generating comprehensive report... this may take a moment.</div>}
+          {tabAi["weekly_report_"+rangeKey]&&<div style={{fontSize:13,color:"var(--t1)",whiteSpace:"pre-wrap",lineHeight:1.7,fontFamily:"'DM Sans',sans-serif"}}>{tabAi["weekly_report_"+rangeKey]}</div>}
+        </div>}
 
         {/* EE Equation Health at a Glance */}
         <div style={{background:"var(--card)",border:"2px solid "+(situation===1?"var(--grn)":situation<=2?"var(--ylw)":"var(--red)")+"44",borderRadius:14,padding:16,marginBottom:16}}>
