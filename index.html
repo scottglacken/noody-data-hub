@@ -1739,6 +1739,61 @@ function Dashboard(){
         </div>
       </div>}
 
+      {/* ═══════════ TOOL 3: TRAFFIC LIGHT ACTIONS PANEL ═══════════ */}
+      {cData.length>0&&(()=>{
+        const avgCpp=agg.cpp||30;
+        const greenC=[],yellowC=[],redC=[];
+        cData.forEach(c=>{
+          const fun=_funnel(c.campaign_name);const fb=_freqBench[fun]||_freqBench.TOF;
+          const roasOk=c.roas&&c.roas>=TARGETS.metaROAS;
+          const cppOk=c.cpp&&c.cpp<=avgCpp*1.5;
+          const freqOk=c.frequency&&c.frequency<=fb.w;
+          const sc=(roasOk?1:0)+(cppOk?1:0)+(freqOk?1:0);
+          const obj={name:c.campaign_name,spend:c.spend||0,roas:c.roas,cpp:c.cpp,freq:c.frequency,fun,purchases:c.purchases||0};
+          if(sc>=3)greenC.push(obj);else if(sc>=2)yellowC.push(obj);else redC.push(obj);
+        });
+        const redSpend=redC.reduce((s,c)=>s+c.spend,0);
+        const greenSpend=greenC.reduce((s,c)=>s+c.spend,0);
+        const actions=[];
+        // Red actions
+        redC.forEach(c=>{
+          if(c.spend>50) actions.push({light:"red",action:"PAUSE "+c.name.slice(0,40)+" — spending "+f$(c.spend)+" with "+(c.roas?(c.roas.toFixed(1)+"x ROAS"):"0 purchases"),urgency:3});
+        });
+        // Yellow actions
+        yellowC.forEach(c=>{
+          if(c.freq&&c.freq>(_freqBench[c.fun]||_freqBench.TOF).g) actions.push({light:"yellow",action:"REFRESH creatives on "+c.name.slice(0,35)+" — frequency "+c.freq.toFixed(1)+" (audience fatigue)",urgency:2});
+          else if(c.cpp&&c.cpp>avgCpp*1.2) actions.push({light:"yellow",action:"TEST new angles for "+c.name.slice(0,35)+" — CPP "+f$(c.cpp)+" above avg "+f$(avgCpp),urgency:2});
+        });
+        // Green actions
+        if(greenC.length>0){
+          const bestGreen=greenC.sort((a,b)=>(b.roas||0)-(a.roas||0))[0];
+          if(bestGreen.spend<totalCSpend*0.3) actions.push({light:"green",action:"SCALE "+bestGreen.name.slice(0,35)+" — best performer at "+(bestGreen.roas?bestGreen.roas.toFixed(1)+"x":"strong")+" ROAS, only "+(bestGreen.spend/totalCSpend*100).toFixed(0)+"% of budget",urgency:1});
+        }
+        // Budget reallocation
+        if(redSpend>0&&greenC.length>0) actions.push({light:"green",action:"REALLOCATE "+f$(redSpend)+" from paused Villains to Heroes ("+greenC.length+" candidates)",urgency:1});
+        if(actions.length===0)return null;
+        actions.sort((a,b)=>b.urgency-a.urgency);
+        const lightCol={red:"#b91c1c",yellow:"#92400e",green:"#15803d"};
+        const lightIcon={red:"\uD83D\uDD34",yellow:"\uD83D\uDFE1",green:"\uD83D\uDFE2"};
+        return <div style={{background:"linear-gradient(135deg,rgba(185,28,28,0.04),rgba(21,128,61,0.04))",border:"2px solid rgba(146,64,14,0.25)",borderRadius:14,padding:18,marginBottom:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <div>
+              <div style={{fontSize:15,fontWeight:700,color:"var(--t1)"}}>Traffic Light Actions</div>
+              <div style={{fontSize:11,color:"var(--t3)"}}>Auto-generated from campaign performance vs EE benchmarks</div>
+            </div>
+            <div style={{display:"flex",gap:6}}>
+              <span style={{fontSize:11,color:"#15803d",fontWeight:600}}>{greenC.length} Scale</span>
+              <span style={{fontSize:11,color:"#92400e",fontWeight:600}}>{yellowC.length} Monitor</span>
+              <span style={{fontSize:11,color:"#b91c1c",fontWeight:600}}>{redC.length} Pause</span>
+            </div>
+          </div>
+          {actions.map((a,i)=><div key={i} style={{display:"flex",gap:8,alignItems:"flex-start",padding:"8px 10px",background:lightCol[a.light]+"08",borderRadius:8,marginBottom:4,border:"1px solid "+lightCol[a.light]+"22"}}>
+            <span style={{fontSize:14,flexShrink:0}}>{lightIcon[a.light]}</span>
+            <span style={{fontSize:12,color:"var(--t1)",lineHeight:1.5}}>{a.action}</span>
+          </div>)}
+        </div>;
+      })()}
+
       {/* Funnel Spend Allocation */}
       {cData.length>0&&totalCSpend>0&&<div style={{background:"var(--card)",border:"1px solid var(--bdr)",borderRadius:14,padding:18,marginBottom:14}}>
         <div style={{fontSize:14,fontWeight:600,marginBottom:4}}>Funnel Spend Allocation</div>
