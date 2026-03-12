@@ -47,7 +47,7 @@ var KB_SECTIONS = {
   // Xero tab
   xero: { ee: [2, 5, 6, 7, 8, 12], nurture: [] },
   // Social tab
-  social: { ee: [], nurture: [] },
+  social: { ee: [9, 13, 20], nurture: [] },
   // Insights tab
   insights: { ee: [5, 6, 20, 21], nurture: [] },
   // Website tab
@@ -59,6 +59,8 @@ var CONTEXT_FILES = {
   shopify: ['shopify.md'],
   klaviyo: ['klaviyo.md', 'customer-nurture-playbook.md'],
   meta: ['meta-ads.md', 'creative-strategy.md'],
+  creative: ['creative-strategy.md', 'brand-strategy.md'],
+  brand: ['brand-strategy.md'],
   google: ['google-ads.md'],
   gads: ['google-ads.md'],
   xero: ['xero.md', 'demand-planning.md'],
@@ -68,7 +70,7 @@ var CONTEXT_FILES = {
   diagnose: ['ecommerce-equation-kb.md', 'scale-challenge.md'],
   scale: ['scale-challenge.md', 'ecommerce-equation-kb.md'],
   insights: ['ecommerce-equation-kb.md', 'promotional-rhythm.md', 'sale-strategy.md', 'brand-strategy.md'],
-  daily: ['shopify.md'],
+  daily: ['shopify.md', 'ecommerce-equation-kb.md'],
 };
 
 // Rough token estimate (~4 chars per token)

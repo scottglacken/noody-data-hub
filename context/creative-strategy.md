@@ -458,3 +458,43 @@ Each pillar creates a different perception. All four must be balanced:
 - Am I testing different hooks for the same message?
 - Am I iterating winners, not just launching new concepts?
 - Am I showing up on multiple platforms (Meta, TikTok, organic)?
+
+---
+
+## 15. THE THREE TRUTHS MODEL (Deep Customer Insight)
+
+- **Spoken Truths**: Things customers already say/know ("my child has sensitive skin") -- low impact, they already know this
+- **Unspoken Truths**: Things they think but haven't told anyone ("I feel guilty when my child scratches") -- high impact, makes them feel heard
+- **Unknown Truths**: Things they don't know about themselves yet ("you're not treating eczema, you're managing their comfort") -- highest impact, positions you as genius
+
+The magic is in unspoken and unknown truths. When you articulate someone's situation better than they can, they instantly respect you as authority ("You Get Me" Framework).
+
+---
+
+## 16. SIX STAGES OF CREATIVE MANAGEMENT
+
+Most brands only do stages 1-4 and skip 5-6 (where the magic happens):
+
+1. **Ideate** — Research, blue sheets, brainstorm
+2. **Shoot** — Capture content
+3. **Edit** — Post-production
+4. **Publish** — Launch as organic or paid
+5. **Evaluate** — Analyze performance (MOST BRANDS SKIP THIS)
+6. **Iterate** — Iterate winners with new hooks/faces/formats (MOST BRANDS SKIP THIS)
+
+Bus Factor Test: If you vanished tomorrow, could someone continue where you left off? Track creative through all 6 stages in a project management tool.
+
+---
+
+## 17. CONVERSION FORMULA
+
+**Conversion = Value + Emotion + Connection**
+
+"Marry Buy with Why" — Never just say buy. Frame the WHY so the buy is effortless.
+
+### Roller Coaster of Promotion Emotions
+Use these emotional levers in sale/launch creative:
+Readiness → Exclusivity → Anxiety → FOMO → Curiosity → Anticipation → Excitement
+
+### Same Product, Different Problem
+Scaling method: find new use cases and audiences for existing products without changing the product itself. Each new problem = new creative = new audience segment the algorithm can find.
